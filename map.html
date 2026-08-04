@@ -56,6 +56,44 @@ button.on em{color:var(--surface-1);opacity:.72}
 .rec .rw{font-size:12.5px;color:var(--ink-2)}
 .rec .re{font-size:12.5px;margin-top:3px;padding:5px 9px;background:var(--plane);
  border-radius:6px;border:1px solid var(--grid)}
+.gl{border-bottom:1.5px dotted var(--muted);cursor:help;position:relative}
+.gl:hover,.gl:focus{border-bottom-color:var(--c1);outline:none}
+.gl::after{content:attr(data-def);position:absolute;left:0;top:calc(100% + 7px);
+ width:270px;background:var(--surface-1);color:var(--ink);border:1px solid var(--grid);
+ border-radius:9px;padding:9px 11px;font-size:12.5px;line-height:1.45;font-weight:400;
+ font-style:normal;box-shadow:0 8px 24px rgba(0,0,0,.17);opacity:0;visibility:hidden;
+ transition:opacity .12s;z-index:14;pointer-events:none;text-transform:none;
+ letter-spacing:normal}
+.gl:hover::after,.gl:focus::after,.gl.open::after{opacity:1;visibility:visible}
+/* A term near the right edge would push its definition off screen, so flip it
+   to right-aligned. Set from JS because the term's position is only known
+   after layout, and the text reflows. */
+.gl.flip::after{left:auto;right:0}
+/* On a phone there is no position that fits a 270px card next to a mid-line
+   word, so stop trying: dock it to the bottom of the screen instead. */
+@media(max-width:760px){
+ .gl::after{position:fixed;left:12px;right:12px;bottom:14px;top:auto;width:auto;
+  box-shadow:0 -6px 30px rgba(0,0,0,.22);font-size:14px;padding:13px 15px}
+ .gl.flip::after{left:12px;right:12px}
+}
+.tblwrap{max-height:520px;overflow:hidden;padding:0}
+.tblscroll{max-width:100%;max-height:520px;overflow:auto;-webkit-overflow-scrolling:touch}
+.tblscroll table{min-width:640px}
+.tblscroll th:first-child,.tblscroll td:first-child{position:sticky;left:0;
+ background:var(--surface-1);z-index:1}
+@media(max-width:760px){
+ .wrap{padding-left:14px;padding-right:14px}
+ h1{font-size:21px}
+ .ctl{gap:6px}
+ button,select{font-size:12.5px;padding:7px 10px}
+ .viewsw button{font-size:13px;padding:8px 12px}
+ .pgrid{grid-template-columns:1fr}
+ .rec{grid-template-columns:1fr;gap:2px 0}
+ .rec .st{justify-self:start;margin-bottom:2px}
+}
+.gdl{margin:8px 0 0;font-size:13px}
+.gdl dt{font-weight:640;margin-top:9px}
+.gdl dd{margin:2px 0 0;color:var(--ink-2);max-width:88ch}
 .warn{margin-top:8px;padding:8px 11px;border-radius:7px;font-size:12.5px;
  background:color-mix(in srgb,#fab219 14%,transparent);
  border:1px solid color-mix(in srgb,#fab219 38%,transparent)}
@@ -236,6 +274,7 @@ recorded — the named storm, the named conflict. Scroll to zoom, drag to pan.</
 <div class="ctl" id="basicctl">
   <button class="help" id="helpbtn">How to read this</button>
   <button class="help" id="srcbtn">Where these numbers come from</button>
+  <button class="help" id="glossbtn">Plain English</button>
   <button class="help" id="advbtn">More options</button>
 </div>
 <div class="ctl" id="layerctl" hidden>
@@ -243,6 +282,8 @@ recorded — the named storm, the named conflict. Scroll to zoom, drag to pan.</
   <button id="evid">Documented evidence for codes 3, 4 and 7</button>
   <button id="attr">Attribute unknowns via UCDP</button>
 </div>
+
+<div class="card help-panel" id="glosspanel" hidden></div>
 
 <div class="card help-panel" id="srcpanel" hidden>
  <h3>Where these numbers come from</h3>
@@ -362,10 +403,9 @@ recorded — the named storm, the named conflict. Scroll to zoom, drag to pan.</
 <p class="note" id="modenote"></p>
 
 <h2>The twenty largest displaced populations</h2>
-<div class="card" style="max-height:520px;overflow:auto">
-<table id="tbl"></table></div>
+<div class="card tblwrap"><div class="tblscroll"><table id="tbl"></table></div></div>
 
-<p class="note"><b>Caveats.</b> IDMC figures here cover 2025 only, so the stock reflects
+<p class="note" id="caveats"><b>Caveats.</b> IDMC figures here cover 2025 only, so the stock reflects
 people displaced and still displaced at end-2025, and long-settled protracted caseloads from
 earlier decades are understated. The refugee view attributes each hosted refugee to the cause
 mix of their origin country as a whole — it is a population-weighted estimate, not a count of
@@ -406,6 +446,85 @@ const ELAB={1:"Armed conflict or war",2:"Widespread violence / public order",
   5:"Other threats of violence (non-state one-sided)",
   6:"Natural disasters",7:"Man-made events (incl. wildfire)"};
 const ESRCNAME={ucdp:"UCDP GED",acled:"ACLED"};
+/* PLAIN ENGLISH. Every one of these is a term a displacement specialist uses
+   without noticing and a non-specialist reads straight past while quietly losing
+   the thread. Definitions are written for someone with no background, and are
+   attached to the first occurrence of the term in any explanatory text on the
+   page - including text that is regenerated whenever the view changes. */
+const GLOSS=[
+ ["IDPs","People displaced inside their own country who never crossed an international "+
+  "border. Still their own government's responsibility in law."],
+ ["IDP","See IDPs — someone displaced inside their own country."],
+ ["internally displaced","Displaced inside your own country, without crossing a border."],
+ ["refugees","People who crossed an international border to escape, and are under "+
+  "international protection as a result. The only difference from an IDP is the border."],
+ ["refugee","Someone who crossed an international border to escape and is under "+
+  "international protection."],
+ ["asylum seekers","People who have applied for refugee status and are waiting for a "+
+  "decision. Counted here alongside refugees."],
+ ["snapshot","A count of who is displaced right now. Nobody is counted twice, but it "+
+  "misses everyone who was displaced earlier and has since gone home."],
+ ["running total","Every displacement recorded over a period, added up. Someone "+
+  "displaced three times counts three times — so it is bigger than the number of people."],
+ ["stock","A count at one moment in time, rather than a total over a period."],
+ ["unattributed","Displacement that a source recorded without saying what caused it. "+
+  "Not an unknown number of people — a known number with an unknown reason."],
+ ["origin-weighted","Refugees living in a country are described using the causes of "+
+  "displacement in the country they came from, since that is where the events happened."],
+ ["one-sided violence","Organised armed force used against civilians who are not "+
+  "fighting back — by a government, or by an armed group."],
+ ["response options","The list of answers a respondent chooses from. Here, the eight "+
+  "reasons for having to leave home."],
+ ["showcard","The card an enumerator shows a respondent listing the answer options, "+
+  "with worked examples to help them recognise their own situation."],
+ ["enumerator","The person who actually asks the questions in a survey."],
+ ["subnational","Below the level of a whole country — a province, state or district."],
+ ["admin1","The first level below a country: a province, state or region."],
+ ["recognition rate","The share of asylum claims from a given nationality that are "+
+  "accepted. Used here as indirect evidence that persecution is occurring."],
+ ["preventive evacuation","People moved out of harm's way before a disaster hits. "+
+  "Counted as displacement, though it may last only days."],
+ ["incidents","Individual recorded events — one clash, one attack. Not people."],
+ ["cognitive testing","Interviewing people about how they understand a question, to "+
+  "find out whether it means to them what it means to you."],
+];
+const GKEY=GLOSS.map(g=>g[0]);
+const GDEF=Object.fromEntries(GLOSS);
+// longest first, so "asylum seekers" is not eaten by "seekers", etc.
+const GRX=new RegExp("\\b("+GKEY.slice().sort((a,b)=>b.length-a.length)
+  .map(t=>t.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")).join("|")+")\\b","i");
+
+function glossify(root){
+ if(!root)return;
+ const used=new Set();
+ const walk=document.createTreeWalker(root,NodeFilter.SHOW_TEXT,{acceptNode(n){
+   // never touch controls, links, code, or anything already annotated
+   const p=n.parentElement;
+   if(!p||p.closest('button,a,input,select,code,.gl,svg,table.pt,.rec'))
+     return NodeFilter.FILTER_REJECT;
+   return n.nodeValue.trim().length>2?NodeFilter.FILTER_ACCEPT:NodeFilter.FILTER_REJECT;}});
+ const todo=[];
+ while(walk.nextNode())todo.push(walk.currentNode);
+ todo.forEach(n=>{
+  let m=GRX.exec(n.nodeValue);
+  if(!m)return;
+  const key=GKEY.find(k=>k.toLowerCase()===m[1].toLowerCase());
+  if(!key||used.has(key.toLowerCase()))return;
+  used.add(key.toLowerCase());
+  const after=n.splitText(m.index);
+  after.nodeValue=after.nodeValue.slice(m[1].length);
+  const sp=document.createElement('span');
+  sp.className='gl'; sp.tabIndex=0; sp.textContent=m[1];
+  sp.dataset.def=GDEF[key];
+  n.parentNode.insertBefore(sp,after);});}
+
+function glossPanel(){
+ return `<h3>Plain English</h3><p class="hn">Every term on this page that assumes you `+
+  `already work with displacement data. Dotted words anywhere on the page explain `+
+  `themselves — hover them, or tap on a phone.</p>`+
+  `<dl class="gdl">`+GLOSS.filter((g,i)=>GLOSS.findIndex(x=>x[1]===g[1])===i)
+   .map(([t,d])=>`<dt>${t}</dt><dd>${d}</dd>`).join("")+`</dl>`;}
+
 // In the public build the ACLED layer is absent for licence reasons, so say that
 // rather than leaving a button that silently empties the map.
 if(D.public){
@@ -1474,6 +1593,8 @@ function panelToggle(btnId,panelId,openTxt,shutTxt){
   if(!h.hidden)h.scrollIntoView({behavior:"smooth",block:"nearest"});});}
 panelToggle('helpbtn','help',"How to read this","Hide");
 panelToggle('srcbtn','srcpanel',"Where these numbers come from","Hide");
+document.getElementById('glosspanel').innerHTML=glossPanel();
+panelToggle('glossbtn','glosspanel',"Plain English","Hide");
 document.getElementById('advbtn').addEventListener('click',e=>{
  e.stopPropagation(); const h=document.getElementById('layerctl');
  h.hidden=!h.hidden; e.target.classList.toggle('on',!h.hidden);
@@ -1490,5 +1611,33 @@ document.getElementById('reset').addEventListener('click',()=>{Z=1;TX=0;TY=0;app
 document.getElementById('theme').addEventListener('click',()=>{
  const c=document.documentElement.getAttribute('data-theme');
  document.documentElement.setAttribute('data-theme',c==='dark'?'light':'dark');});
+/* Run the annotator after every render, because most of the explanatory text on
+   this page is rebuilt each time the view changes. Static-only annotation would
+   cover the intro and nothing a user actually reads while exploring. */
+function glossAll(){
+ ["lede","modenote","anchor","profile","help","srcpanel","caveats"]
+   .forEach(id=>glossify(document.getElementById(id)));}
+const rawDraw=draw;
+draw=function(){rawDraw.apply(this,arguments);glossAll();};
+const rawProfile=showProfile;
+showProfile=function(){rawProfile.apply(this,arguments);
+ glossify(document.getElementById('profile'));};
+/* Keep the definition on screen: flip it right-aligned when the term sits close
+   enough to the right edge that a left-aligned card would overflow. */
+function placeDef(g){
+ if(window.innerWidth<=760){g.classList.remove('flip');return;}
+ const r=g.getBoundingClientRect();
+ g.classList.toggle('flip', r.left+280 > document.documentElement.clientWidth);}
+document.addEventListener('mouseover',e=>{
+ const g=e.target.closest&&e.target.closest('.gl'); if(g)placeDef(g);});
+document.addEventListener('focusin',e=>{
+ const g=e.target.closest&&e.target.closest('.gl'); if(g)placeDef(g);});
+
+/* Tap-to-open on touch, where there is no hover. */
+document.addEventListener('click',e=>{
+ const g=e.target.closest('.gl');
+ document.querySelectorAll('.gl.open').forEach(x=>{if(x!==g)x.classList.remove('open');});
+ if(g){e.stopPropagation();placeDef(g);g.classList.toggle('open');}},true);
+
 draw();
 </script></body></html>
