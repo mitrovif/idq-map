@@ -55,7 +55,26 @@ IDQ_ROOT=$(pwd) python3 prototype-python/run_all.py
 | 7 | Man-made events | **very thin in data, large in reality** — see below |
 | 8 | A different threat | **residual** — not evidenceable by design |
 
-## Three findings the pipeline produces
+## Two maps, one switch
+
+The main output carries two views of the same eight options, switched at the top:
+
+**People displaced** — circles sized by how many people are displaced, sliced by what
+displaced them. Magnitude.
+
+**Events that happened** — circles sized by how many events were *recorded*, at country
+level or across 1,847 subnational areas. Frequency. Conflict incidents from UCDP GED
+(126 countries, 1989+) or ACLED (68 countries) as alternatives, never summed; hazard
+records from IDMC.
+
+They disagree, and the disagreement is the finding. Mexico ranks **4th in the world by
+recorded events** — 98% of them code 2, widespread violence — and **32nd by displaced
+population**. Sudan is the mirror image: 20th by events, 1st by IDPs. Bangladesh is 52nd
+by events and 5th by IDPs, because a cyclone is one event and moves millions. A showcard
+built only on the population view would give Mexican enumerators no worked example for
+the option that describes almost everything happening around them.
+
+## Four findings the pipeline produces
 
 **Code 7 is uncounted, not rare.** Every displacement database returns it as unevidenced
 almost everywhere. Human rights investigations across the twenty largest displacement
@@ -67,6 +86,13 @@ without this context would be actively misleading.
 category for it: a Rohingya family displaced by military persecution is recorded as NIAC.
 Across 305,363 characters of IDMC's own methodology notes, "persecution", "ethnic",
 "discrimination" and "torture" appear zero times. Not rare — absent from the vocabulary.
+
+**Codes 4 and 5 are evidenced by events and by nothing else.** No displacement database
+attributes population to state one-sided violence (code 4) or non-state one-sided violence
+(code 5) anywhere in the world. UCDP counts both: 23,104 and 41,292 incidents respectively,
+5.5% and 9.9% of all recorded events. The population view cannot show either option; the
+events view can. That is a direct argument for keeping both in the instrument, and the
+clearest case for having built the second view at all.
 
 **Two populations in one country need one showcard.** Uganda's IDPs are 88% disaster-displaced;
 its 1.92m hosted refugees are 30% armed conflict. Bangladesh has 5.5m disaster IDPs and 1.18m
@@ -85,6 +111,7 @@ R/05_independence.R       what may and may not be combined (errors, not warns)
 R/06_visuals.R            calls the Python layer
 config/crosswalk.yaml     the crosswalk and every decision taken, as reviewable config
 prototype-python/         the interactive maps and explorers
+  build_events.py         event counts by cause, country and admin1
 docs/                     data acquisition, UCDP access request, qualitative research
 outputs/                  generated
 ```
@@ -93,7 +120,7 @@ outputs/                  generated
 
 | File | What |
 |---|---|
-| `idq_population_by_cause.html` | main map — six population views, seven causes, subnational, evidence layer |
+| `idq_population_by_cause.html` | main map — **two views**: people displaced (six population modes) and events that happened (country / 1,847 admin1 areas, UCDP or ACLED); seven causes, evidence layer |
 | `idq_crosswalk_explorer.html` | all 68 source categories and where each lands |
 | `idq_subreasons.html` | 66 mechanisms beneath the eight options |
 | `idq_evidence_map.html` | counted vs documented |

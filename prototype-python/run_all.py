@@ -15,6 +15,7 @@ STEPS = [
     ("attribute_unknown",        "UCDP attribution of unattributed displacement"),
     ("build_ged",                "UCDP GED: named conflicts, admin1, evidence"),
     ("subnational_points",       "geocoded displacement points"),
+    ("build_events",             "event counts by cause, country and admin1"),
     ("build_crosswalk_explorer", "crosswalk explorer"),
     ("build_subreason_explorer", "sub-reason taxonomy"),
     ("build_allcauses",          "all-causes map"),

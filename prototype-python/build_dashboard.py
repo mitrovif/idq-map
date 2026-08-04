@@ -8,7 +8,34 @@ OUT = OUT_S
 TOPO = TOPO_S
 
 # ---------------------------------------------------------------- topojson -> geojson
+def decode_geojson(gj, ndigits=2):
+    """Natural Earth ships plain GeoJSON, world-atlas ships TopoJSON. Both are
+    legitimate sources for the basemap and neither is redistributable here, so
+    whichever one the user downloaded has to work. Same output shape."""
+    feats = []
+    for f in gj["features"]:
+        p = f.get("properties", {})
+        geom = f.get("geometry") or {}
+        if geom.get("type") == "Polygon":
+            polys = [geom["coordinates"]]
+        elif geom.get("type") == "MultiPolygon":
+            polys = geom["coordinates"]
+        else:
+            continue
+        iso3 = next((p[k] for k in ("ISO_A3", "ADM0_A3", "iso_a3", "id")
+                     if isinstance(p.get(k), str) and len(p[k]) == 3
+                     and p[k] != "-99"), None)
+        polys = [[[(round(float(x), ndigits), round(float(y), ndigits))
+                   for x, y in r] for r in poly] for poly in polys]
+        feats.append(dict(iso3=iso3,
+                          name=p.get("NAME") or p.get("name") or "",
+                          polys=polys))
+    return feats
+
+
 def decode_topology(topo, obj="countries", ndigits=2):
+    if topo.get("type") == "FeatureCollection":
+        return decode_geojson(topo, ndigits)
     tr = topo.get("transform")
     sx, sy = (tr["scale"] if tr else (1, 1))
     tx, ty = (tr["translate"] if tr else (0, 0))
