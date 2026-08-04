@@ -8,7 +8,8 @@ in `data/raw/`. Filenames are matched by pattern, so downloads work unchanged.
 |---|---|---|---|
 | **UCDP GED** | [ucdp.uu.se/downloads](https://ucdp.uu.se/downloads/) → Georeferenced Event Dataset, CSV | no | codes 1, 2, 4, 5 · global · 1989+ · geocoded · named conflicts |
 | **UCDP One-Sided Violence** | same page | no | state-perpetrator flag for code 4 |
-| **IDMC GIDD** | [internal-displacement.org/database](https://www.internal-displacement.org/database/) → Disaggregated export, **all years** | no | the displacement denominator, by cause and hazard, geocoded |
+| **IDMC GIDD — disaggregated** | [internal-displacement.org/database](https://www.internal-displacement.org/database/) → Disaggregated export. **One year per download, 2023 onwards only** — download 2023, 2024 and 2025 separately and drop all three in `data/raw/uploads/` | no | the displacement denominator: violence type, hazard sub-type, geocoded. This is what splits option 1 from 2 and 6 from 7 |
+| **IDMC GIDD — aggregated** | same page → Conflict and disaster export | no | 2008–2025 by country and year, but **Conflict / Disaster only**. The long series; too coarse for the eight options |
 | **ACLED aggregated** | [acleddata.com](https://acleddata.com/) → Data Export Tool, aggregated regional files, **all six regions** | no | codes 1, 2, 4, 5 · weekly × admin1 |
 | **UNHCR** | R package `refugees` — ships the data offline | no | refugee and IDP stocks, origin × asylum, recognition rates |
 | **V-Dem** | `vdem.RData` from the [vdemdata repo](https://github.com/vdeminstitute/vdemdata) | no | conditions behind codes 3 and 4 |
@@ -33,9 +34,18 @@ Either works. Natural Earth is the safer default because it needs no build step.
 
 ## The one that matters most
 
-The **all-years IDMC GIDD export**, not a single year. The questions ask about
-lifetime displacement; a one-year file understates protracted causes and
-over-weights whatever happened that year. If you download one thing, that.
+The **disaggregated** IDMC export, for **every year it is offered**. The questions
+ask about lifetime displacement, and a one-year file understates protracted causes
+while over-weighting whatever happened that year.
+
+IDMC serves this export one year at a time and only from 2023, so the maximum
+available span is 2023–2025 — three separate downloads. The loader takes all the
+files it finds and dedups by year, so just drop them all in the same folder.
+
+For anything before 2023 the aggregated export is the only option, and it
+distinguishes nothing finer than Conflict versus Disaster. That ceiling is IDMC's,
+not this pipeline's, and it is worth stating in the paper: **event-level
+displacement data with usable cause detail does not exist before 2023.**
 
 ## Minimum to get results
 

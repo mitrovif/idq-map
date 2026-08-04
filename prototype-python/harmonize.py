@@ -326,10 +326,34 @@ def main():
             f"No IDMC GIDD disaggregated export in {UP}. Download the "
             f"'Disaggregated data' export, ALL YEARS, from "
             f"https://www.internal-displacement.org/database/ and drop it there.")
-    if len(gidd) > 1:
-        print(f"  {len(gidd)} GIDD exports present, using the newest: "
-              f"{os.path.basename(gidd[-1])}")
-    idmc, idmc_detail = load_idmc(gidd[-1])
+    # IDMC serves the disaggregated export ONE YEAR AT A TIME, and only from
+    # 2023, so several files is the normal case rather than the exception. The
+    # download name carries no year, so different years can arrive with the same
+    # base name - dedup on content, never on filename.
+    # Dedup at FILE level, not row level. Two rows with identical values are
+    # usually two genuine events at the same place on the same day - this export
+    # carries no event id, so row-level dedup silently deletes real displacement
+    # (13% of the 2025 file). Each file is one year's complete export, so the
+    # only true redundancy is two files covering the same year.
+    seen_years, keep_a, keep_b, dropped = set(), [], [], []
+    for f in gidd:
+        a, b = load_idmc(f)
+        yrs_f = set(int(y) for y in b.year.unique())
+        if yrs_f & seen_years:
+            dropped.append((os.path.basename(f), sorted(yrs_f & seen_years)))
+            continue
+        seen_years |= yrs_f
+        keep_a.append(a); keep_b.append(b)
+    idmc = pd.concat(keep_a, ignore_index=True)
+    idmc_detail = pd.concat(keep_b, ignore_index=True)
+    yrs = sorted(seen_years)
+    print(f"  {len(keep_b)} export(s), years {yrs[0]}-{yrs[-1]} ({len(yrs)} distinct), "
+          f"{len(idmc_detail):,} rows")
+    for name, y in dropped:
+        print(f"    skipped {name} - year(s) {y} already loaded")
+    if len(yrs) < 3:
+        print("  NOTE: IDMC serves this export one year at a time, 2023 onwards. "
+              "Download each year separately to widen the span.")
     print(f"  {len(idmc):,} rows, {idmc.iso3.nunique()} countries")
 
     print("UCDP one-sided ...")
