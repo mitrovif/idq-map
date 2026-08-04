@@ -351,6 +351,16 @@ button.on{background:var(--ink);color:var(--surface-1);border-color:var(--ink)}
 button em{font-style:normal;display:block;font-size:10.5px;letter-spacing:.02em;
  color:var(--muted);font-weight:500;margin-top:1px}
 button.on em{color:var(--surface-1);opacity:.72}
+#intbanner{background:color-mix(in srgb,#fab219 13%,transparent);
+ border:1px solid color-mix(in srgb,#fab219 42%,transparent);border-radius:9px;
+ padding:9px 13px;margin:0 0 14px;gap:11px;flex-wrap:nowrap;align-items:flex-start}
+#intbanner[hidden]{display:none}
+.intbadge{font-size:9.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
+ padding:3px 7px;border-radius:4px;white-space:nowrap;margin-top:1px;
+ background:color-mix(in srgb,#fab219 30%,transparent);color:#8a5d00}
+:root[data-theme="dark"] .intbadge{color:#fab219}
+.intmsg{font-size:12.5px;color:var(--ink-2);line-height:1.5}
+@media(max-width:760px){#intbanner{flex-wrap:wrap}}
 .viewsw{margin-bottom:2px;padding-bottom:12px;border-bottom:1px solid var(--grid)}
 .viewsw button{font-size:14px;padding:8px 15px;font-weight:560}
 .findwrap{position:relative;margin-left:auto}
@@ -550,6 +560,14 @@ circle.ring{fill:none;stroke:var(--ink-2);stroke-width:1.3;stroke-dasharray:2.5 
 <p class="sub" id="lede">One circle per country, sized by how many people are displaced and divided by
 what displaced them. Hover a country to see the numbers and the actual events IDMC
 recorded — the named storm, the named conflict. Scroll to zoom, drag to pan.</p>
+
+<div class="ctl" id="intbanner" hidden>
+  <span class="intbadge">Internal copy</span>
+  <span class="intmsg">Contains ACLED event counts. Fine to share within the task
+  team; <b>do not publish this file</b> — ACLED's terms restrict republishing.
+  The public build at <a href="https://mitrovif.github.io/idq-map/">mitrovif.github.io/idq-map</a>
+  has them removed.</span>
+</div>
 
 <div class="ctl viewsw">
   <span class="grp">What the map shows</span>
@@ -852,6 +870,10 @@ function glossPanel(){
 
 // In the public build the ACLED layer is absent for licence reasons, so say that
 // rather than leaving a button that silently empties the map.
+// Two builds of this page exist and look identical. The one that carries ACLED
+// counts says so, on screen, at the top - a misdirected upload is otherwise a
+// very easy mistake to make with a 2.3 MB file whose only difference is licensing.
+if(!D.public){document.getElementById('intbanner').hidden=false;}
 if(D.public){
  const ab=document.querySelector('.esrc[data-s="acled"]');
  if(ab){ab.disabled=true;ab.style.opacity=".45";ab.style.cursor="not-allowed";
