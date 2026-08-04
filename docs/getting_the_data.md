@@ -14,6 +14,7 @@ in `data/raw/`. Filenames are matched by pattern, so downloads work unchanged.
 | **V-Dem** | `vdem.RData` from the [vdemdata repo](https://github.com/vdeminstitute/vdemdata) | no | conditions behind codes 3 and 4 |
 | **IOM DTM** | [dtm-apim-portal.iom.int](https://dtm-apim-portal.iom.int/) | **yes**, free | reported reasons — what displaced people say |
 | **UCDP API** | [ucdp.uu.se/apidocs](https://ucdp.uu.se/apidocs/) | **yes** | reproducible refresh (bulk downloads need no key) |
+| **IDMC API** | email ch.datainfo@idmc.ch | **yes** | reproducible refresh (the GIDD export needs no key) — see [`idmc_access_request.md`](idmc_access_request.md) |
 
 ## The basemap
 

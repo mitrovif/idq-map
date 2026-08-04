@@ -112,7 +112,7 @@ R/06_visuals.R            calls the Python layer
 config/crosswalk.yaml     the crosswalk and every decision taken, as reviewable config
 prototype-python/         the interactive maps and explorers
   build_events.py         event counts by cause, country and admin1
-docs/                     data acquisition, UCDP access request, qualitative research
+docs/                     data acquisition, UCDP and IDMC access requests, qualitative research
 outputs/                  generated
 ```
 
