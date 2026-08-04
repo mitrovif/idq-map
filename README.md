@@ -116,6 +116,32 @@ its 1.92m hosted refugees are 30% armed conflict. Bangladesh has 5.5m disaster I
 Rohingya refugees. A single instrument has to work for both, which is the strongest argument
 for localising the *support material* rather than the questions.
 
+## Localising the examples, not the question
+
+The response options must be identical everywhere. The text after each "e.g." must not.
+The question variants document permits localising examples, and the desk review found that
+when examples were withheld participants "showed a general lack of familiarity" with the
+underlying concepts and "may fail to identify any qualifying event". So the examples carry
+real weight, and they are the one part of the instrument allowed to vary.
+
+Version 3 currently gives **no examples at all** for armed conflict, widespread violence or
+other threats of violence — the three options the event data is strongest on — and a generic
+global hazard list for natural disasters that names hazards which do not occur in most
+countries. `build_questions.py` drafts replacements from what was actually recorded:
+Philippines gets cyclones, floods and earthquakes; Haiti gets the gangs by name.
+
+Three constraints are enforced in code rather than left to the reader. **Identity groups are
+never named** — UCDP codes communal violence as "Christians (Nigeria) – Muslims (Nigeria)",
+which is correct coding and unusable in an instrument read aloud by a government enumerator;
+those become "communal or intercommunal violence". **An actor is used once** — Boko Haram
+appearing under both armed conflict and other threats of violence gives a respondent a reason
+to hesitate rather than a prompt. **Actor names are tagged as such**, because naming groups
+risks anchoring: someone displaced by a group not on the list may conclude the option does
+not cover them.
+
+These are drafts for the task team, not enumerator text. The names are UCDP's, not a
+respondent's.
+
 ## Structure
 
 ```
@@ -141,6 +167,7 @@ outputs/                  generated
 | `idq_population_by_cause.html` | main map — **two views**: people displaced (six population modes) and events that happened (country / 1,847 admin1 areas, UCDP or ACLED); seven causes, country search, per-country showcard panel, evidence layer |
 | `idq_crosswalk_explorer.html` | all 68 source categories and where each lands |
 | `idq_subreasons.html` | 66 mechanisms beneath the eight options |
+| `idq_localised_questions.html` | Version 3 of the forced-to-flee item with country-specific examples after each "e.g." |
 | `idq_evidence_map.html` | counted vs documented |
 | `idq_all_causes_map.html` | every cause at once, plus region × cause |
 | `showcard_recommendations.csv` | country × code with status, rationale and local examples — also surfaced per country in the map |
@@ -148,6 +175,7 @@ outputs/                  generated
 | `subnational_displacement_points.csv` | 7,648 geocoded locations, mostly ADM2/ADM3 |
 | `admin1_conflict_profiles.csv` | region × cause |
 | `dtm_reported_vs_attributed.csv` | what people said vs what we inferred, per country, with the disagreement classified |
+| `localised_question_examples.csv` | every drafted example with its source and the evidence behind it |
 
 ## Things to know before trusting a number
 

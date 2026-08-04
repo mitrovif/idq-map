@@ -17,6 +17,7 @@ STEPS = [
     ("subnational_points",       "geocoded displacement points"),
     ("build_events",             "event counts by cause, country and admin1"),
     ("build_dtm",                "IOM DTM reported reasons, and the reality check"),
+    ("build_questions",          "localised e.g. examples for the forced-to-flee item"),
     ("build_crosswalk_explorer", "crosswalk explorer"),
     ("build_subreason_explorer", "sub-reason taxonomy"),
     ("build_allcauses",          "all-causes map"),

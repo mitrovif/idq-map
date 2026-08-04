@@ -242,6 +242,11 @@ def main():
     print(f"  {len(flows)} refugee movements over 25,000 people")
 
     vdem = json.load(open(f"{TIDY}/vdem_severity.json"))
+    try:
+        lq = json.load(open(f"{TIDY}/localised_questions.json"))
+        print(f"  localised questions: {len(lq)} countries")
+    except FileNotFoundError:
+        lq = {}
     # IOM DTM: the only evidence here that comes from displaced people rather
     # than from an analyst reading an event. Kept in its own key and never
     # merged with the attributed causes - it is a check on them, not a part.
@@ -329,7 +334,7 @@ def main():
         ev = {}
         print("  events layer: events.json missing - run build_events.py")
     payload = dict(data=data, geo=feats, causes=CAUSES, labels=LABEL, flows=flows,
-                   coverage=cov, ev=ev, sc=sc, dtm=dtm, public=PUBLIC,
+                   coverage=cov, ev=ev, sc=sc, dtm=dtm, lq=lq, public=PUBLIC,
                    vdem=vdem, ucdp=ucdp, dis=disasters, gedc=gedc, geda1=geda1, pts=points,
                    year=latest, period=period, multiyear=len(yrs) > 1,
                    qual=qual,
@@ -450,6 +455,9 @@ button.on em{color:var(--surface-1);opacity:.72}
 .gdl{margin:8px 0 0;font-size:13px}
 .gdl dt{font-weight:640;margin-top:9px}
 .gdl dd{margin:2px 0 0;color:var(--ink-2);max-width:88ch}
+.qdraft{white-space:pre-wrap;font-size:13px;line-height:1.72;background:var(--plane);
+ border:1px solid var(--grid);border-radius:9px;padding:13px 15px;margin-top:2px}
+.qdraft .eg{color:var(--c1);font-weight:600}
 .warn{margin-top:8px;padding:8px 11px;border-radius:7px;font-size:12.5px;
  background:color-mix(in srgb,#fab219 14%,transparent);
  border:1px solid color-mix(in srgb,#fab219 38%,transparent)}
@@ -1436,6 +1444,19 @@ function showProfile(iso){
             RESIDUAL:["st-res","Always keep"],
             UNEVIDENCED:["st-un","Keep — no data"],
             LOW_SALIENCE:["st-low","Low salience"]};
+  // The drafted question itself, above the per-option table. This is what
+  // somebody actually came for: the wording, for this country, with the
+  // examples filled in from what happened there.
+  const q=D.lq&&D.lq[iso];
+  if(q){
+   h+=`<div class="psec"><h3>Draft wording for this country</h3>`+
+    `<div class="qdraft">${q.question.replace(/&/g,"&amp;").replace(/</g,"&lt;")
+      .replace(/e\.g\. (.+)/g,'e.g. <b class="eg">$1</b>')
+      .replace(/^- /gm,"\u2014 ")}</div>`+
+    `<div class="ev" style="margin-top:7px">${q.n_localised} of 7 options carry `+
+    `country-specific examples; the rest keep the questionnaire's generic wording. `+
+    `<b>Draft for review, not enumerator text</b> — actor names come from UCDP and `+
+    `need checking against what people locally actually call them.</div></div>`;}
   h+=`<div class="psec"><h3>What to put on the showcard here</h3>`+
     `<div style="font-size:12.5px;color:var(--ink-2);margin:-2px 0 9px">`+
     `All eight options stay on the questionnaire everywhere — that is what makes the `+

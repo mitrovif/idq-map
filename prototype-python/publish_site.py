@@ -57,6 +57,11 @@ PAGES = [
      "Mechanisms beneath the options",
      "66 distinct ways people are displaced, grouped under the eight options, with "
      "how a respondent might phrase each one and whether any database counts it."),
+    ("idq_localised_questions.html", "questions.html",
+     "Localised examples for the question",
+     "Version 3 of the forced-to-flee item, with the text after each \u201ce.g.\u201d "
+     "drafted from what was actually recorded in that country. The response options "
+     "do not change; only the examples."),
     ("idq_evidence_map.html", "counted-vs-documented.html",
      "Counted versus documented",
      "Where human rights research documents displacement that no statistical "
