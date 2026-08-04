@@ -47,7 +47,15 @@ import pandas as pd
 TIDY = TIDY_S
 OUT = OUT_S
 
-MAX_EX = 3          # "the latest three events"
+# The instrument says "SHOW SCREEN OR READ-OUT", and those are different jobs.
+# A list read aloud has to stay short: past three or four items respondents
+# remember the first and the last and lose the middle. A showcard the respondent
+# reads at their own pace can carry everything the country actually has. So two
+# sets are produced per country, and how many were AVAILABLE is reported either
+# way - a country with eleven active conflicts and three shown is a different
+# situation from one with three.
+READ_OUT_MAX = 3
+SHOWCARD_MAX = 8
 RECENT_YEARS = 15   # an example nobody remembers is not an example
 
 # Version 3 (Long) of the forced-to-flee item, verbatim.
@@ -179,6 +187,47 @@ def phrase(c, latest_year):
     return None
 
 
+# Repeating the same sentence stem is not a list of examples, it is noise.
+# Brazil produced "clashes between Comando Vermelho and PCC, clashes between
+# Comando Vermelho and GDE, clashes between Bonde dos 13, PCC and Comando
+# Vermelho, ..." - six times the same construction, and no respondent parses
+# that read aloud. Same-stem examples are merged into one phrase naming the
+# distinct actors once each.
+STEMS = [
+    ("the fighting involving ", "the fighting involving {}"),
+    ("clashes between ", "clashes between armed groups, including {}"),
+    ("attacks on civilians by ", "attacks on civilians by {}"),
+]
+
+
+def merge_same_stem(items, max_actors=5):
+    """Collapse examples sharing a sentence stem into one phrase."""
+    out, used = [], set()
+    for stem, template in STEMS:
+        group = [i for i in items if i["kind"] == "actor"
+                 and i["text"].startswith(stem)]
+        if len(group) < 2:
+            continue
+        actors = []
+        for g in group:
+            for a in re.split(r",\s*|\s+and\s+", g["text"][len(stem):]):
+                a = a.strip()
+                if a and a.lower() not in {x.lower() for x in actors}:
+                    actors.append(a)
+        actors = actors[:max_actors]
+        joined = (", ".join(actors[:-1]) + " and " + actors[-1]
+                  if len(actors) > 1 else actors[0])
+        out.append(dict(text=template.format(joined), kind="actor-merged",
+                        src=group[0]["src"], n=sum(g.get("n") or 0 for g in group),
+                        detail=f"merged from {len(group)} conflicts: "
+                               + "; ".join(g["detail"] for g in group[:4])
+                               + ("; …" if len(group) > 4 else ""),
+                        merged=len(group)))
+        used.update(id(g) for g in group)
+    out.extend(i for i in items if id(i) not in used)
+    return out
+
+
 def main():
     conflicts = json.load(open(f"{TIDY}/ged_conflicts.json"))
     disasters = json.load(open(f"{TIDY}/disaster_register.json"))
@@ -204,7 +253,7 @@ def main():
 
         # ---- conflict-derived options ------------------------------------
         for code in (1, 2, 4, 5):
-            seen, picked = set(), []
+            seen, picked = set(), []      # picked holds ALL available
             # most recent first, then largest
             for c in sorted(conflicts.get(iso, []),
                             key=lambda c: (-c.get("last", 0), -c.get("events", 0))):
@@ -221,8 +270,9 @@ def main():
                 seen.add(p[0])
                 picked.append(dict(text=p[0], kind=p[1], src="UCDP GED",
                                    detail=f"{c['conflict']} ({c['first']}–{c['last']}, "
-                                          f"{c['events']:,} recorded incidents)"))
-                if len(picked) >= MAX_EX:
+                                          f"{c['events']:,} recorded incidents)",
+                                   n=int(c.get("events") or 0)))
+                if len(picked) >= SHOWCARD_MAX:
                     break
             if picked:
                 ex[code] = picked
@@ -230,16 +280,17 @@ def main():
         dz = disasters.get(iso, {})
         haz = [h for h in dz.get("hazards", []) if h.get("n", 0) > 0]
         HUMAN = {"Wildfire", "Dam release flood", "Sinkhole"}
-        nat = [h for h in haz if h["h"] not in HUMAN][:MAX_EX + 2]
-        man = [h for h in haz if h["h"] in HUMAN][:MAX_EX + 2]
+        nat = [h for h in haz if h["h"] not in HUMAN][:SHOWCARD_MAX]
+        man = [h for h in haz if h["h"] in HUMAN][:SHOWCARD_MAX]
         def haz_ex(items):
             o = []
             for h in items:
                 t = say_hazard(h["h"])
                 if t and t not in [x["text"] for x in o]:
                     o.append(dict(text=t, kind="category", src="IDMC",
-                                  detail=f"{h['n']:,} people displaced"))
-            return o[:MAX_EX]
+                                  detail=f"{h['n']:,} people displaced",
+                                  n=int(h["n"])))
+            return o[:SHOWCARD_MAX]
         nat_ex, man_ex = haz_ex(nat), haz_ex(man)
         if nat_ex:
             ex[6] = nat_ex
@@ -249,37 +300,66 @@ def main():
         if not ex:
             continue
 
-        # ---- render the question -----------------------------------------
-        lines, prov = [], []
+        ex_raw = {k: list(v) for k, v in ex.items()}
+        ex = {k: merge_same_stem(v) for k, v in ex.items()}
+
+        # ---- render both lengths -----------------------------------------
+        # read_out  : concise, for an enumerator reading aloud
+        # showcard  : everything available, for a card the respondent reads
+        prov, avail = [], {}
+
+        def render(limit):
+            lines = []
+            for code, label, generic in OPTIONS:
+                picked = ex.get(code)
+                if picked:
+                    use = picked[:limit]
+                    txt = ", ".join(p["text"] for p in use)
+                    more = len(picked) - len(use)
+                    lines.append(f"- {label} e.g. {txt}"
+                                 + (f" (+{more} more recorded)" if more else ""))
+                elif generic:
+                    lines.append(f"- {label} e.g. {generic}")
+                else:
+                    lines.append(f"- {label}")
+            lines.append("- None of the above [EXCLUSIVE CODE]")
+            return STEM + "\n\n" + "\n".join(lines)
+
         for code, label, generic in OPTIONS:
             picked = ex.get(code)
+            avail[code] = len(picked) if picked else 0
             if picked:
-                txt = ", ".join(p["text"] for p in picked)
-                lines.append(f"- {label} e.g. {txt}")
-                for p in picked:
+                for i, p in enumerate(picked):
                     prov.append(dict(iso3=iso, code_id=code, example=p["text"],
                                      kind=p["kind"], source=p["src"],
-                                     evidence=p["detail"], localised=True))
+                                     evidence=p["detail"], localised=True,
+                                     in_read_out=i < READ_OUT_MAX,
+                                     rank=i + 1, incidents=p.get("n"),
+                                     merged_from=p.get("merged")))
             elif generic:
-                lines.append(f"- {label} e.g. {generic}")
                 prov.append(dict(iso3=iso, code_id=code, example=generic,
                                  kind="generic", source="questionnaire default",
                                  evidence="no country evidence in any source",
-                                 localised=False))
+                                 localised=False, in_read_out=True, rank=1,
+                                 incidents=None))
             else:
-                lines.append(f"- {label}")
                 prov.append(dict(iso3=iso, code_id=code, example="",
                                  kind="none", source="", localised=False,
                                  evidence="no examples in the instrument and "
-                                          "none derivable from data"))
-        lines.append("- None of the above [EXCLUSIVE CODE]")
+                                          "none derivable from data",
+                                 in_read_out=True, rank=1, incidents=None))
 
         d = dtm[dtm.iso3 == iso] if len(dtm) else dtm
         out[iso] = dict(
             name=regions.get(iso, iso),
-            question=STEM + "\n\n" + "\n".join(lines),
+            question=render(READ_OUT_MAX),           # kept for compatibility
+            read_out=render(READ_OUT_MAX),
+            showcard=render(SHOWCARD_MAX),
             localised=sorted(ex),
             n_localised=len(ex),
+            available={str(k): v for k, v in avail.items() if v},
+            n_available=sum(avail.values()),
+            n_beyond_read_out=sum(max(0, v - READ_OUT_MAX) for v in avail.values()),
             has_reported=bool(len(d)),
         )
         rows.extend(prov)
@@ -314,6 +394,13 @@ body{margin:0;background:var(--p);color:var(--i);font:15.5px/1.6 ui-sans-serif,
 .w{max-width:900px;margin:0 auto;padding:44px 22px 80px}
 h1{font-size:26px;margin:0 0 10px;letter-spacing:-.02em;font-weight:660}
 p.lede{color:var(--i2);margin:0 0 18px}
+.ctl{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.ctl button{font:inherit;font-size:13.5px;padding:8px 13px;border-radius:9px;
+ border:1px solid var(--g);background:var(--s);color:var(--i);cursor:pointer}
+.ctl button.on{background:var(--i);color:var(--s);border-color:var(--i)}
+.ctl button em{font-style:normal;display:block;font-size:10.5px;color:var(--m);
+ margin-top:1px}
+.ctl button.on em{color:var(--s);opacity:.7}
 select{font:inherit;font-size:15px;padding:9px 13px;border-radius:9px;
  border:1px solid var(--g);background:var(--s);color:var(--i);width:100%;max-width:420px}
 .q{background:var(--s);border:1px solid var(--g);border-radius:12px;padding:20px 22px;
@@ -334,6 +421,8 @@ h2{font-size:16px;margin:30px 0 4px;font-weight:640}
 .k-category{background:color-mix(in srgb,#0ca30c 16%,transparent);color:#0ca30c}
 .k-generic{background:transparent;color:var(--m);border:1px solid var(--g)}
 .k-none{background:transparent;color:var(--m);border:1px dashed var(--g)}
+.k-actor-merged{background:color-mix(in srgb,var(--a) 16%,transparent);color:var(--a)}
+.ro{font-size:10px;color:var(--m)}
 </style></head><body><div class="w">
 <h1>Localised examples for the forced-to-flee question</h1>
 <p class="lede">Version 3 of the item, with the text after each &ldquo;e.g.&rdquo;
@@ -341,6 +430,10 @@ drafted from what was actually recorded in that country. <b>The response options
 not change</b> &mdash; only the examples, which the question variants document
 permits localising and which the desk review found respondents depend on.</p>
 <select id="pick"></select>
+<div class="ctl">
+  <button class="len on" data-l="read_out">Read aloud <em>short</em></button>
+  <button class="len" data-l="showcard">Showcard <em>everything recorded</em></button>
+</div>
 <div class="q" id="q"></div>
 <div class="warn" id="warn"></div>
 <h2>Where each example comes from</h2>
@@ -379,21 +472,32 @@ Object.entries(Q).sort((a,b)=>a[1].name.localeCompare(b[1].name))
   o.value=k;o.textContent=`${v.name} — ${v.n_localised} of 7 options localised`;
   sel.appendChild(o);});
 function esc(s){return s.replace(/&/g,"&amp;").replace(/</g,"&lt;");}
+let LEN="read_out";
 function show(iso){
  const v=Q[iso];
- document.getElementById('q').innerHTML=esc(v.question)
+ document.getElementById('q').innerHTML=esc(v[LEN]||v.question)
    .replace(/e\.g\. (.+)/g,(m,p1)=>`<span class="eg">e.g. ${p1}</span>`)
    .replace(/^- /gm,"— ");
  const rows=P.filter(r=>r.iso3===iso);
  const miss=rows.filter(r=>r.kind==="generic"||r.kind==="none").length;
  document.getElementById('warn').innerHTML=
-  `<b>${v.n_localised} of 7 response options have country-specific examples.</b> `+
-  `${miss} still carry the generic wording or none at all — see the table.`;
+  `<b>${v.n_localised} of 7 response options have country-specific examples`+
+  `, ${v.n_available} examples in total.</b> ${miss} options still carry the `+
+  `generic wording or none at all — see the table. `+
+  (v.n_beyond_read_out
+    ? `<b>${v.n_beyond_read_out} more</b> are recorded than fit a read-aloud list; `+
+      `the showcard version includes them.`
+    : `Everything recorded fits the read-aloud list.`);
  document.querySelector('#prov tbody').innerHTML=rows.map(r=>
   `<tr><td>${LBL[r.code_id]||r.code_id}</td><td>${esc(r.example||"—")}</td>`+
   `<td><span class="k k-${r.kind}">${r.kind}</span></td><td>${r.source||"—"}</td>`+
-  `<td style="color:var(--i2)">${esc(r.evidence||"")}</td></tr>`).join("");}
+  `<td style="color:var(--i2)">${esc(r.evidence||"")}`+
+  (r.in_read_out===false?`<div class="ro">showcard only</div>`:``)+
+  `</td></tr>`).join("");}
 sel.addEventListener('change',()=>show(sel.value));
+document.querySelectorAll('.len').forEach(b=>b.addEventListener('click',()=>{
+ document.querySelectorAll('.len').forEach(x=>x.classList.remove('on'));
+ b.classList.add('on');LEN=b.dataset.l;show(sel.value);}));
 sel.value = Q["NGA"] ? "NGA" : Object.keys(Q)[0];
 show(sel.value);
 </script></body></html>"""

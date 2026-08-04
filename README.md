@@ -139,6 +139,19 @@ to hesitate rather than a prompt. **Actor names are tagged as such**, because na
 risks anchoring: someone displaced by a group not on the list may conclude the option does
 not cover them.
 
+**Two lengths, because the instrument asks for two.** It says "SHOW SCREEN OR READ-OUT",
+and those are different jobs: a list read aloud has to stay short or respondents remember
+the first and last item and lose the middle, while a showcard they read themselves can
+carry everything. Both are generated, and either way the count of what was *available*
+is reported — a country with eleven active conflicts showing three is a different
+situation from one with three.
+
+Where one option would otherwise repeat a sentence stem, the examples are merged. Brazil
+produced "clashes between Comando Vermelho and PCC, clashes between Comando Vermelho and
+GDE, clashes between Bonde dos 13, PCC and Comando Vermelho…" six times over; it now reads
+"clashes between armed groups, including Comando Vermelho, PCC, GDE, Bonde dos 13 and
+Sindicato do Crime".
+
 These are drafts for the task team, not enumerator text. The names are UCDP's, not a
 respondent's.
 

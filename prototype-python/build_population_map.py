@@ -802,7 +802,7 @@ let MODE="both", SHAPE="pie", CAUSE="all", EVID=false, ATTR=false, PIN=null,
     Z=1,TX=0,TY=0, notes={};
 // The events layer. VIEW is the top-level switch; the two views share the map,
 // the zoom and the cause filter, and share nothing else.
-let VIEW="pop", ELEVEL="country", ESRC="ucdp";
+let VIEW="pop", ELEVEL="country", ESRC="ucdp", QLEN="read_out";
 const EC=[1,2,4,5,6,7];               // codes any event source actually carries
 // Only three hues clear colour-vision deficiency against each other in both
 // light and dark, and codes 1/2/6 already hold them. 4 and 5 get texture and
@@ -1450,12 +1450,20 @@ function showProfile(iso){
   const q=D.lq&&D.lq[iso];
   if(q){
    h+=`<div class="psec"><h3>Draft wording for this country</h3>`+
-    `<div class="qdraft">${q.question.replace(/&/g,"&amp;").replace(/</g,"&lt;")
+    `<div class="qdraft">${(q[QLEN]||q.question).replace(/&/g,"&amp;").replace(/</g,"&lt;")
       .replace(/e\.g\. (.+)/g,'e.g. <b class="eg">$1</b>')
       .replace(/^- /gm,"\u2014 ")}</div>`+
+    `<div class="ctl" style="margin:8px 0 0">`+
+    `<button class="qlen${QLEN==="read_out"?" on":""}" data-l="read_out">Read aloud</button>`+
+    `<button class="qlen${QLEN==="showcard"?" on":""}" data-l="showcard">Showcard `+
+    `\u2014 everything recorded</button></div>`+
     `<div class="ev" style="margin-top:7px">${q.n_localised} of 7 options carry `+
-    `country-specific examples; the rest keep the questionnaire's generic wording. `+
-    `<b>Draft for review, not enumerator text</b> — actor names come from UCDP and `+
+    `country-specific examples, ${q.n_available} in total. `+
+    (q.n_beyond_read_out
+      ? `<b>${q.n_beyond_read_out} more examples are recorded</b> than belong in a list `+
+        `read aloud \u2014 the showcard version has them. `
+      : `Everything recorded fits a read-aloud list. `)+
+    `<b>Draft for review, not enumerator text</b> \u2014 actor names come from UCDP and `+
     `need checking against what people locally actually call them.</div></div>`;}
   h+=`<div class="psec"><h3>What to put on the showcard here</h3>`+
     `<div style="font-size:12.5px;color:var(--ink-2);margin:-2px 0 9px">`+
@@ -1587,6 +1595,8 @@ function showProfile(iso){
  el.innerHTML=h; el.hidden=false;
  document.getElementById('pclose').addEventListener('click',ev=>{
    ev.stopPropagation(); el.hidden=true;});
+ el.querySelectorAll('.qlen').forEach(b=>b.addEventListener('click',ev=>{
+   ev.stopPropagation(); QLEN=b.dataset.l; showProfile(iso);}));
  el.scrollIntoView({behavior:"smooth",block:"nearest"});
 }
 
