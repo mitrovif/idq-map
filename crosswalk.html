@@ -1,0 +1,129 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Crosswalk explorer — source categories to response options</title>
+<style>
+:root{color-scheme:light;--surface-1:#fcfcfb;--plane:#f9f9f7;--ink:#0b0b0b;--ink-2:#52514e;
+ --muted:#898781;--grid:#e1e0d9;--bar:#9ec5f4;--bar2:#2a78d6;
+ --good:#0ca30c;--warning:#fab219;--critical:#d03b3b;}
+:root[data-theme="dark"]{color-scheme:dark;--surface-1:#1a1a19;--plane:#0d0d0d;--ink:#fff;
+ --ink-2:#c3c2b7;--grid:#2c2c2a;--bar:#1c5cab;--bar2:#3987e5;}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;
+ --surface-1:#1a1a19;--plane:#0d0d0d;--ink:#fff;--ink-2:#c3c2b7;--grid:#2c2c2a;
+ --bar:#1c5cab;--bar2:#3987e5;}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--plane);color:var(--ink);
+ font:15px/1.55 ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+.wrap{max-width:1280px;margin:0 auto;padding:26px 20px 60px}
+h1{font-size:23px;margin:0 0 6px;letter-spacing:-.015em;font-weight:640}
+h2{font-size:16.5px;margin:30px 0 6px;font-weight:620}
+.sub{color:var(--ink-2);margin:0 0 16px;max-width:84ch;font-size:14.5px}
+.card{background:var(--surface-1);border:1px solid var(--grid);border-radius:12px;
+ padding:14px 16px;margin-top:10px}
+.ctl{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 0;align-items:center}
+button{font:inherit;font-size:13px;padding:6px 11px;border-radius:8px;border:1px solid var(--grid);
+ background:var(--surface-1);color:var(--ink);cursor:pointer}
+button.on{background:var(--ink);color:var(--surface-1);border-color:var(--ink)}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{padding:7px 9px;border-bottom:1px solid var(--grid);vertical-align:top;text-align:left}
+th{color:var(--ink-2);font-weight:600;font-size:11px;text-transform:uppercase;
+ letter-spacing:.04em;cursor:pointer;white-space:nowrap}
+td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.bar{height:7px;border-radius:3px;background:var(--bar);min-width:2px}
+.tag{font-size:10px;font-weight:700;letter-spacing:.05em;padding:2px 6px;border-radius:4px;
+ text-transform:uppercase;white-space:nowrap}
+.t-exact{background:color-mix(in srgb,var(--good) 16%,transparent);color:var(--good)}
+.t-contested{background:color-mix(in srgb,var(--warning) 28%,transparent);color:#8a5d00}
+:root[data-theme="dark"] .t-contested{color:var(--warning)}
+.t-broader,.t-narrower{background:color-mix(in srgb,var(--muted) 20%,transparent);color:var(--ink-2)}
+.t-none{background:transparent;color:var(--muted);border:1px solid var(--grid)}
+.t-decided{background:color-mix(in srgb,var(--good) 16%,transparent);color:var(--good)}
+.t-pending{background:color-mix(in srgb,var(--critical) 15%,transparent);color:var(--critical)}
+.note{font-size:12px;color:var(--ink-2);margin-top:3px;max-width:64ch;line-height:1.45}
+.code{font-weight:620;white-space:nowrap}
+.rev{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+@media(max-width:1000px){.rev{grid-template-columns:repeat(2,1fr)}}
+.rc{background:var(--surface-1);border:1px solid var(--grid);border-radius:10px;padding:12px}
+.rc.starved{border-color:var(--warning);border-width:1.5px}
+.rc h3{font-size:13px;margin:0 0 4px;font-weight:620;line-height:1.35}
+.rc .big{font-size:22px;font-weight:660;letter-spacing:-.02em}
+.rc .l{font-size:11.5px;color:var(--ink-2)}
+</style></head><body><div class="wrap">
+<h1>Crosswalk explorer</h1>
+<p class="sub">Every category each database actually uses, how much displacement or violence
+sits in it, and which response option it feeds. Built from the source vocabularies upward
+rather than from the questionnaire down, so force-fits and starved options both show.</p>
+
+<h2>What feeds each response option</h2>
+<div class="rev" id="rev"></div>
+
+<h2>Every source category</h2>
+<div class="ctl">
+ <button class="f on" data-f="all">All</button>
+ <button class="f" data-f="contested">Still contested</button>
+ <button class="f" data-f="decided">Decisions taken</button>
+ <button class="f" data-f="pending">Awaiting data</button>
+ <button class="f" data-f="none">Deliberately unmapped</button>
+ <button class="f" data-f="IDMC GIDD">IDMC</button>
+ <button class="f" data-f="ACLED">ACLED</button>
+ <button id="theme" style="margin-left:auto">Dark mode</button>
+</div>
+<div class="card"><table id="t"><thead><tr>
+ <th data-s="source">Source</th><th data-s="category">Category</th>
+ <th data-s="volume">Volume</th><th></th>
+ <th data-s="code">Maps to</th><th data-s="fit">Fit</th></tr></thead><tbody></tbody></table></div>
+
+<p class="note" style="max-width:92ch"><b>Fit.</b> <i>Exact</i> — the source category
+denotes the same thing as the response option. <i>Broader / narrower</i> — it covers more or
+less than the option. <i>Contested</i> — a defensible reading puts it under a different
+option; the alternative is named in the note. <i>Decided</i> — a judgement call that was put to the team and settled; the note records
+what was chosen and why. <i>Awaiting data</i> — cannot be resolved with the sources
+currently in hand. <i>Unmapped</i> — deliberately feeds nothing.</p>
+</div>
+<script>
+const D={"rows":[{"source":"IDMC GIDD","category":"Typhoon/Hurricane/Cyclone","unit":"people displaced","volume":17336248.0,"rows":306,"code":6.0,"fit":"exact","alt":NaN,"note":"Largest single disaster bucket worldwide."},{"source":"IDMC GIDD","category":"International armed conflict (IAC)","unit":"people displaced","volume":14754642.0,"rows":775,"code":1.0,"fit":"exact","alt":NaN,"note":"IDMC's own adjudication of interstate armed conflict."},{"source":"IDMC GIDD","category":"Non-International armed conflict (NIAC)","unit":"people displaced","volume":13205649.0,"rows":2282,"code":1.0,"fit":"exact","alt":NaN,"note":"Internal armed conflict. Note this is also where persecution-driven displacement lands: Rohingya displacement by military operations is coded NIAC, not persecution."},{"source":"IDMC GIDD","category":"Flood","unit":"people displaced","volume":7941397.0,"rows":6057,"code":6.0,"fit":"exact","alt":NaN,"note":NaN},{"source":"IDMC GIDD","category":"Other situations of violence (OSV)","unit":"people displaced","volume":2384256.0,"rows":699,"code":2.0,"fit":"exact","alt":NaN,"note":"Communal, criminal and gang violence below the armed-conflict threshold. Maps cleanly to 'breakdown of public order'."},{"source":"IDMC GIDD","category":"Unclear/Unknown","unit":"people displaced","volume":1959686.0,"rows":1565,"code":0.0,"fit":"decided","alt":NaN,"note":"DECIDED: reported as its own unattributed band rather than defaulted into code 1. Stays in every denominator, so country shares are shares of ALL displacement and no longer sum to 100% across the eight options. 2.0m people (3.15%) that nobody classified."},{"source":"IDMC GIDD","category":"Tsunami","unit":"people displaced","volume":1582130.0,"rows":14,"code":6.0,"fit":"exact","alt":NaN,"note":NaN},{"source":"IDMC GIDD","category":"Earthquake","unit":"people displaced","volume":850183.0,"rows":267,"code":6.0,"fit":"exact","alt":NaN,"note":NaN},{"source":"IDMC GIDD","category":"Wildfire","unit":"people displaced","volume":694217.0,"rows":791,"code":7.0,"fit":"decided","alt":6.0,"note":"DECIDED: reassigned to man-made on the reading that most ignition is human. Note this single category is 99.8% of everything now in code 7 \u2014 the other two human-triggered hazards contribute 1,378 people between them. Any claim about code 7 is effectively a claim about wildfire."},{"source":"IDMC GIDD","category":"Drought","unit":"people displaced","volume":529006.0,"rows":1355,"code":6.0,"fit":"exact","alt":NaN,"note":"Slow-onset. A respondent who left over several years may not describe it as fleeing."},{"source":"IDMC GIDD","category":"Storm","unit":"people displaced","volume":472001.0,"rows":2405,"code":6.0,"fit":"exact","alt":NaN,"note":NaN},{"source":"IDMC GIDD","category":"Mixed disasters","unit":"people displaced","volume":296596.0,"rows":283,"code":6.0,"fit":"broader","alt":NaN,"note":"Multiple hazards in one figure - cannot yield a specific local example for enumerators."},{"source":"IDMC GIDD","category":"Erosion","unit":"people displaced","volume":93517.0,"rows":50,"code":6.0,"fit":"exact","alt":NaN,"note":"Slow-onset, same recall problem as drought."},{"source":"IDMC GIDD","category":"Landslide/Wet mass movement","unit":"people displaced","volume":49041.0,"rows":603,"code":6.0,"fit":"exact","alt":NaN,"note":NaN},{"source":"IDMC GIDD","category":"Hailstorm","unit":"people displaced","volume":46703.0,"rows":125,"code":6.0,"fit":"exact","alt":NaN,"note":NaN},{"source":"IDMC GIDD","category":"Volcanic activity","unit":"people displaced","volume":19178.0,"rows":9,"code":6.0,"fit":"exact","alt":NaN,"note":NaN},{"source":"IDMC GIDD","category":"Tornado","unit":"people displaced","volume":16215.0,"rows":143,"code":6.0,"fit":"exact","alt":NaN,"note":NaN},{"source":"IDMC GIDD","category":"Dry mass movement","unit":"people displaced","volume":4504.0,"rows":252,"code":6.0,"fit":"exact","alt":NaN,"note":NaN},{"source":"IDMC GIDD","category":"Winter storm/Blizzard","unit":"people displaced","volume":1836.0,"rows":25,"code":6.0,"fit":"exact","alt":NaN,"note":NaN},{"source":"IDMC GIDD","category":"Cold wave","unit":"people displaced","volume":1406.0,"rows":14,"code":6.0,"fit":"exact","alt":NaN,"note":NaN},{"source":"IDMC GIDD","category":"Storm surge","unit":"people displaced","volume":1359.0,"rows":8,"code":6.0,"fit":"exact","alt":NaN,"note":NaN},{"source":"IDMC GIDD","category":"Dam release flood","unit":"people displaced","volume":1223.0,"rows":8,"code":7.0,"fit":"decided","alt":6.0,"note":"DECIDED: reassigned. Filed by IDMC as a natural flood, but the trigger is infrastructure operation. Unambiguously man-made; only 1,223 people."},{"source":"IDMC GIDD","category":"Sand/dust storm","unit":"people displaced","volume":436.0,"rows":1,"code":6.0,"fit":"exact","alt":NaN,"note":NaN},{"source":"IDMC GIDD","category":"Sinkhole","unit":"people displaced","volume":155.0,"rows":8,"code":7.0,"fit":"decided","alt":6.0,"note":"DECIDED: reassigned. Often induced by mining or groundwater extraction. 155 people."},{"source":"IDMC GIDD","category":"Avalanche","unit":"people displaced","volume":69.0,"rows":4,"code":6.0,"fit":"exact","alt":NaN,"note":NaN},{"source":"IDMC GIDD","category":"Sea level rise","unit":"people displaced","volume":2.0,"rows":1,"code":6.0,"fit":"exact","alt":NaN,"note":"Slow-onset."},{"source":"ACLED","category":"Peaceful protest","unit":"events","volume":386822.0,"rows":0,"code":NaN,"fit":"none","alt":NaN,"note":"Largest ACLED category at 386,822 events, and correctly mapped to nothing - peaceful protest does not displace."},{"source":"ACLED","category":"Shelling/artillery/missile attack","unit":"events","volume":234160.0,"rows":90668,"code":1.0,"fit":"exact","alt":NaN,"note":NaN},{"source":"ACLED","category":"Air/drone strike","unit":"events","volume":223296.0,"rows":176914,"code":1.0,"fit":"exact","alt":NaN,"note":NaN},{"source":"ACLED","category":"Armed clash","unit":"events","volume":202555.0,"rows":415778,"code":1.0,"fit":"exact","alt":NaN,"note":NaN},{"source":"ACLED","category":"Mob violence","unit":"events","volume":37569.0,"rows":829,"code":2.0,"fit":"exact","alt":NaN,"note":NaN},{"source":"ACLED","category":"Attack","unit":"events","volume":33085.0,"rows":37299,"code":5.0,"fit":"decided","alt":NaN,"note":"DECIDED: stays in code 5. Largest ambiguous category (33,085 events, 37,299 fatalities). Keeping it out of code 1 avoids absorbing targeted violence against civilians into the war category \u2014 the exact conflation this exercise identified as the core problem."},{"source":"ACLED","category":"Disrupted weapons use","unit":"events","volume":30628.0,"rows":1082,"code":NaN,"fit":"none","alt":NaN,"note":"Weapons intercepted or defused before use. Displaces nobody. Was previously mapped to code 1, inflating its event count by 30,628 - removed."},{"source":"ACLED","category":"Remote explosive/landmine/IED","unit":"events","volume":24973.0,"rows":34068,"code":1.0,"fit":"exact","alt":NaN,"note":NaN},{"source":"ACLED","category":"Looting/property destruction","unit":"events","volume":23750.0,"rows":0,"code":2.0,"fit":"pending","alt":4.0,"note":"DEFERRED pending ACLED credentials. Code 4 explicitly lists 'confiscation of property'; the aggregated export has no actor column, so looting by armed groups cannot be told from confiscation by authorities. Split by state vs non-state perpetrator once the full event API is available."},{"source":"ACLED","category":"Violent demonstration","unit":"events","volume":21080.0,"rows":24711,"code":2.0,"fit":"exact","alt":NaN,"note":NaN},{"source":"ACLED","category":"Change to group/activity","unit":"events","volume":17331.0,"rows":0,"code":NaN,"fit":"none","alt":NaN,"note":NaN},{"source":"ACLED","category":"Other","unit":"events","volume":16139.0,"rows":1784,"code":NaN,"fit":"none","alt":NaN,"note":"Unclassifiable residual."},{"source":"ACLED","category":"Protest with intervention","unit":"events","volume":15610.0,"rows":0,"code":2.0,"fit":"exact","alt":NaN,"note":NaN},{"source":"ACLED","category":"Arrests","unit":"events","volume":9068.0,"rows":0,"code":4.0,"fit":"contested","alt":NaN,"note":"Detention is named in code 4. But ACLED files arrests as a strategic development, not violence, and most arrests displace nobody."},{"source":"ACLED","category":"Abduction/forced disappearance","unit":"events","volume":8939.0,"rows":0,"code":5.0,"fit":"contested","alt":4.0,"note":"Enforced disappearance by the state is a code 4 human rights violation; abduction by an armed group is code 5."},{"source":"ACLED","category":"Government regains territory","unit":"events","volume":6732.0,"rows":34887,"code":1.0,"fit":"exact","alt":NaN,"note":NaN},{"source":"ACLED","category":"Non-state actor overtakes territory","unit":"events","volume":3793.0,"rows":9147,"code":1.0,"fit":"exact","alt":NaN,"note":NaN},{"source":"ACLED","category":"Grenade","unit":"events","volume":2162.0,"rows":461,"code":1.0,"fit":"exact","alt":NaN,"note":NaN},{"source":"ACLED","category":"Excessive force against protesters","unit":"events","volume":1732.0,"rows":5480,"code":4.0,"fit":"contested","alt":2.0,"note":"Genuinely straddles: state perpetrator points to code 4, public-order setting points to code 2."},{"source":"ACLED","category":"Non-violent transfer of territory","unit":"events","volume":1642.0,"rows":0,"code":NaN,"fit":"none","alt":NaN,"note":NaN},{"source":"ACLED","category":"Agreement","unit":"events","volume":807.0,"rows":0,"code":NaN,"fit":"none","alt":NaN,"note":NaN},{"source":"ACLED","category":"Suicide bomb","unit":"events","volume":672.0,"rows":7439,"code":1.0,"fit":"exact","alt":NaN,"note":NaN},{"source":"ACLED","category":"Headquarters or base established","unit":"events","volume":548.0,"rows":0,"code":NaN,"fit":"none","alt":NaN,"note":NaN},{"source":"ACLED","category":"Sexual violence","unit":"events","volume":336.0,"rows":67,"code":5.0,"fit":"contested","alt":3.0,"note":"Where targeted at a group it is persecution (3); by authorities it is code 4. Massively under-reported in all sources."},{"source":"ACLED","category":"Chemical weapon","unit":"events","volume":89.0,"rows":412,"code":1.0,"fit":"exact","alt":NaN,"note":NaN},{"source":"UCDP one-sided","category":"one-sided violence, government actor","unit":"fatalities","volume":947331.0,"rows":492,"code":4.0,"fit":"narrower","alt":NaN,"note":"Only lethal state violence. Detention, torture and property confiscation - most of what code 4 describes - are invisible."},{"source":"UCDP one-sided","category":"one-sided violence, non-government actor","unit":"fatalities","volume":315684.0,"rows":916,"code":5.0,"fit":"contested","alt":1.0,"note":"Rebel groups killing civilians. Arguably part of armed conflict."},{"source":"IOM DTM","category":"reported reason \u2192 code 1","unit":"reported reason","volume":0.0,"rows":8,"code":1.0,"fit":"pending","alt":NaN,"note":"Reported reason values seeded for this code: Conflict, Armed conflict, Conflict/Insecurity, Insecurity, Military operations, Hostilities, War, Fear of conflict."},{"source":"IOM DTM","category":"reported reason \u2192 code 2","unit":"reported reason","volume":0.0,"rows":9,"code":2.0,"fit":"pending","alt":NaN,"note":"Reported reason values seeded for this code: Communal violence, Communal tension, Social tension, Intercommunal violence, Criminality, Gang violence, Banditry, Civil unrest, Generalized violence."},{"source":"IOM DTM","category":"reported reason \u2192 code 3","unit":"reported reason","volume":0.0,"rows":4,"code":3.0,"fit":"pending","alt":NaN,"note":"Reported reason values seeded for this code: Ethnic tension, Religious persecution, Persecution, Discrimination. DTM rarely codes persecution separately - expect very few, and expect operations to fold it into conflict."},{"source":"IOM DTM","category":"reported reason \u2192 code 4","unit":"reported reason","volume":0.0,"rows":2,"code":4.0,"fit":"pending","alt":NaN,"note":"Reported reason values seeded for this code: Human rights violations, Forced recruitment."},{"source":"IOM DTM","category":"reported reason \u2192 code 5","unit":"reported reason","volume":0.0,"rows":3,"code":5.0,"fit":"pending","alt":NaN,"note":"Reported reason values seeded for this code: Violence, Threats, Personal security."},{"source":"IOM DTM","category":"reported reason \u2192 code 6","unit":"reported reason","volume":0.0,"rows":14,"code":6.0,"fit":"pending","alt":NaN,"note":"Reported reason values seeded for this code: Natural disaster, Disaster, Flood, Floods, Flooding, Drought, Earthquake, Cyclone, Storm, Landslide, Climate, Climate/Environmental, Environmental, Climate shocks."},{"source":"IOM DTM","category":"reported reason \u2192 code 7","unit":"reported reason","volume":0.0,"rows":5,"code":7.0,"fit":"pending","alt":NaN,"note":"Reported reason values seeded for this code: Eviction, Forced eviction, Development project, Land dispute, Pollution. The only source in the whole pipeline where eviction and development displacement appear as a reason a person can give."},{"source":"IOM DTM","category":"not a valid cause of forced displacement","unit":"reported reason","volume":0.0,"rows":7,"code":NaN,"fit":"none","alt":NaN,"note":"Economic, Economic reasons, Livelihood, Lack of services, Lack of livelihood, Voluntary, Family reunification, Other, Unknown. Mapped to NOTHING by design - these are not valid causes of forced displacement under IRIS. Kept and reported separately: the share of respondents giving them is evidence about false positives in the instrument."},{"source":"V-Dem","category":"v2clsocgrp \u2014 Social group equality in respect for civil liberties","unit":"index (inverted)","volume":181.0,"rows":36,"code":3.0,"fit":"narrower","alt":NaN,"note":"Measures whether the CONDITION exists in a country, not displacement caused by it - the same evidential class as an event count. 181 countries, 1990-2025. Scale runs high = more freedom, so it is inverted here."},{"source":"V-Dem","category":"v2clrelig \u2014 Freedom of religion","unit":"index (inverted)","volume":181.0,"rows":36,"code":3.0,"fit":"narrower","alt":NaN,"note":"Measures whether the CONDITION exists in a country, not displacement caused by it - the same evidential class as an event count. 181 countries, 1990-2025. Scale runs high = more freedom, so it is inverted here."},{"source":"V-Dem","category":"v2pepwrsoc \u2014 Power distributed by social group","unit":"index (inverted)","volume":181.0,"rows":36,"code":3.0,"fit":"narrower","alt":NaN,"note":"Measures whether the CONDITION exists in a country, not displacement caused by it - the same evidential class as an event count. 181 countries, 1990-2025. Scale runs high = more freedom, so it is inverted here."},{"source":"V-Dem","category":"v2cltort \u2014 Freedom from torture","unit":"index (inverted)","volume":181.0,"rows":36,"code":4.0,"fit":"narrower","alt":NaN,"note":"Measures whether the CONDITION exists in a country, not displacement caused by it - the same evidential class as an event count. 181 countries, 1990-2025. Scale runs high = more freedom, so it is inverted here."},{"source":"V-Dem","category":"v2clkill \u2014 Freedom from political killings","unit":"index (inverted)","volume":181.0,"rows":36,"code":4.0,"fit":"narrower","alt":NaN,"note":"Measures whether the CONDITION exists in a country, not displacement caused by it - the same evidential class as an event count. 181 countries, 1990-2025. Scale runs high = more freedom, so it is inverted here."},{"source":"V-Dem","category":"v2xcl_prpty \u2014 Property rights index","unit":"index (inverted)","volume":181.0,"rows":36,"code":4.0,"fit":"narrower","alt":NaN,"note":"Measures whether the CONDITION exists in a country, not displacement caused by it - the same evidential class as an event count. 181 countries, 1990-2025. Scale runs high = more freedom, so it is inverted here."},{"source":"UNHCR","category":"asylum recognition rate by origin","unit":"proxy rate","volume":0.0,"rows":149,"code":3.0,"fit":"contested","alt":NaN,"note":"The only signal for persecution anywhere in the four sources, and it is confounded by destination-country asylum policy."}],"codes":{"0":"UNATTRIBUTED \u2014 not a response option","1":"Threat of armed conflict or war","2":"Widespread violence or breakdown of public order","3":"Discrimination or persecution","4":"Threat of human rights violations by authorities","5":"Other threats of violence against you","6":"Natural disasters","7":"Man-made events","8":"A different threat to your safety"},"reverse":{"0":{"label":"UNATTRIBUTED \u2014 not a response option","n_categories":1,"sources":["IDMC GIDD"],"contested":0,"people":1959686.0,"events":0.0},"1":{"label":"Threat of armed conflict or war","n_categories":12,"sources":["ACLED","IDMC GIDD","IOM DTM"],"contested":0,"people":27960291.0,"events":698432.0},"2":{"label":"Widespread violence or breakdown of public order","n_categories":6,"sources":["ACLED","IDMC GIDD","IOM DTM"],"contested":0,"people":2384256.0,"events":98009.0},"3":{"label":"Discrimination or persecution","n_categories":5,"sources":["IOM DTM","UNHCR","V-Dem"],"contested":1,"people":0.0,"events":0.0},"4":{"label":"Threat of human rights violations by authorities","n_categories":7,"sources":["ACLED","IOM DTM","UCDP one-sided","V-Dem"],"contested":2,"people":0.0,"events":10800.0},"5":{"label":"Other threats of violence against you","n_categories":5,"sources":["ACLED","IOM DTM","UCDP one-sided"],"contested":3,"people":0.0,"events":42360.0},"6":{"label":"Natural disasters","n_categories":20,"sources":["IDMC GIDD","IOM DTM"],"contested":0,"people":29241827.0,"events":0.0},"7":{"label":"Man-made events","n_categories":4,"sources":["IDMC GIDD","IOM DTM"],"contested":0,"people":695595.0,"events":0.0},"8":{"label":"A different threat to your safety","n_categories":0,"sources":[],"contested":0,"people":0.0,"events":0.0}}};
+const fmt=n=>n>=1e6?(n/1e6).toFixed(1)+"m":n>=1e3?Math.round(n/1e3)+"k":String(Math.round(n));
+let FILT="all", SORT="volume", DIR=-1;
+
+const rev=document.getElementById('rev');
+rev.innerHTML=Object.entries(D.reverse).map(([c,r])=>{
+ const starved=r.n_categories===0;
+ return `<div class="rc${starved?' starved':''}">
+  <h3>${c}. ${r.label}</h3>
+  <div class="big">${r.n_categories}</div>
+  <div class="l">source categories feed this${r.contested?` · ${r.contested} contested`:''}</div>
+  <div class="l" style="margin-top:6px">${starved
+    ? '<b>Nothing in any database maps here.</b>'
+    : (r.sources.join(", ")+(r.people?` · ${fmt(r.people)} people`:'')
+       +(r.events?` · ${fmt(r.events)} events`:''))}</div></div>`;}).join('');
+
+function render(){
+ let rows=D.rows.slice();
+ if(FILT==="contested")rows=rows.filter(r=>r.fit==="contested");
+ else if(FILT==="none")rows=rows.filter(r=>r.code===null);
+ else if(FILT==="decided")rows=rows.filter(r=>r.fit==="decided");
+ else if(FILT==="pending")rows=rows.filter(r=>r.fit==="pending");
+ else if(FILT!=="all")rows=rows.filter(r=>r.source===FILT);
+ rows.sort((a,b)=>{const x=a[SORT],y=b[SORT];
+  if(x===null)return 1; if(y===null)return -1;
+  return (typeof x==="number"?x-y:String(x).localeCompare(String(y)))*DIR;});
+ const mx={};rows.forEach(r=>{mx[r.unit]=Math.max(mx[r.unit]||0,r.volume);});
+ document.querySelector('#t tbody').innerHTML=rows.map(r=>{
+  const w=r.volume&&mx[r.unit]?Math.max(2,r.volume/mx[r.unit]*100):0;
+  return `<tr><td style="color:var(--ink-2);white-space:nowrap">${r.source}</td>
+   <td><b>${r.category}</b>${r.note?`<div class="note">${r.note}</div>`:''}</td>
+   <td class="num">${r.volume?fmt(r.volume):'—'}<div class="l" style="font-size:10.5px;color:var(--muted)">${r.unit}</div></td>
+   <td style="width:110px"><div class="bar" style="width:${w}%"></div></td>
+   <td class="code">${r.code?`${r.code}. ${D.codes[r.code].slice(0,30)}`:'<span style="color:var(--muted)">—</span>'}
+     ${r.alt?`<div class="note">or ${r.alt}. ${D.codes[r.alt].slice(0,30)}</div>`:''}</td>
+   <td><span class="tag t-${r.fit}">${r.fit==="none"?"unmapped":r.fit}</span></td></tr>`;}).join('');
+}
+document.querySelectorAll('.f').forEach(b=>b.addEventListener('click',()=>{
+ document.querySelectorAll('.f').forEach(x=>x.classList.remove('on'));
+ b.classList.add('on');FILT=b.dataset.f;render();}));
+document.querySelectorAll('th[data-s]').forEach(th=>th.addEventListener('click',()=>{
+ const s=th.dataset.s; DIR=(SORT===s)?-DIR:-1; SORT=s; render();}));
+document.getElementById('theme').addEventListener('click',()=>{
+ const c=document.documentElement.getAttribute('data-theme');
+ document.documentElement.setAttribute('data-theme',c==='dark'?'light':'dark');});
+render();
+</script></body></html>
