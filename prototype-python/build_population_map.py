@@ -1533,7 +1533,8 @@ function showProfile(iso){
     (((QLANG||q.lang)!=="en")
       ? `<b>The ${(D.qlangs[QLANG||q.lang]||[""])[0]} text is an unreviewed draft `+
         `translation</b> \u2014 an instrument needs professional translation before `+
-        `testing. ` : ``)+
+        `testing. \u201CFlee\u201D is rendered as leaving under duress, not fleeing `+
+        `in panic, which is what the item defines it as. ` : ``)+
     `<b>Draft for review, not enumerator text</b> \u2014 actor names come from UCDP `+
     `and need checking against what people locally call them.</div></div>`;}
   h+=`<div class="psec"><h3>What to put on the showcard here</h3>`+

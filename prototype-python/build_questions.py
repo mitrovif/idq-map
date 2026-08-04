@@ -620,10 +620,21 @@ respondents depend on.</p>
 job &mdash; TRAPD, or forward-and-back translation with reconciliation &mdash;
 because a question has to be <i>understood</i> the same way, not merely mean the
 same thing. Cognitive testing on an unreviewed translation tests the translation,
-not the question. Two words need a professional decision in particular:
-<b>flee</b>, where several languages separate fleeing-in-panic from
-leaving-under-duress and the item means the second; and <b>persecution</b>, a
-legal term of art that in everyday registers reads as ordinary harassment.<br><br>
+not the question.<br><br>
+<b>&ldquo;Flee&rdquo; is rendered as leaving under duress, not fleeing in
+panic.</b> The item defines it as leaving &ldquo;due to events that posed a
+threat&rdquo;, so the sense is compelled departure. Five of these languages have
+a default verb that instead means running away in fear &mdash; <i>fuir</i>,
+<i>huir</i>, <span dir="rtl">الفرار</span>, <i>спасаясь бегством</i>,
+<i>逃离</i> &mdash; and each of those invites a respondent to picture a panicked
+escape and answer &ldquo;no&rdquo; if their own departure was deliberate: packing
+over days, or leaving after a threat rather than during an attack. That is exactly
+the population these questions exist to count. All five now use a duress
+construction.<br><br>
+<b>Still open:</b> <b>persecution</b>, a legal term of art in the refugee
+definition that in everyday registers reads as ordinary harassment &mdash; a
+materially different threshold, and not something an automatic process can
+settle.<br><br>
 <b>The names are UCDP&rsquo;s, not a respondent&rsquo;s.</b> UCDP writes
 &ldquo;JAS&rdquo; where a Nigerian respondent says Boko Haram. Actor names are
 never translated &mdash; they are proper nouns.<br><br>

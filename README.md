@@ -159,10 +159,17 @@ The stem and the eight options exist in all six UN official languages, and each 
 opens in the one most likely to be used in a national survey there. **Those translations are
 unreviewed drafts**: translating an instrument is a specialist job (TRAPD, or forward-and-back
 with reconciliation), and cognitive testing on an unreviewed translation tests the
-translation rather than the question. Two words need a professional decision — *flee*, where
-several languages separate fleeing-in-panic from leaving-under-duress and the item means the
-second, and *persecution*, a legal term of art that in everyday registers reads as ordinary
-harassment. Actor names are never translated; they are proper nouns.
+translation rather than the question.
+
+*Flee* is rendered as **leaving under duress, not fleeing in panic** — the item defines it as
+leaving "due to events that posed a threat", so the sense is compelled departure. Five of
+these languages have a default verb that instead means running away in fear (*fuir*, *huir*,
+الفرار, *спасаясь бегством*, 逃离), and the first draft used all five. Each invites a
+respondent to picture a panicked escape and answer "no" if their own departure was
+deliberate — packing over days, or leaving after a threat rather than during an attack. That
+is exactly the population these questions exist to count. *Persecution* remains open: a legal
+term of art that in everyday registers reads as ordinary harassment, which is a materially
+different threshold. Actor names are never translated; they are proper nouns.
 
 **298 subnational sets across 58 countries** are offered where the region says something the
 national set does not. A region whose examples merely repeat the national list is not shown —

@@ -15,13 +15,22 @@ more useful to a task team than having nothing, and because the failure mode of
 NOT providing one is that somebody translates it ad hoc in the field with no
 record of what was decided.
 
-Two specific things a professional reviewer must settle, which no automatic
-process can:
+DECISION TAKEN ON "FLEE" - LEAVING UNDER DURESS, NOT FLEEING IN PANIC
+The English item says "flee a home" and then defines it as leaving "due to events
+that posed a threat", so the sense is COMPELLED DEPARTURE. Several of these
+languages have a default verb that instead means running away in fear, and the
+first draft used it in five of them: fuir (fr), huir (es), الفرار (ar),
+спасаясь бегством (ru), 逃离 (zh). Each of those invites a respondent to picture
+a panicked escape and to answer "no" if their own departure was deliberate -
+packing over days, or leaving after a threat rather than during an attack. That
+is precisely the population the questions exist to count.
 
-  "flee"        Several of these languages distinguish fleeing-in-panic from
-                leaving-under-duress, and the questionnaire means the second.
-                The word chosen here leans on the displacement-specific sense,
-                but usage varies by country within the same language.
+All five now use a duress construction: contraint de quitter, obligado a
+abandonar, اضطررت إلى مغادرة, вынужденно покидать, 被迫离开. A reviewer should
+still confirm the register country by country, but the sense is now the right
+one to be checking.
+
+STILL OPEN, AND NOT SETTLEABLE AUTOMATICALLY
   "persecution" The legal term of art in the refugee definition. In everyday
                 registers it can read as ordinary harassment, which is a
                 materially different threshold.
@@ -98,8 +107,8 @@ T = {
     "fr": {
         "item": "FrcFl",
         "ask": "{Poser à tous}",
-        "stem1": "Les questions suivantes portent sur le fait d'avoir déjà dû "
-                 "<b>fuir un domicile</b>.",
+        "stem1": "Les questions suivantes portent sur le fait d'avoir déjà été "
+                 "<b>contraint de quitter un domicile</b>.",
         "stem2": "Nous entendons par là quitter un domicile, ou une terre, en "
                  "raison d'<b>événements ayant représenté une menace pour votre "
                  "sécurité ou celle de votre famille</b>.",
@@ -133,8 +142,8 @@ T = {
     "es": {
         "item": "FrcFl",
         "ask": "{Preguntar a todos}",
-        "stem1": "Las siguientes preguntas tratan sobre si alguna vez ha tenido "
-                 "que <b>huir de un hogar</b>.",
+        "stem1": "Las siguientes preguntas tratan sobre si alguna vez se ha "
+                 "visto <b>obligado a abandonar un hogar</b>.",
         "stem2": "Con esto nos referimos a abandonar un hogar, o una tierra, "
                  "debido a <b>hechos que representaron una amenaza para su "
                  "seguridad o la de su familia</b>.",
@@ -168,8 +177,8 @@ T = {
     "ar": {
         "item": "FrcFl",
         "ask": "{تُطرح على الجميع}",
-        "stem1": "تتعلق الأسئلة التالية بما إذا كنت قد اضطررت في أي وقت إلى "
-                 "<b>الفرار من مكان إقامتك</b>.",
+        "stem1": "تتعلق الأسئلة التالية بما إذا كنت قد <b>اضطررت إلى مغادرة "
+                 "مكان إقامتك</b> في أي وقت.",
         "stem2": "ونعني بذلك مغادرة المسكن أو الأرض بسبب <b>أحداث شكّلت تهديداً "
                  "لسلامتك أو سلامة أسرتك</b>.",
         "lead": "هل سبق لك في حياتك أن غادرت مكان إقامتك بسبب…",
@@ -201,7 +210,7 @@ T = {
         "item": "FrcFl",
         "ask": "{Задать всем}",
         "stem1": "Следующие вопросы касаются того, приходилось ли вам "
-                 "когда-либо <b>покидать дом, спасаясь бегством</b>.",
+                 "когда-либо <b>вынужденно покидать дом</b>.",
         "stem2": "Под этим мы понимаем уход из дома или с земли из-за "
                  "<b>событий, представлявших угрозу для вашей безопасности или "
                  "безопасности вашей семьи</b>.",
@@ -234,7 +243,7 @@ T = {
     "zh": {
         "item": "FrcFl",
         "ask": "{全部询问}",
-        "stem1": "接下来的问题是关于您是否曾经不得不<b>逃离家园</b>。",
+        "stem1": "接下来的问题是关于您是否曾<b>被迫离开家园</b>。",
         "stem2": "我们指的是因<b>对您或您家人安全构成威胁的事件</b>而离开住所或土地。",
         "lead": "在您的一生中，您是否曾因以下原因离开过家园……",
         "instr": "出示卡片或朗读。选择所有适用项",
