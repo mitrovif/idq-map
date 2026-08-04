@@ -1,0 +1,2410 @@
+"""
+Population map: how many people, displaced by which cause, in each country.
+
+Each country carries a pie sized by total displaced population and divided by
+cause. Hovering names the actual events - IDMC records an event name and trigger
+for every figure, so "armed conflict" becomes "Sudan: Armed clashes - Khartoum"
+and "natural disaster" becomes "Typhoon Kristine".
+
+Three populations, switchable, because they answer different questions:
+
+  IDP STOCK    people currently displaced inside the country. What a household
+               survey in that country would actually encounter.
+  NEW 2025     displacements recorded during the year. Shows what is happening
+               now rather than what has accumulated.
+  REFUGEES     refugees and asylum seekers HOSTED, attributed to the cause mix of
+               their origin countries. This is the one that matters for showcard
+               design in host countries - the causing events happened elsewhere.
+"""
+from paths import ROOT_S, RAW_S, UP_S, TIDY_S, OUT_S, TOPO_S
+import json, os, re
+import pandas as pd
+
+OUT = OUT_S
+TIDY = TIDY_S
+UP = UP_S
+TOPO = TOPO_S
+
+from build_dashboard import decode_topology
+from build_allcauses import centroid
+from qualitative_data import Q
+
+# Order matters: it is the slice order in every pie and the legend order.
+# 0 is not a response option - it is IDMC conflict displacement that nobody
+# classified, carried as its own band so shares stay honest.
+CAUSES = [1, 2, 6, 7, 0, 9]
+LABEL = {1: "Armed conflict or war",
+         2: "Widespread violence / public order",
+         6: "Natural disasters",
+         7: "Man-made events (incl. wildfire)",
+         0: "Unattributed \u2014 conflict, type not recorded",
+         9: "Cause not established \u2014 no source covers it"}
+
+
+def clean_event(name, trigger, hazard, violence):
+    """IDMC event names look like
+       'Abyei Area: Communal violence - Abyei Area - 07/04/2025'.
+       Strip the trailing location/date repetition, keep the substance."""
+    s = str(name or "").strip()
+    s = re.sub(r"\s*-\s*\d{2}/\d{2}/\d{4}\s*$", "", s)
+    parts = [p.strip() for p in s.split(" - ") if p.strip()]
+    if len(parts) > 1 and parts[-1].lower() in parts[0].lower():
+        parts = parts[:-1]
+    s = " - ".join(parts)
+    detail = hazard if pd.notna(hazard) else (violence if pd.notna(violence) else None)
+    if detail and str(detail).lower() not in s.lower():
+        s = f"{s} ({detail})"
+    return s[:110]
+
+
+def main():
+    profiles = json.load(open(f"{OUT}/profiles.json"))
+    regions = {r["iso_code"]: r for r in json.load(open(f"{TIDY}/regions.json"))}
+    feats = [f for f in decode_topology(json.load(open(TOPO)))
+             if f["name"] != "Antarctica"]
+    for f in feats:
+        f["c"] = centroid(f["polys"])
+
+    # re-read the source so we keep Event name / trigger, which the tidy
+    # extract dropped
+    src = pd.read_excel(
+        f"{UP}/5140e1e8-IDMC_GIDD_Internal_Displacement_Disaggregated.xlsx",
+        sheet_name="1_Disaggregated_Data")
+    src = src.rename(columns={
+        "ISO3": "iso3", "Country": "country", "Figure cause": "cause",
+        "Figure category": "category", "Total figures": "figures",
+        "Hazard sub type": "hazard_sub_type", "Violence type": "violence_type",
+        "Event name": "event_name", "Event main trigger": "trigger"})
+    vmap = {"International armed conflict (IAC)": 1,
+            "Non-International armed conflict (NIAC)": 1,
+            "Other situations of violence (OSV)": 2, "Unclear/Unknown": 0}
+    HUMAN = {"Wildfire", "Dam release flood", "Sinkhole"}
+    src["code_id"] = src.apply(
+        lambda r: (7 if r["hazard_sub_type"] in HUMAN else 6)
+        if r["cause"] == "Disaster"
+        else (vmap.get(r["violence_type"], 1) if r["cause"] == "Conflict"
+              else (7 if r["cause"] in ("Other", "Development") else None)), axis=1)
+    src = src[src.code_id.notna()].copy()
+    src["code_id"] = src.code_id.astype(int)
+
+    flow = src[src.category == "Internal Displacements"]
+    stock = src[src.category == "IDPs"]
+
+    def pivot_flow(d):
+        """Flows accumulate: sum across every year in the file."""
+        g = d.groupby(["iso3", "code_id"])["figures"].sum()
+        out = {}
+        for (iso, c), v in g.items():
+            if v > 0:
+                out.setdefault(iso, {})[str(int(c))] = float(v)
+        return out
+
+    def pivot_stock(d):
+        """Stocks are a snapshot, not a total. Take each country's latest year."""
+        if d.empty:
+            return {}
+        latest_yr = d.groupby("iso3")["Year"].max().rename("ymax")
+        d = d.join(latest_yr, on="iso3")
+        d = d[d["Year"] == d["ymax"]]
+        g = d.groupby(["iso3", "code_id"])["figures"].sum()
+        out = {}
+        for (iso, c), v in g.items():
+            if v > 0:
+                out.setdefault(iso, {})[str(int(c))] = float(v)
+        return out
+
+    flow_by, stock_by = pivot_flow(flow), pivot_stock(stock)
+    yrs = sorted(int(y) for y in src["Year"].dropna().unique())
+    period = f"{yrs[0]}\u2013{yrs[-1]}" if len(yrs) > 1 else str(yrs[0])
+    print(f"  IDMC file covers {period}")
+
+    # named events, biggest first - this is the "describe the conflict" part
+    ev = (flow.assign(lab=lambda d: [clean_event(n, t, h, v) for n, t, h, v in
+                                     zip(d.event_name, d.trigger,
+                                         d.hazard_sub_type, d.violence_type)])
+          .groupby(["iso3", "code_id", "lab"])["figures"].sum().reset_index())
+    events = {}
+    for (iso, c), grp in ev.groupby(["iso3", "code_id"]):
+        top = grp.sort_values("figures", ascending=False).head(4)
+        events.setdefault(iso, {})[str(int(c))] = [
+            dict(l=r.lab, n=int(r.figures)) for r in top.itertuples() if r.figures > 0]
+
+    # refugees hosted, attributed to the cause mix of their ORIGIN countries
+    pop = pd.read_parquet(f"{TIDY}/unhcr_population.parquet")
+    latest = int(pop.year.max())
+    lp = pop[pop.year == latest].copy()
+    lp["n"] = lp.refugees.fillna(0) + lp.asylum_seekers.fillna(0)
+    lp = lp[(lp.n > 0) & (lp.coo_iso != lp.coa_iso)]
+    # origin cause mix from IDMC stock, falling back to flows
+    mix = {}
+    for iso in set(list(stock_by) + list(flow_by)):
+        d = stock_by.get(iso) or flow_by.get(iso) or {}
+        tot = sum(d.values())
+        if tot > 0:
+            mix[iso] = {k: v / tot for k, v in d.items()}
+    ref_by, ref_origins, ref_totals = {}, {}, {}
+    for coa, grp in lp.groupby("coa_iso"):
+        acc, org = {}, []
+        ref_totals[coa] = float(grp.n.sum())
+        for r in grp.itertuples():
+            org.append((r.coo_name, r.coo_iso, float(r.n)))
+            m = mix.get(r.coo_iso)
+            if m:
+                for c, s in m.items():
+                    acc[c] = acc.get(c, 0) + float(r.n) * s
+        # UNHCR's total is the denominator; whatever the origin cause mixes could
+        # not account for becomes an explicit remainder rather than vanishing.
+        attributed = sum(acc.values())
+        remainder = max(0.0, ref_totals[coa] - attributed)
+        if attributed >= 1 or remainder >= 1:
+            d_ = {k: round(v) for k, v in acc.items() if v >= 1}
+            if remainder >= 1:
+                d_["9"] = round(remainder)
+            ref_by[coa] = d_
+        org.sort(key=lambda x: -x[2])
+        org = [o for o in org if str(o[0]).strip().lower() not in
+               ("unknown", "various", "stateless")] or org
+        ref_origins[coa] = [dict(name=o[0], iso3=o[1], n=int(o[2])) for o in org[:5]]
+
+    ucdp = json.load(open(f"{TIDY}/ucdp_attribution.json"))
+    disasters = json.load(open(f"{TIDY}/disaster_register.json"))
+    gedc = json.load(open(f"{TIDY}/ged_conflicts.json"))
+    geda1 = json.load(open(f"{TIDY}/ged_admin1.json"))
+    points = json.load(open(f"{TIDY}/idmc_points.json"))
+
+    import pyreadr
+    long_idmc = list(pyreadr.read_r(
+        f"{RAW_S}/PopulationStatistics_idmc.rda").values())[0]
+    long_idmc = long_idmc[long_idmc.total > 0]
+    series, peak = {}, {}
+    for iso, grp in long_idmc.groupby("coa_iso"):
+        g = grp.groupby("year")["total"].sum().sort_index()
+        diffs = g.diff()
+        cumulative = float(g.iloc[0]) + float(diffs[diffs > 0].sum())
+        series[iso] = {str(int(y)): int(v) for y, v in g.items()}
+        peak[iso] = dict(n=int(round(cumulative)),
+                         cumulative=int(round(cumulative)),
+                         peak=int(g.max()), peak_year=int(g.idxmax()),
+                         first_year=int(g.index[0]), opening=int(g.iloc[0]),
+                         latest=int(g.iloc[-1]), latest_year=int(g.index[-1]))
+
+    # coverage accounting - the headline honesty number
+    ref_tot = sum(ref_totals.values())
+    ref_unattr = sum(v.get("9", 0) for v in ref_by.values())
+    idp_tot = sum(sum(v.values()) for v in stock_by.values())
+    idp_unattr = sum(v.get("0", 0) for v in stock_by.values())
+    cov = dict(
+        refugee_total=ref_tot, refugee_unattributed=ref_unattr,
+        idp_total=idp_tot, idp_unattributed=idp_unattr,
+        attributable=(ref_tot - ref_unattr + idp_tot - idp_unattr) /
+                     max(ref_tot + idp_tot, 1))
+    print(f"  benchmark coverage: refugees {ref_tot:,.0f} ({ref_unattr/max(ref_tot,1):.0%} "
+          f"unattributable), IDPs {idp_tot:,.0f} ({idp_unattr/max(idp_tot,1):.0%} "
+          f"unattributed) \u2192 {cov['attributable']:.0%} of all displaced people "
+          f"have a cause")
+
+    data = {}
+    for iso, v in profiles.items():
+        data[iso] = dict(
+            name=v["name"], region=(regions.get(iso) or {}).get("unhcr_region"),
+            stock=stock_by.get(iso, {}), flow=flow_by.get(iso, {}),
+            refugees=ref_by.get(iso, {}), events=events.get(iso, {}),
+            origins=ref_origins.get(iso, []),
+            series=series.get(iso, {}), peak=peak.get(iso),
+            attr=ucdp["attribution"].get(iso))
+    # countries with map geometry but no profile still need refugee data
+    for iso, r in ref_by.items():
+        if iso not in data:
+            data[iso] = dict(name=iso, region=(regions.get(iso) or {}).get("unhcr_region"),
+                             stock={}, flow={}, refugees=r, events={},
+                             origins=ref_origins.get(iso, []),
+                             series=series.get(iso, {}), peak=peak.get(iso))
+
+    qual = {iso: {str(c): dict(status=d["status"], scale=d["scale"],
+                               summary=d["summary"], quote=d["quote"],
+                               example=d["example"],
+                               sources=[dict(l=x[0], u=x[1]) for x in d["sources"]])
+                  for c, d in codes.items()}
+            for iso, codes in Q.items()}
+    # origin -> asylum movements, coloured by what caused displacement in the origin
+    dom_of = {}
+    for iso, m in mix.items():
+        if m:
+            dom_of[iso] = int(max(m, key=m.get))
+    flows = []
+    for r in lp.itertuples():
+        if r.n >= 25000 and r.coo_iso and r.coa_iso:
+            flows.append(dict(o=r.coo_iso, a=r.coa_iso, n=int(r.n),
+                              on=r.coo_name, an=r.coa_name,
+                              code=dom_of.get(r.coo_iso)))
+    flows.sort(key=lambda x: -x["n"])
+    flows = flows[:160]
+    print(f"  {len(flows)} refugee movements over 25,000 people")
+
+    vdem = json.load(open(f"{TIDY}/vdem_severity.json"))
+    payload = dict(data=data, geo=feats, causes=CAUSES, labels=LABEL, flows=flows,
+                   coverage=cov,
+                   vdem=vdem, ucdp=ucdp, dis=disasters, gedc=gedc, geda1=geda1, pts=points,
+                   year=latest, period=period, multiyear=len(yrs) > 1,
+                   qual=qual,
+                   qlabels={"3": "Discrimination or persecution",
+                            "4": "Human rights violations by authorities",
+                            "7": "Man-made events"})
+    html = TPL.replace("__DATA__", json.dumps(payload, separators=(",", ":")))
+    open(f"{OUT}/idq_population_by_cause.html", "w").write(html)
+    print(f"wrote population map "
+          f"({os.path.getsize(f'{OUT}/idq_population_by_cause.html')/1e6:.1f} MB); "
+          f"{len(data)} countries, {sum(len(x) for x in events.values())} event groups")
+
+
+TPL = r"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Displaced population by cause</title>
+<style>
+:root{color-scheme:light;--surface-1:#fcfcfb;--plane:#f9f9f7;--ink:#0b0b0b;
+ --ink-2:#52514e;--muted:#898781;--grid:#e1e0d9;
+ --c1:#2a78d6;--c2:#eb6834;--c6:#1baf7a;--unattr:#c9c7bf;--unknown:#e6e4dc;
+ --land:#eceae4;}
+:root[data-theme="dark"]{color-scheme:dark;--surface-1:#1a1a19;--plane:#0d0d0d;
+ --ink:#fff;--ink-2:#c3c2b7;--grid:#2c2c2a;--c1:#3987e5;--c2:#d95926;--c6:#199e70;
+ --unattr:#5a5954;--land:#2a2a28;}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;
+ --surface-1:#1a1a19;--plane:#0d0d0d;--ink:#fff;--ink-2:#c3c2b7;--grid:#2c2c2a;
+ --c1:#3987e5;--c2:#d95926;--c6:#199e70;--unattr:#5a5954;--unknown:#3a3a37;
+ --land:#2a2a28;}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--plane);color:var(--ink);
+ font:15px/1.55 ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+.wrap{max-width:1400px;margin:0 auto;padding:26px 20px 60px}
+h1{font-size:24px;margin:0 0 6px;letter-spacing:-.015em;font-weight:640}
+h2{font-size:17px;margin:28px 0 4px;font-weight:620;letter-spacing:-.01em}
+.sub{color:var(--ink-2);margin:0 0 16px;max-width:84ch;font-size:14.5px}
+.card{background:var(--surface-1);border:1px solid var(--grid);border-radius:12px;
+ padding:16px;margin-top:10px}
+.ctl{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:14px 0 0}
+button,select{font:inherit;font-size:13.5px;padding:7px 12px;border-radius:8px;
+ border:1px solid var(--grid);background:var(--surface-1);color:var(--ink);cursor:pointer}
+button.on{background:var(--ink);color:var(--surface-1);border-color:var(--ink)}
+.grp{font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);
+ font-weight:640;min-width:172px}
+@media(max-width:760px){.grp{min-width:0;width:100%}}
+button.help{border-style:dashed;color:var(--ink-2)}
+.viewctl{display:flex;gap:7px;align-items:center;margin-top:9px;opacity:.7}
+.viewctl span{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);
+ font-weight:640;margin-right:4px}
+.viewctl button{font-size:12.5px;padding:5px 10px;color:var(--ink-2)}
+.help-panel h3{font-size:14px;margin:14px 0 5px;font-weight:640}
+.help-panel h3:first-child{margin-top:2px}
+.ht{border-collapse:collapse;width:100%;font-size:12.5px;margin:4px 0 2px}
+.ht th,.ht td{text-align:left;padding:7px 9px;border-bottom:1px solid var(--grid);
+ vertical-align:top}
+.ht th{color:var(--muted);font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;
+ font-weight:650}
+.ht td.flip{color:var(--c2);font-weight:560}
+.hn{font-size:12.5px;color:var(--ink-2);max-width:94ch;margin:5px 0 0;line-height:1.55}
+.profile{margin-top:12px}
+.profile h2{font-size:19px;margin:0;font-weight:660;letter-spacing:-.015em}
+.profile .ph{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;
+ border-bottom:1px solid var(--grid);padding-bottom:10px;margin-bottom:4px}
+.profile .ph .tot{color:var(--ink-2);font-size:13.5px}
+.profile .close{margin-left:auto;font-size:12.5px;padding:4px 10px}
+.psec{padding:12px 0;border-bottom:1px solid var(--grid)}
+.psec:last-child{border-bottom:0}
+.psec h3{font-size:13px;margin:0 0 7px;font-weight:650;text-transform:uppercase;
+ letter-spacing:.045em;color:var(--muted)}
+.pt{border-collapse:collapse;width:100%;font-size:12.5px}
+.pt th,.pt td{padding:5px 8px;border-bottom:1px solid var(--grid);text-align:left;
+ vertical-align:top}
+.pt td.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.pt th{font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);
+ font-weight:650}
+.dot{width:9px;height:9px;border-radius:2px;display:inline-block;margin-right:5px;
+ vertical-align:-1px}
+.pgrid{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+@media(max-width:900px){.pgrid{grid-template-columns:1fr}}
+path.flow{fill:none;stroke-linecap:round;opacity:.72;cursor:pointer;
+ stroke-dasharray:5 7;animation:march 1.5s linear infinite}
+path.flow:hover{opacity:1;stroke-width:4}
+@keyframes march{to{stroke-dashoffset:-24}}
+@media(prefers-reduced-motion:reduce){path.flow{animation:none;stroke-dasharray:none}}
+.grp{font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);
+ font-weight:640;min-width:170px}
+@media(max-width:760px){.grp{min-width:0;width:100%}}
+button.help{border-style:dashed;color:var(--ink-2)}
+.viewctl{display:flex;gap:7px;align-items:center;margin-top:9px;opacity:.72}
+.viewctl span{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);
+ font-weight:640;margin-right:4px}
+.viewctl button{font-size:12.5px;padding:5px 10px;color:var(--ink-2)}
+.help-panel h3{font-size:14px;margin:14px 0 5px;font-weight:640;letter-spacing:-.005em}
+.help-panel h3:first-child{margin-top:2px}
+.ht{border-collapse:collapse;width:100%;font-size:12.5px;margin:4px 0 2px}
+.ht th,.ht td{text-align:left;padding:7px 9px;border-bottom:1px solid var(--grid);
+ vertical-align:top}
+.ht th{color:var(--muted);font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;
+ font-weight:650}
+.ht td.flip{color:var(--c2);font-weight:560}
+.hn{font-size:12.5px;color:var(--ink-2);max-width:94ch;margin:5px 0 0;line-height:1.55}
+.profile{margin-top:12px}
+.profile h2{font-size:19px;margin:0;font-weight:660;letter-spacing:-.015em}
+.profile .ph{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;
+ border-bottom:1px solid var(--grid);padding-bottom:10px;margin-bottom:4px}
+.profile .ph .tot{color:var(--ink-2);font-size:13.5px}
+.profile .close{margin-left:auto;font-size:12.5px;padding:4px 10px}
+.psec{padding:12px 0;border-bottom:1px solid var(--grid)}
+.psec:last-child{border-bottom:0}
+.psec h3{font-size:13px;margin:0 0 7px;font-weight:650;text-transform:uppercase;
+ letter-spacing:.045em;color:var(--muted)}
+.pt{border-collapse:collapse;width:100%;font-size:12.5px}
+.pt th,.pt td{padding:5px 8px;border-bottom:1px solid var(--grid);text-align:left;
+ vertical-align:top}
+.pt td.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.pt th{font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);
+ font-weight:650}
+.dot{width:9px;height:9px;border-radius:2px;display:inline-block;margin-right:5px;
+ vertical-align:-1px}
+.pgrid{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+@media(max-width:900px){.pgrid{grid-template-columns:1fr}}
+svg{display:block;width:100%;height:auto}
+path.land{fill:var(--land);stroke:var(--surface-1);stroke-width:.4}
+.key{display:flex;gap:18px;flex-wrap:wrap;margin-top:14px;font-size:13px;color:var(--ink-2);
+ align-items:center}
+.key i{width:12px;height:12px;border-radius:3px;display:inline-block;margin-right:6px;
+ vertical-align:-2px}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{padding:6px 9px;border-bottom:1px solid var(--grid);text-align:right}
+th:first-child,td:first-child,th:nth-child(2),td:nth-child(2){text-align:left}
+th{color:var(--ink-2);font-weight:600;font-size:11.5px;text-transform:uppercase;
+ letter-spacing:.04em}
+td{font-variant-numeric:tabular-nums}
+.note{font-size:12.5px;color:var(--ink-2);margin-top:16px;max-width:92ch}
+#tt{position:fixed;pointer-events:none;background:var(--surface-1);color:var(--ink);
+ border:1px solid var(--grid);border-radius:10px;padding:10px 12px;font-size:12.5px;
+ opacity:0;transition:opacity .1s;box-shadow:0 8px 26px rgba(0,0,0,.17);z-index:9;
+ max-width:330px;line-height:1.45}
+#tt.wide{max-width:none;width:400px;max-height:76vh;overflow:auto;padding:0}
+#tt.pinned{pointer-events:auto}
+#tt .ev{color:var(--ink-2);font-size:11.5px;margin-top:2px}
+#tt hr{border:0;border-top:1px solid var(--grid);margin:7px 0}
+#tt .hd{padding:11px 13px 9px;border-bottom:1px solid var(--grid);position:sticky;top:0;
+ background:var(--surface-1);display:flex;align-items:baseline;gap:8px}
+#tt .hd b{font-size:14px;letter-spacing:-.01em}
+#tt .hd .hint{margin-left:auto;font-size:10.5px;color:var(--muted);white-space:nowrap}
+#tt .bd{padding:2px 13px 11px}
+#tt .blk{padding:9px 0;border-bottom:1px solid var(--grid)}
+#tt .blk:last-child{border-bottom:0}
+#tt .ttl{display:flex;gap:7px;align-items:baseline;margin-bottom:4px}
+#tt .cd{font-weight:640;font-size:12.5px;flex:1}
+#tt .badge,.profile .badge{font-size:9.5px;font-weight:700;letter-spacing:.05em;padding:2px 6px;
+ border-radius:4px;text-transform:uppercase;white-space:nowrap}
+#tt .b-doc,.profile .b-doc{background:color-mix(in srgb,#0ca30c 16%,transparent);color:#0ca30c}
+#tt .b-abuse,.profile .b-abuse{background:color-mix(in srgb,#fab219 26%,transparent);color:#8a5d00}
+:root[data-theme="dark"] #tt .b-abuse,.profile .b-abuse{color:#fab219}
+#tt .b-none,.profile .b-none{background:transparent;color:var(--muted);border:1px solid var(--grid)}
+#tt .scale{font-weight:660}
+#tt .qt{margin:6px 0 0;padding:6px 9px;border-left:2.5px solid var(--c1);
+ background:var(--plane);border-radius:0 6px 6px 0;font-style:italic}
+#tt .ex,.profile .ex{margin-top:6px;padding:6px 9px;background:var(--plane);border-radius:6px;
+ border:1px solid var(--grid)}
+#tt .ex b,.profile .ex b{font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);
+ display:block;margin-bottom:2px;font-weight:650}
+#tt .src,.profile .src{margin-top:5px;font-size:11.5px;color:var(--muted)}
+#tt .src a,.profile .src a{color:var(--c1);text-decoration:none}
+#tt .src a:hover,.profile .src a:hover{text-decoration:underline}
+circle.ring{fill:none;stroke:var(--ink-2);stroke-width:1.3;stroke-dasharray:2.5 2.5}
+</style></head><body><div class="wrap">
+
+<h1>Displaced population by cause</h1>
+<p class="sub">One circle per country, sized by how many people are displaced and divided by
+what displaced them. Hover a country to see the numbers and the actual events IDMC
+recorded — the named storm, the named conflict. Scroll to zoom, drag to pan.</p>
+
+<div class="ctl">
+  <span class="grp">Which displaced population</span>
+  <button class="mode on" data-m="both">Everyone displaced (IDPs + refugees)</button>
+  <button class="mode" data-m="stock">IDPs only</button>
+  <button class="mode" data-m="refugees">Refugees only</button>
+  <button class="mode" data-m="flow" id="flowbtn">Total displacements recorded</button>
+  <button class="mode" data-m="period">Total 1990&ndash;2025, conflict only</button>
+  <button class="mode" data-m="flows">Movements between countries</button>
+  <button class="mode" data-m="sub">Subnational &mdash; where within countries</button>
+</div>
+<div class="ctl">
+  <span class="grp">Which cause</span>
+  <button class="cz on" data-c="all">All causes</button>
+  <button class="cz" data-c="1">1. Armed conflict</button>
+  <button class="cz" data-c="2">2. Widespread violence</button>
+  <button class="cz" data-c="3">3. Persecution</button>
+  <button class="cz" data-c="4">4. HR violations</button>
+  <button class="cz" data-c="6">6. Natural disasters</button>
+  <button class="cz" data-c="7">7. Man-made events</button>
+</div>
+<div class="ctl">
+  <span class="grp">Add a layer</span>
+  <button id="evid">Documented evidence for codes 3, 4 and 7</button>
+  <button id="attr">Attribute unknowns via UCDP</button>
+  <button class="help" id="helpbtn">What am I looking at?</button>
+</div>
+
+<div class="card help-panel" id="help" hidden>
+ <h3>The five views, and how they differ</h3>
+ <table class="ht"><thead><tr><th>View</th><th>What it counts</th>
+  <th>Where it is drawn</th><th>Period</th></tr></thead><tbody>
+ <tr><td><b>People currently displaced (IDPs)</b></td>
+  <td>A <b>stock</b> &mdash; people still displaced right now. A snapshot, so nobody is
+      counted twice.</td><td>Country where the displacement happened</td><td>end-2025</td></tr>
+ <tr><td><b>Total displacements recorded</b></td>
+  <td>A <b>flow</b> &mdash; movements recorded during the period. Somebody displaced three
+      times counts three times.</td><td>Country where the displacement happened</td>
+  <td id="hp1">&mdash;</td></tr>
+ <tr><td><b>Whole period, conflict only</b></td>
+  <td>Each country's <b>peak</b> displaced population in any single year, with the whole
+      trajectory in the tooltip. Conflict only &mdash; no disaster split exists for this series.</td>
+  <td>Country where the displacement happened</td><td>1990&ndash;2025</td></tr>
+ <tr><td><b>Refugees hosted, by cause in origin</b></td>
+  <td>People who <b>crossed an international border</b>, attributed to the cause mix of the
+      country they came from.</td>
+  <td class="flip">Country <b>hosting</b> them &mdash; not where events happened</td>
+  <td>latest year</td></tr>
+ <tr><td><b>Refugee movements between countries</b></td>
+  <td>The same refugees, drawn as <b>movements</b> rather than totals. Each arrow runs from
+      origin to host country, coloured by what caused the displacement.</td>
+  <td class="flip">An arrow <b>from</b> origin <b>to</b> host</td><td>latest year</td></tr>
+ </tbody></table>
+ <p class="hn"><b>Watch the third column.</b> Three views put the circle where displacement was
+ caused. The last two are about where displaced people went. Germany shows 2.8m not because
+ anything happened in Germany, but because it hosts that many people displaced elsewhere. That
+ is the view that matters for designing a showcard in a host country, precisely because the
+ causing events happened somewhere else.</p>
+
+ <h3>IDPs and refugees</h3>
+ <p class="hn">An <b>IDP</b> was displaced inside their own country and never crossed an
+ international border &mdash; still their own government's responsibility. A <b>refugee</b>
+ crossed a border and is under international protection. The same event produces both; the only
+ difference is whether the person crossed a line on a map. The first three views are about
+ IDPs. The last two are about refugees. This distinction is the reason the identification
+ questions ask about border crossing and time away at all &mdash; the reason for fleeing can
+ be identical.</p>
+
+ <h3>Why codes 3, 4 and 7 get their own layer</h3>
+ <p class="hn">The response options in the identification question are numbered 1 to 8. Three
+ of them &mdash; <b>3. discrimination or persecution</b>, <b>4. human rights violations by
+ authorities</b>, <b>7. man-made events</b> &mdash; are counted by no displacement database
+ anywhere. IDMC has no category for persecution: a Rohingya family displaced by military
+ persecution is recorded as armed conflict. The layer adds documented evidence from human
+ rights investigations for those three, across the twenty largest displacement contexts.
+ Ringed countries have it &mdash; hover for the evidence, click to pin the sources.</p>
+</div>
+
+<div class="card">
+  <div id="anchor" style="font-size:11.5px;color:var(--muted);margin:0 0 8px"></div>
+  <div id="anchor" style="font-size:11.5px;color:var(--muted);margin:0 0 8px"></div>
+  <svg id="map" viewBox="0 0 1000 500" role="img"
+    aria-label="World map with per-country pie charts of displaced population by cause"></svg>
+  <div class="key" id="key"></div>
+</div>
+<div class="card profile" id="profile" hidden></div>
+<div class="viewctl">
+  <span>Display</span>
+  <button id="shape">Single bubbles</button>
+  <button id="reset">Reset zoom</button>
+  <button id="theme">Dark mode</button>
+</div>
+<p class="note" id="modenote"></p>
+
+<h2>The twenty largest displaced populations</h2>
+<div class="card" style="max-height:520px;overflow:auto">
+<table id="tbl"></table></div>
+
+<p class="note"><b>Caveats.</b> IDMC figures here cover 2025 only, so the stock reflects
+people displaced and still displaced at end-2025, and long-settled protracted caseloads from
+earlier decades are understated. The refugee view attributes each hosted refugee to the cause
+mix of their origin country as a whole — it is a population-weighted estimate, not a count of
+individually-attributed people, and it assumes refugees leave for the same reasons that
+displace people internally in their country. Man-made events (code 7) is absent everywhere
+because no agency counts development-induced displacement.</p>
+</div><div id="tt"></div>
+<script>
+const D=__DATA__, C=D.causes, L=D.labels;
+const COL={1:"var(--c1)",2:"var(--c2)",6:"var(--c6)",
+           7:"url(#hatch)",            // no 4th hue clears CVD separation in both
+           0:"var(--unattr)",           // modes, so texture and neutral instead
+           9:"var(--unknown)"};
+const SWATCH={1:"var(--c1)",2:"var(--c2)",6:"var(--c6)",
+              7:"repeating-linear-gradient(45deg,var(--ink-2) 0 1.6px,transparent 1.6px 4px)",
+              0:"var(--unattr)",9:"var(--unknown)"};
+const W=1000,H=500,LAT0=84,LAT1=-58;
+const px=l=>(l+180)/360*W, py=l=>(LAT0-l)/(LAT0-LAT1)*H;
+const NS="http://www.w3.org/2000/svg";
+const fmt=n=>n>=1e6?(n/1e6).toFixed(n<1e7?2:1)+"m":n>=1e3?Math.round(n/1e3)+"k":String(Math.round(n));
+let MODE="both", SHAPE="pie", CAUSE="all", EVID=false, ATTR=false, PIN=null,
+    Z=1,TX=0,TY=0, notes={};
+// Codes 3 and 4 have no per-country displacement count anywhere. Selecting them
+// switches the map to an evidence encoding rather than faking a magnitude.
+const NO_COUNT = ["3","4"];
+const QB={documented:["b-doc","Documented"],abuse_only:["b-abuse","Abuse only"],
+          none_found:["b-none","None found"]};
+// GED codes one-sided violence to 4 and 5, which are not countable causes and so
+// are absent from LABEL. The profile still has to name them.
+const ALLL=Object.assign({}, {3:"Discrimination or persecution",
+  4:"HR violations by authorities", 5:"Other threats of violence",
+  8:"A different threat"});
+const lab=c=>L[c]||ALLL[c]||"—";
+const colr=c=>(c===7?'var(--ink-2)':(c===0||c===9)?'var(--unattr)':
+  (COL[c]||'var(--unattr)'));
+
+const map=document.getElementById('map');
+map.insertAdjacentHTML("afterbegin",
+ `<defs><pattern id="hatch" width="4" height="4" patternUnits="userSpaceOnUse"
+   patternTransform="rotate(45)">
+   <rect width="4" height="4" fill="var(--surface-1)"/>
+   <line x1="0" y1="0" x2="0" y2="4" stroke="var(--ink-2)" stroke-width="1.7"/>
+  </pattern></defs>`);
+const root=document.createElementNS(NS,"g"); map.appendChild(root);
+const LANDS=[];
+D.geo.forEach(f=>{const p=document.createElementNS(NS,"path");
+ let s="";for(const poly of f.polys)for(const ring of poly){
+  let seg=[],segs=[];
+  for(let i=0;i<ring.length;i++){
+   if(i&&Math.abs(ring[i][0]-ring[i-1][0])>180){segs.push(seg);seg=[];}
+   seg.push(ring[i]);}
+  if(seg.length)segs.push(seg);
+  for(const sg of segs){if(sg.length<2)continue;
+   s+="M"+sg.map((p,i)=>(i?"L":"")+px(p[0]).toFixed(1)+","+py(p[1]).toFixed(1)).join("")+"Z";}}
+ p.setAttribute("d",s);p.setAttribute("class","land");p.dataset.iso=f.iso3||"";
+ root.appendChild(p);LANDS.push(p);});
+const layer=document.createElementNS(NS,"g"); root.appendChild(layer);
+
+const tt=document.getElementById('tt');
+function place(e,wide){
+ const w=wide?400:330, h=Math.min(tt.offsetHeight||240, innerHeight*0.76);
+ let x=e.clientX+15, y=e.clientY+15;
+ if(x+w>innerWidth-12) x=Math.max(12,e.clientX-w-15);
+ if(y+h>innerHeight-12) y=Math.max(12,innerHeight-h-12);
+ tt.style.left=x+"px"; tt.style.top=y+"px";}
+function unpin(){ if(PIN){PIN=null;} tt.classList.remove('pinned'); tt.style.opacity=0; }
+function tip(el,html,iso){
+ el.addEventListener('mousemove',e=>{
+  if(PIN)return;
+  const wide=EVID&&D.qual[iso];
+  tt.className=wide?'wide':''; tt.innerHTML=html(); tt.style.opacity=1; place(e,wide);});
+ el.addEventListener('mouseleave',()=>{if(!PIN)tt.style.opacity=0;});
+ el.addEventListener('click',e=>{
+  if(!iso||!D.data[iso])return;
+  e.stopPropagation(); unpin(); tt.style.opacity=0; showProfile(iso);});}
+document.addEventListener('click',()=>{if(PIN)unpin();});
+
+function vals(d){
+ if(MODE==="flows"||MODE==="sub")return[[],0];
+ if(MODE==="both"){
+   const acc={};let t=0;
+   [["stock",1],["refugees",1]].forEach(([k])=>{
+     const v=d[k]||{};
+     C.forEach(c=>{const n=v[String(c)]||0;if(n>0){acc[c]=(acc[c]||0)+n;t+=n;}});});
+   return[C.filter(c=>acc[c]).map(c=>[c,acc[c]]),t];}
+ if(MODE==="period"){                      // long IDMC conflict series, 1990+
+   if(!d.peak||!d.peak.n)return[[],0];
+   return[[[1,d.peak.n]],d.peak.n];}
+ let v=d[MODE]||{};
+ if(ATTR&&MODE==="stock"&&d.attr&&v["0"]){
+   // reallocate IDMC's "conflict, type not recorded" using UCDP. Imputed, and
+   // labelled as such everywhere it appears.
+   v=Object.assign({},v);
+   const u=v["0"], tot=(d.attr.to_code1+d.attr.to_code2)||1;
+   v["1"]=(v["1"]||0)+u*d.attr.to_code1/tot;
+   v["2"]=(v["2"]||0)+u*d.attr.to_code2/tot;
+   delete v["0"];}
+ const o=[];let t=0;
+ const want = CAUSE==="all" ? C : C.filter(c=>String(c)===CAUSE);
+ want.forEach(c=>{const n=v[String(c)]||0;if(n>0){o.push([c,n]);t+=n;}});return[o,t];}
+
+function valsAll(d){
+ const keep=CAUSE; CAUSE="all";
+ const r=vals(d); CAUSE=keep; return r;}
+
+function spark(series,w,h){                 // trajectory of a country's IDP stock
+ const ys=Object.keys(series).map(Number).sort((a,b)=>a-b);
+ if(ys.length<2)return"";
+ const vs=ys.map(y=>series[String(y)]);
+ const mx=Math.max(...vs), y0=ys[0], y1=ys[ys.length-1];
+ const pts=ys.map((y,i)=>`${((y-y0)/(y1-y0)*w).toFixed(1)},${(h-vs[i]/mx*h).toFixed(1)}`);
+ return `<svg width="${w}" height="${h}" style="display:block;margin:6px 0 2px">
+  <polyline points="${pts.join(" ")}" fill="none" stroke="var(--c1)" stroke-width="1.6"/>
+  </svg><div class="ev">${y0} → ${y1}</div>`;}
+
+const CENT={};
+D.geo.forEach(f=>{if(f.iso3&&f.c)CENT[f.iso3]=f.c;});
+
+
+
+function drawSub(){
+ // IDMC geocodes every figure it records - 7,648 distinct locations, mostly at
+ // ADM2/ADM3, finer than the admin1 layer. This is displaced PEOPLE at the place
+ // they were displaced from, not conflict deaths.
+ const pts = CAUSE==="all" ? D.pts : D.pts.filter(p=>String(p.c)===CAUSE);
+ if(!pts.length){document.getElementById('key').innerHTML=
+   `<span style="color:var(--muted)">no geocoded displacement for this cause</span>`;return;}
+ const mx=Math.max(...D.pts.map(p=>p.n));   // fixed scale across causes
+ pts.slice().sort((a,b)=>b.n-a.n).forEach(p=>{
+  const g=document.createElementNS(NS,"g");
+  g.dataset.base=`translate(${px(p.x).toFixed(1)},${py(p.y).toFixed(1)})`;
+  g.setAttribute("transform",g.dataset.base);
+  const r=0.7+11*Math.sqrt(p.n/mx);
+  const c=document.createElementNS(NS,"circle");
+  c.setAttribute("r",r.toFixed(2));
+  c.setAttribute("fill",p.c===7?"url(#hatch)":(p.c===0?"var(--unattr)":COL[p.c]));
+  c.setAttribute("fill-opacity",".7");
+  c.setAttribute("stroke","var(--surface-1)");c.setAttribute("stroke-width",".4");
+  g.appendChild(c);
+  const hit=document.createElementNS(NS,"circle");
+  hit.setAttribute("r",Math.max(r,4).toFixed(2));hit.setAttribute("fill","transparent");
+  hit.style.cursor="pointer";g.appendChild(hit);
+  const cn=(D.data[p.i]||{}).name||p.i;
+  tip(hit,()=>`<b>${p.l}</b><div class="ev">${cn}</div><hr>`+
+    `<div><b style="color:${p.c===7||p.c===0?'var(--ink-2)':COL[p.c]}">■</b> `+
+    `${lab(p.c)} — <b>${fmt(p.n)}</b> displaced</div>`+
+    (p.h?`<div class="ev">${p.h}</div>`:``)+
+    `<div class="ev" style="margin-top:4px">located at ${p.a} precision</div>`, p.i);
+  layer.appendChild(g);});
+ applyT();
+ document.getElementById('key').innerHTML =
+  C.filter(c=>c!==9).map(c=>`<span><i style="background:${SWATCH[c]};${c===7
+    ?'border:1px solid var(--grid)':''}"></i>${L[c]}</span>`).join('')+
+  `<span style="color:var(--muted)">one point per recorded location \u2014 area \u221d people displaced</span>`;
+ document.getElementById('anchor').innerHTML =
+  `<b>Each point is a place people were displaced FROM</b>, not a country. `+
+  `${pts.length.toLocaleString()} locations, mostly district or town level. Zoom in.`;
+ document.getElementById('modenote').innerHTML="<b>What you are looking at.</b> "+
+  `IDMC geocodes every figure it records, so displacement can be placed at the district `+
+  `or town it happened in rather than smeared across a country. 7,648 locations across `+
+  `146 countries \u2014 62% at ADM3 (town/village), 30% at ADM2 (district). This is the `+
+  `level at which enumerator materials would actually be adapted: Mogadishu's evictions `+
+  `and Somalia's pastoral drought are different places, different causes and different `+
+  `prompts, inside one country.`;
+ document.getElementById('tbl').innerHTML="";
+}
+
+function drawFlows(){
+ const mx=Math.max(...D.flows.map(f=>f.n));
+ // biggest last so they sit on top
+ D.flows.slice().sort((a,b)=>a.n-b.n).forEach(fl=>{
+  const o=CENT[fl.o], a=CENT[fl.a]; if(!o||!a)return;
+  const x0=px(o[0]),y0=py(o[1]),x1=px(a[0]),y1=py(a[1]);
+  // bow the arc perpendicular to the chord so overlapping pairs stay legible
+  const mx0=(x0+x1)/2, my0=(y0+y1)/2, dx=x1-x0, dy=y1-y0;
+  const len=Math.hypot(dx,dy)||1, bow=Math.min(len*0.22,60);
+  const cx=mx0-dy/len*bow, cy=my0+dx/len*bow;
+  const p=document.createElementNS(NS,"path");
+  p.setAttribute("d",`M${x0.toFixed(1)},${y0.toFixed(1)} Q${cx.toFixed(1)},${cy.toFixed(1)} ${x1.toFixed(1)},${y1.toFixed(1)}`);
+  p.setAttribute("class","flow");
+  p.setAttribute("stroke",fl.code?COL[fl.code]:"var(--unattr)");
+  // scale harder than sqrt so the largest movements dominate visually
+  const w=fl.n/mx;
+  p.setAttribute("stroke-width",(0.5+5.2*Math.pow(w,0.62)).toFixed(2));
+  p.setAttribute("opacity",(0.35+0.5*Math.pow(w,0.4)).toFixed(2));
+  layer.appendChild(p);
+  tip(p,()=>`<b>${fl.on} \u2192 ${fl.an}</b><hr>`+
+    `<div><b>${fmt(fl.n)}</b> refugees and asylum seekers</div>`+
+    (fl.code?`<div class="ev">Displacement in ${fl.on} is mostly `+
+      `${L[fl.code].toLowerCase()}</div>`:``), null);
+  // arrowhead at the destination
+  const t=0.94, hx=(1-t)*(1-t)*x0+2*(1-t)*t*cx+t*t*x1, hy=(1-t)*(1-t)*y0+2*(1-t)*t*cy+t*t*y1;
+  const ang=Math.atan2(y1-hy,x1-hx)*180/Math.PI;
+  const h=document.createElementNS(NS,"path");
+  h.setAttribute("d","M0,0 L-4.5,-2.2 L-4.5,2.2 Z");
+  h.setAttribute("transform",`translate(${x1.toFixed(1)},${y1.toFixed(1)}) rotate(${ang.toFixed(1)})`);
+  h.setAttribute("fill",fl.code?COL[fl.code]:"var(--unattr)");
+  h.setAttribute("opacity",".8");
+  layer.appendChild(h);});
+}
+
+const BAND={severe:["b-doc","Severe"],substantial:["b-abuse","Substantial"],
+            moderate:["b-none","Moderate"],limited:["b-none","Limited"]};
+function disasterBlock(iso){
+ const v=D.dis[iso]; if(!v)return "";
+ let h=`<div class="blk"><div class="ttl"><span class="cd">Disaster record (IDMC)</span></div>`+
+  `<div class="ev" style="font-size:12px"><b>${v.n_events}</b> named events, `+
+  `<b>${fmt(v.total)}</b> people displaced`+
+  (v.hazards.length?` · mostly ${v.hazards.slice(0,2).map(x=>x.h.toLowerCase()).join(" and ")}`:``)+
+  `</div>`;
+ if(v.top.length){
+  h+=`<div class="ev" style="font-size:12px;margin-top:5px"><b>Largest events:</b></div>`;
+  v.top.forEach(t=>{h+=`<div class="ev" style="font-size:12px">· <b>${t.name}</b>`+
+   `${t.start?` — ${t.start}`:''} — ${fmt(t.people)} displaced</div>`;});
+  h+=`<div class="ev" style="font-size:11.5px;margin-top:4px;color:var(--muted)">`+
+   `A respondent will name the storm, not the hazard class. These are the usable `+
+   `enumerator prompts.</div>`;}
+ return h+`</div>`;}
+
+function ucdpBlock(iso){
+ const n=D.ucdp.narrative[iso], g0=D.gedc[iso];
+ if(!n&&g0&&g0.length){
+  let hh=`<div class="blk"><div class="ttl"><span class="cd">Named conflicts (UCDP GED)</span></div>`;
+  g0.slice(0,4).forEach(c=>{hh+=`<div class="ev" style="font-size:12px">· <b>${c.dyad}</b> — `+
+   `${c.first}\u2013${c.last}, ${fmt(c.deaths)} deaths across ${c.adm1s} region`+
+   `${c.adm1s===1?'':'s'}</div>`;});
+  return hh+`</div>`;}
+ if(!n)return "";
+ let h=`<div class="blk"><div class="ttl"><span class="cd">Armed conflict record (UCDP)</span></div>`+
+  `<div class="ev" style="font-size:12px"><b>${n.active_years}</b> years with an active `+
+  `state-based armed conflict since 1989 (${n.spans.join(", ")}) · `+
+  `<b>${n.war_intensity_years}</b> at war intensity`+
+  (n.still_active?` · <b style="color:var(--c2)">still active</b>`:` · none recorded since ${n.latest_year}`)+
+  `</div>`;
+ const g=D.gedc[iso];
+ if(g&&g.length){
+  h+=`<div class="ev" style="font-size:12px;margin-top:5px"><b>Named conflicts (UCDP GED):</b></div>`;
+  g.slice(0,4).forEach(c=>{h+=`<div class="ev" style="font-size:12px">· <b>${c.dyad}</b> — `+
+   `${c.first}\u2013${c.last}, ${fmt(c.deaths)} deaths across ${c.adm1s} region`+
+   `${c.adm1s===1?'':'s'}</div>`;});
+ } else if(n.active_now&&n.active_now.length){
+  h+=`<div class="ev" style="font-size:12px;margin-top:5px"><b>Running most recently:</b></div>`;
+  n.active_now.forEach(a=>{h+=`<div class="ev" style="font-size:12px">· ${a.type} over `+
+   `${a.over==="both"?"government and territory":a.over}, began <b>${a.began}</b>`+
+   `${a.war?' — war intensity':''}</div>`;});}
+ const at=D.ucdp.attribution[iso];
+ if(at&&at.unattributed>0)h+=`<div class="ev" style="font-size:12px;margin-top:5px">`+
+  `${fmt(at.unattributed)} people IDMC could not classify. UCDP method: <b>${at.method}</b> `+
+  `→ ${fmt(at.to_code1)} armed conflict, ${fmt(at.to_code2)} widespread violence. `+
+  `<i>Imputed, not recorded.</i></div>`;
+ return h+`</div>`;}
+
+function vdemBlock(iso){
+ const v=D.vdem[iso]; if(!v)return "";
+ let h=`<div class="blk"><div class="ttl"><span class="cd">Conditions today (V-Dem)</span></div>`+
+  `<div class="ev" style="font-size:12px">Measures whether the cause EXISTS here, not how `+
+  `many it displaced \u2014 the same class of evidence as an event count.</div>`;
+ [["3","Discrimination or persecution"],["4","HR violations by authorities"]].forEach(([k,lab])=>{
+  const x=v[k]; if(!x||x.latest===null)return;
+  const [cls,txt]=BAND[x.latest_band]||BAND.limited;
+  h+=`<div style="margin-top:6px"><span class="badge ${cls}">${txt}</span> `+
+     `<b>${k}. ${lab}</b></div>`+
+     `<div class="ev" style="font-size:12px">worst since 1990: `+
+     `<b>${(BAND[x.worst_band]||BAND.limited)[1].toLowerCase()}</b> in ${x.worst_year} · `+
+     `driven by ${x.drivers.join(" and ")}</div>`;});
+ if(v.excluded_pct)h+=`<div class="ev" style="font-size:12px;margin-top:4px">`+
+   `<b>${v.excluded_pct}%</b> of the population excluded from civil liberties by social group</div>`;
+ return h+`</div>`;}
+
+function drawEvidenceCause(cc){
+ // no country-level count exists for these codes; show what evidence there is
+ const band={severe:14,substantial:10,moderate:6,limited:3};
+ D.geo.forEach(f=>{
+  const iso=f.iso3, d=D.data[iso]; if(!iso||!f.c)return;
+  const q=(D.qual[iso]||{})[cc], v=(D.vdem[iso]||{})[cc];
+  if(!q&&!v)return;
+  const documented = q && q.status==="documented";
+  const r = documented ? 11 : (v&&v.latest_band ? band[v.latest_band]||3 : 3);
+  const g=document.createElementNS(NS,"g");
+  g.dataset.base=`translate(${px(f.c[0]).toFixed(1)},${py(f.c[1]).toFixed(1)})`;
+  g.setAttribute("transform",g.dataset.base);
+  const c=document.createElementNS(NS,"circle");
+  c.setAttribute("r",r);
+  c.setAttribute("fill", documented?"var(--c2)":"var(--unattr)");
+  c.setAttribute("fill-opacity", documented?".85":".6");
+  c.setAttribute("stroke","var(--surface-1)");c.setAttribute("stroke-width","1");
+  if(!documented){c.setAttribute("stroke","var(--ink-2)");
+    c.setAttribute("stroke-dasharray","2 2");c.setAttribute("fill-opacity",".35");}
+  g.appendChild(c);
+  const hit=document.createElementNS(NS,"circle");
+  hit.setAttribute("r",Math.max(r,6));hit.setAttribute("fill","transparent");
+  hit.style.cursor="pointer";g.appendChild(hit);
+  tip(hit,()=>{
+   let h=`<div class="hd"><b>${(d||{}).name||iso}</b><span class="hint">${
+     q?"click to pin · sources":"conditions only"}</span></div><div class="bd">`;
+   if(q){const [cls,lab]=QB[q.status];
+    h+=`<div class="blk"><div class="ttl"><span class="cd">${cc}. ${D.qlabels[cc]}</span>`+
+      `<span class="badge ${cls}">${lab}</span></div>`+
+      (q.scale?`<div><span class="scale">${fmt(q.scale)}</span> people</div>`:``)+
+      `<div class="ev" style="font-size:12.5px">${q.summary}</div>`+
+      (q.quote?`<div class="qt">\u201C${q.quote}\u201D</div>`:``)+
+      (q.example?`<div class="ex"><b>Enumerator example</b>\u201C${q.example}\u201D</div>`:``)+
+      (q.sources.length?`<div class="src">`+q.sources.map(x=>
+        `<a href="${x.u}" target="_blank" rel="noopener">${x.l}</a>`).join(" · ")+`</div>`:``)+
+      `</div>`;}
+   return h+vdemBlock(iso)+`</div>`;}, iso);
+  layer.appendChild(g);});
+ applyT();
+ document.getElementById('key').innerHTML =
+  `<span><i style="background:var(--c2)"></i>Documented displacement from this cause</span>`+
+  `<span><i style="background:var(--unattr);border:1.3px dashed var(--ink-2)"></i>`+
+  `V-Dem conditions only — size = severity</span>`+
+  `<span style="color:var(--muted)">no displacement count exists for this code anywhere</span>`;
+ document.getElementById('anchor').innerHTML =
+  `<b style="color:var(--c2)">No database counts people displaced by this cause.</b> `+
+  `Filled circles are the twenty countries with documented research; dashed circles are `+
+  `V-Dem's reading of whether the condition exists, sized by severity.`;
+ document.getElementById('modenote').innerHTML="<b>What you are looking at.</b> "+
+  `Code ${cc} has no per-country displacement figure in IDMC, UNHCR, ACLED or UCDP \u2014 `+
+  `no agency counts it. Rather than invent a magnitude, this view shows the evidence that `+
+  `does exist: documented displacement from human rights investigations, and V-Dem's `+
+  `measure of whether the condition is present. That asymmetry is the finding.`;
+ document.getElementById('tbl').innerHTML="";
+}
+
+function showProfile(iso){
+ const d=D.data[iso]; if(!d)return;
+ const el=document.getElementById('profile');
+ const g=D.gedc[iso]||[], a1=D.geda1[iso]||[], dis=D.dis[iso], q=D.qual[iso];
+ const idp=d.stock||{}, ref=d.refugees||{};
+ const sum=o=>C.reduce((x,c)=>x+((o||{})[String(c)]||0),0);
+ const bar=(o,lbl)=>{const t=sum(o); if(t<=0)return"";
+  return `<div style="margin-bottom:8px"><b style="font-size:12.5px">${lbl} — ${fmt(t)}</b>`+
+   `<div style="display:flex;height:9px;border-radius:3px;overflow:hidden;margin-top:4px;gap:1px">`+
+   C.filter(c=>o[String(c)]>0).map(c=>`<div title="${L[c]}" style="width:${
+     (o[String(c)]/t*100).toFixed(1)}%;background:${
+     c===7?'var(--ink-2)':(c===0||c===9)?'var(--unattr)':COL[c]}"></div>`).join("")+`</div>`+
+   `<div style="font-size:11.5px;color:var(--ink-2);margin-top:4px">`+
+   C.filter(c=>o[String(c)]>0).sort((x,y)=>o[String(y)]-o[String(x)]).map(c=>
+    `<span style="margin-right:12px"><i class="dot" style="background:${
+     c===7?'var(--ink-2)':(c===0||c===9)?'var(--unattr)':COL[c]}"></i>${L[c]} ${fmt(o[String(c)])}</span>`
+   ).join("")+`</div></div>`;};
+
+ let h=`<div class="ph"><h2>${d.name}</h2>`+
+  `<span class="tot">${fmt(sum(idp)+sum(ref))} displaced · `+
+  `${fmt(sum(idp))} IDPs · ${fmt(sum(ref))} refugees hosted</span>`+
+  `<button class="close" id="pclose">Close</button></div>`;
+
+ h+=`<div class="psec">${bar(idp,"IDPs displaced inside this country")}${
+   bar(ref,"Refugees and asylum seekers hosted here")}</div>`;
+
+ h+=`<div class="pgrid"><div>`;
+ if(g.length){
+  h+=`<div class="psec"><h3>Named conflicts — UCDP GED</h3><table class="pt">`+
+   `<thead><tr><th>Conflict</th><th>Parties</th><th class="n">Years</th>`+
+   `<th class="n">Deaths</th><th class="n">Regions</th></tr></thead><tbody>`+
+   g.map(c=>`<tr><td><b>${c.conflict}</b></td><td>${c.dyad}</td>`+
+    `<td class="n">${c.first}–${c.last}</td><td class="n">${fmt(c.deaths)}</td>`+
+    `<td class="n">${c.adm1s}</td></tr>`).join("")+`</tbody></table></div>`;}
+ if(dis&&dis.top.length){
+  h+=`<div class="psec"><h3>Named disaster events — IDMC</h3>`+
+   `<div style="font-size:12.5px;color:var(--ink-2);margin-bottom:6px">`+
+   `${dis.n_events} events, ${fmt(dis.total)} displaced</div><table class="pt">`+
+   `<thead><tr><th>Event</th><th class="n">Date</th><th class="n">Displaced</th></tr></thead><tbody>`+
+   dis.top.map(t=>`<tr><td><b>${t.name}</b></td><td class="n">${t.start||"—"}</td>`+
+    `<td class="n">${fmt(t.people)}</td></tr>`).join("")+`</tbody></table></div>`;}
+ h+=`</div><div>`;
+ if(a1.length){
+  h+=`<div class="psec"><h3>Where within the country — GED admin1</h3><table class="pt">`+
+   `<thead><tr><th>Region</th><th>Dominant cause</th><th class="n">Deaths</th>`+
+   `<th class="n">Events</th></tr></thead><tbody>`+
+   a1.map(r=>`<tr><td><b>${r.a}</b><div style="font-size:11px;color:var(--muted)">${r.k}</div></td>`+
+    `<td><i class="dot" style="background:${colr(r.c)}"></i>${lab(r.c)}</td>`+
+    `<td class="n">${fmt(r.d)}</td><td class="n">${fmt(r.e)}</td></tr>`).join("")+
+   `</tbody></table><div style="font-size:11.5px;color:var(--muted);margin-top:6px">`+
+   `Conflict deaths, not displacement. Shows where within the country the violence `+
+   `happened — the basis for adapting enumerator materials below national level.</div></div>`;}
+ if(q){
+  h+=`<div class="psec"><h3>Documented evidence — codes 3, 4, 7</h3>`;
+  [3,4,7].forEach(cc=>{const e=q[String(cc)]; if(!e)return;
+   const [cls,lab]=QB[e.status];
+   h+=`<div style="margin-bottom:9px"><span class="badge ${cls}">${lab}</span> `+
+    `<b style="font-size:12.5px">${cc}. ${D.qlabels[cc]}</b>`+
+    (e.scale?` <b>${fmt(e.scale)}</b>`:``)+
+    `<div style="font-size:12.5px;color:var(--ink-2);margin-top:3px">${e.summary}</div>`+
+    (e.example?`<div class="ex" style="margin-top:5px"><b>Enumerator example</b>\u201C${e.example}\u201D</div>`:``)+
+    (e.sources.length?`<div class="src">`+e.sources.map(x=>
+      `<a href="${x.u}" target="_blank" rel="noopener">${x.l}</a>`).join(" · ")+`</div>`:``)+
+    `</div>`;});
+  h+=`</div>`;}
+ h+=`</div></div>`;
+ el.innerHTML=h; el.hidden=false;
+ document.getElementById('pclose').addEventListener('click',ev=>{
+   ev.stopPropagation(); el.hidden=true;});
+ el.scrollIntoView({behavior:"smooth",block:"nearest"});
+}
+
+function draw(){
+ layer.innerHTML="";
+ if(MODE==="sub"){drawSub();return;}
+ if(CAUSE!=="all"&&NO_COUNT.includes(CAUSE)&&MODE!=="flows"){drawEvidenceCause(CAUSE);return;}
+ if(MODE==="flows"){
+  drawFlows(); applyT();
+  document.getElementById('key').innerHTML =
+   C.filter(c=>c!==0).map(c=>`<span><i style="background:${SWATCH[c]};${c===7
+     ?'border:1px solid var(--grid)':''}"></i>${L[c]}</span>`).join('')+
+   `<span style="color:var(--muted)">arrow width \u221d number of people · `+
+   `colour = dominant cause in the origin country</span>`;
+  document.getElementById('anchor').innerHTML =
+   `<b style="color:var(--c2)">Arrows run FROM where people fled TO where they are hosted.</b>`;
+  document.getElementById('modenote').innerHTML="<b>What you are looking at.</b> "+notes.flows;
+  const rank=D.flows.slice(0,20);
+  document.getElementById('tbl').innerHTML=
+   `<thead><tr><th>From</th><th>To</th><th>People</th><th>Dominant cause in origin</th></tr></thead>`+
+   `<tbody>`+rank.map(f=>`<tr><td>${f.on}</td><td>${f.an}</td>`+
+    `<td><b>${fmt(f.n)}</b></td><td style="color:var(--ink-2)">${f.code?L[f.code]:"\u2014"}</td></tr>`)
+    .join('')+`</tbody>`;
+  return;}
+ // scale from the all-causes total, never from the selected cause's own maximum
+ let max=0;
+ D.geo.forEach(f=>{const d=f.iso3&&D.data[f.iso3];if(d)max=Math.max(max,valsAll(d)[1]);});
+ if(!max)max=1;
+ // area-proportional: radius scales with the square root of the population
+ // no additive floor when a single cause is selected: a country with almost
+ // nothing from that cause SHOULD render as almost nothing
+ const R=t=>(CAUSE==="all"?2.2:0.6)+13*Math.sqrt(t/max);
+
+ D.geo.forEach(f=>{
+  const d=f.iso3&&D.data[f.iso3]; if(!d||!f.c)return;
+  const [parts,total]=vals(d);
+  if(total<=0){
+   if(!(EVID&&D.qual[f.iso3]))return;
+   // researched but nothing counted in this view - show the ring alone, which is
+   // itself the finding: documented displacement that no database carries
+   const g0=document.createElementNS(NS,"g");
+   g0.dataset.base=`translate(${px(f.c[0]).toFixed(1)},${py(f.c[1]).toFixed(1)})`;
+   g0.setAttribute("transform",g0.dataset.base);
+   const ring=document.createElementNS(NS,"circle");
+   ring.setAttribute("class","ring"); ring.setAttribute("r","5");
+   g0.appendChild(ring);
+   const h0=document.createElementNS(NS,"circle");
+   h0.setAttribute("r","8"); h0.setAttribute("fill","transparent");
+   h0.style.cursor="pointer"; g0.appendChild(h0);
+   const iso0=f.iso3;
+   tip(h0,()=>{
+    const q=D.qual[iso0]; let h=`<div class="hd"><b>${d.name}</b>`+
+      `<span class="hint">click for full profile</span></div><div class="bd">`+
+      `<div class="blk" style="color:var(--muted)">Nothing counted in this view.</div>`;
+    [3,4,7].forEach(cc=>{
+     const e=q[String(cc)]; if(!e)return;
+     const [cls,lab]=QB[e.status];
+     h+=`<div class="blk"><div class="ttl"><span class="cd">${cc}. ${D.qlabels[cc]}</span>`+
+        `<span class="badge ${cls}">${lab}</span></div>`;
+     if(e.scale)h+=`<div><span class="scale">${fmt(e.scale)}</span> people</div>`;
+     h+=`<div class="ev" style="font-size:12.5px">${e.summary}</div>`;
+     if(e.quote)h+=`<div class="qt">\u201C${e.quote}\u201D</div>`;
+     if(e.example)h+=`<div class="ex"><b>Enumerator example</b>\u201C${e.example}\u201D</div>`;
+     if(e.sources.length)h+=`<div class="src">`+e.sources.map(s=>
+        `<a href="${s.u}" target="_blank" rel="noopener">${s.l}</a>`).join(" · ")+`</div>`;
+     h+=`</div>`;});
+    return h+`</div>`;}, iso0);
+   layer.appendChild(g0);
+   return;}
+  const cx=px(f.c[0]), cy=py(f.c[1]), r=R(total);
+  const g=document.createElementNS(NS,"g");
+  g.dataset.base=`translate(${cx.toFixed(1)},${cy.toFixed(1)})`;
+  g.setAttribute("transform",g.dataset.base);
+
+  if(MODE==="both"){
+   // area-true nesting: inner disc area is proportional to the IDP count, the
+   // annulus to the hosted refugee count, so the two populations are comparable
+   // by eye and the whole circle is the total displaced population present.
+   let idp=d.stock||{}, ref=d.refugees||{};
+   if(CAUSE!=="all"){   // the ring renderer must honour the cause filter too
+     const pick=o=>{const r={}; if(o[CAUSE])r[CAUSE]=o[CAUSE]; return r;};
+     idp=pick(idp); ref=pick(ref);}
+   const idpT=C.reduce((a,c)=>a+(idp[String(c)]||0),0);
+   const rIn=r*Math.sqrt(Math.max(0,Math.min(1,idpT/total)));
+   const arcs=(obj,r0,r1)=>{
+     const tot=C.reduce((a,c)=>a+(obj[String(c)]||0),0); if(tot<=0||r1<=r0)return;
+     const present=C.filter(c=>(obj[String(c)]||0)>0);
+     if(present.length===1){
+      // A single slice is a full circle, and an SVG arc cannot draw one - its
+      // start and end points coincide and the path collapses to nothing. Draw
+      // a disc (or a ring, via even-odd fill) instead.
+      const c=present[0];
+      const p=document.createElementNS(NS,"path");
+      const circ=(rr)=>`M0,${(-rr).toFixed(2)} A${rr.toFixed(2)},${rr.toFixed(2)} 0 1 1 0,${rr.toFixed(2)} `+
+                       `A${rr.toFixed(2)},${rr.toFixed(2)} 0 1 1 0,${(-rr).toFixed(2)} Z`;
+      p.setAttribute("d", r0<=0.01 ? circ(r1) : circ(r1)+circ(r0));
+      p.setAttribute("fill-rule","evenodd");
+      p.setAttribute("fill",COL[c]);p.setAttribute("fill-opacity",".88");
+      p.setAttribute("stroke","var(--surface-1)");p.setAttribute("stroke-width","0.6");
+      g.appendChild(p); return;}
+     let a0=-Math.PI/2;
+     C.forEach(c=>{const n=obj[String(c)]||0; if(n<=0)return;
+      const a1=a0+2*Math.PI*(n/tot);
+      const big=(a1-a0)>Math.PI?1:0;
+      const p=document.createElementNS(NS,"path");
+      if(r0<=0.01){
+       p.setAttribute("d",`M0,0 L${(r1*Math.cos(a0)).toFixed(2)},${(r1*Math.sin(a0)).toFixed(2)} `+
+        `A${r1.toFixed(2)},${r1.toFixed(2)} 0 ${big} 1 ${(r1*Math.cos(a1)).toFixed(2)},${(r1*Math.sin(a1)).toFixed(2)} Z`);
+      } else {
+       p.setAttribute("d",
+        `M${(r0*Math.cos(a0)).toFixed(2)},${(r0*Math.sin(a0)).toFixed(2)} `+
+        `L${(r1*Math.cos(a0)).toFixed(2)},${(r1*Math.sin(a0)).toFixed(2)} `+
+        `A${r1.toFixed(2)},${r1.toFixed(2)} 0 ${big} 1 ${(r1*Math.cos(a1)).toFixed(2)},${(r1*Math.sin(a1)).toFixed(2)} `+
+        `L${(r0*Math.cos(a1)).toFixed(2)},${(r0*Math.sin(a1)).toFixed(2)} `+
+        `A${r0.toFixed(2)},${r0.toFixed(2)} 0 ${big} 0 ${(r0*Math.cos(a0)).toFixed(2)},${(r0*Math.sin(a0)).toFixed(2)} Z`);}
+      p.setAttribute("fill",COL[c]);p.setAttribute("fill-opacity",".88");
+      p.setAttribute("stroke","var(--surface-1)");p.setAttribute("stroke-width","0.6");
+      g.appendChild(p); a0=a1;});};
+   arcs(idp,0,rIn);
+   arcs(ref,rIn+0.5,r);
+   if(rIn>0.5&&rIn<r-0.5){
+    const sep=document.createElementNS(NS,"circle");
+    sep.setAttribute("r",rIn.toFixed(2));sep.setAttribute("fill","none");
+    sep.setAttribute("stroke","var(--surface-1)");sep.setAttribute("stroke-width","1.1");
+    g.appendChild(sep);}
+  } else if(SHAPE==="bubble"||parts.length===1){
+   const dom=parts.slice().sort((a,b)=>b[1]-a[1])[0][0];
+   const c=document.createElementNS(NS,"circle");
+   c.setAttribute("r",r.toFixed(2));c.setAttribute("fill",COL[dom]);
+   c.setAttribute("fill-opacity",".82");
+   c.setAttribute("stroke","var(--surface-1)");c.setAttribute("stroke-width","1");
+   g.appendChild(c);
+  } else {
+   let a0=-Math.PI/2;
+   parts.forEach(([c,n])=>{
+    const a1=a0+2*Math.PI*(n/total);
+    const x0=r*Math.cos(a0),y0=r*Math.sin(a0),x1=r*Math.cos(a1),y1=r*Math.sin(a1);
+    const big=(a1-a0)>Math.PI?1:0;
+    const p=document.createElementNS(NS,"path");
+    p.setAttribute("d",`M0,0 L${x0.toFixed(2)},${y0.toFixed(2)} `+
+      `A${r.toFixed(2)},${r.toFixed(2)} 0 ${big} 1 ${x1.toFixed(2)},${y1.toFixed(2)} Z`);
+    p.setAttribute("fill",COL[c]);p.setAttribute("fill-opacity",".88");
+    p.setAttribute("stroke","var(--surface-1)");p.setAttribute("stroke-width","0.7");
+    g.appendChild(p); a0=a1;});
+  }
+  if(EVID&&D.qual[f.iso3]){
+   const ring=document.createElementNS(NS,"circle");
+   ring.setAttribute("class","ring");
+   ring.setAttribute("r",(Math.max(r,3.4)+3.4).toFixed(2));
+   g.appendChild(ring);}
+  const hit=document.createElementNS(NS,"circle");
+  hit.setAttribute("r",Math.max(r,5).toFixed(2));hit.setAttribute("fill","transparent");
+  hit.style.cursor="pointer";g.appendChild(hit);
+
+  let rows;
+  if(MODE==="both"){
+   let idp=d.stock||{}, ref=d.refugees||{};
+   if(CAUSE!=="all"){   // the ring renderer must honour the cause filter too
+     const pick=o=>{const r={}; if(o[CAUSE])r[CAUSE]=o[CAUSE]; return r;};
+     idp=pick(idp); ref=pick(ref);}
+   const sum=o=>C.reduce((a,c)=>a+(o[String(c)]||0),0);
+   const line=(o,lbl)=>{const t=sum(o); if(t<=0)return"";
+     return `<div style="margin-top:5px"><b>${lbl} — ${fmt(t)}</b></div>`+
+      C.filter(c=>o[String(c)]>0).sort((a,b)=>o[String(b)]-o[String(a)])
+       .map(c=>`<div class="ev" style="font-size:12px"><b style="color:${
+         c===7||c===0||c===9?'var(--ink-2)':COL[c]}">${c===7?'▨':(c===0||c===9)?'▩':'■'}</b> ${L[c]} — `+
+         `${fmt(o[String(c)])} (${Math.round(o[String(c)]/t*100)}%)</div>`).join("");};
+   rows=line(idp,"IDPs displaced inside this country")+
+        line(ref,"Refugees and asylum seekers hosted here");
+   if(d.origins.length)rows+=`<hr><div class="ev"><b>Refugee origins:</b> `+
+     d.origins.map(o=>`${o.name} ${fmt(o.n)}`).join(" · ")+`</div>`;
+   rows+=`<div class="ev" style="margin-top:5px">Inner disc = IDPs, outer ring = refugees; `+
+     `areas are proportional so the two are comparable by eye.</div>`;
+  } else rows=parts.slice().sort((a,b)=>b[1]-a[1]).map(([c,n])=>{
+    let s=`<div><b style="color:${c===7||c===0||c===9?'var(--ink-2)':COL[c]}">`+
+          `${c===7?'▨':(c===0||c===9)?'▩':'■'}</b> ${L[c]} — <b>${fmt(n)}</b> `+
+          `(${Math.round(n/total*100)}%)</div>`;
+    const evs=(d.events[String(c)]||[]).slice(0,3);
+    if(evs.length&&MODE!=="refugees")
+      s+=`<div class="ev">`+evs.map(e=>`· ${e.l} — ${fmt(e.n)}`).join("<br>")+`</div>`;
+    return s;}).join("");
+  if(MODE==="period"&&d.peak){
+    rows=`<div><b style="color:${COL[1]}">■</b> <b>${fmt(d.peak.cumulative)}</b> people `+
+      `displaced by conflict across ${d.peak.first_year}\u2013${d.peak.latest_year}</div>`+
+      `<div class="ev">Peaked at ${fmt(d.peak.peak)} in ${d.peak.peak_year} · `+
+      `${fmt(d.peak.latest)} still displaced in ${d.peak.latest_year}</div>`+
+      spark(d.series,220,34)+
+      `<div class="ev">Estimated as the ${d.peak.first_year} stock plus every subsequent `+
+      `year-on-year increase, so nobody still displaced from the previous year is counted `+
+      `twice. It undercounts people who returned and fled again within a single year. `+
+      `Conflict only \u2014 no disaster series exists for this period.</div>`;}
+  if(MODE==="refugees"&&d.origins.length)
+    rows+=`<hr><div class="ev"><b>Origins:</b> `+
+      d.origins.map(o=>`${o.name} ${fmt(o.n)}`).join(" · ")+`</div>`;
+  const iso=f.iso3;
+  tip(hit,()=>{
+   const q=EVID?D.qual[iso]:null;
+   if(!q) return `<b>${d.name}</b> — ${fmt(total)} people`+
+     (MODE==="period"?` in total`:``)+`<hr>${rows}`;
+   let h=`<div class="hd"><b>${d.name}</b><span class="hint">click for full profile</span></div>`+
+     `<div class="bd"><div class="blk"><div class="ttl"><span class="cd">Counted \u2014 `+
+     `${fmt(total)} people</span></div>${rows}</div>`+
+     ucdpBlock(iso)+disasterBlock(iso);
+   [3,4,7].forEach(cc=>{
+    const e=q[String(cc)]; if(!e)return;
+    const [cls,lab]=QB[e.status];
+    h+=`<div class="blk"><div class="ttl"><span class="cd">${cc}. ${D.qlabels[cc]}</span>`+
+       `<span class="badge ${cls}">${lab}</span></div>`;
+    if(e.scale)h+=`<div><span class="scale">${fmt(e.scale)}</span> people `+
+       `<span style="color:var(--muted)">(where a source gives a figure)</span></div>`;
+    h+=`<div class="ev" style="font-size:12.5px">${e.summary}</div>`;
+    if(e.quote)h+=`<div class="qt">\u201C${e.quote}\u201D</div>`;
+    if(e.example)h+=`<div class="ex"><b>Enumerator example</b>\u201C${e.example}\u201D</div>`;
+    if(e.sources.length)h+=`<div class="src">`+e.sources.map(s=>
+       `<a href="${s.u}" target="_blank" rel="noopener">${s.l}</a>`).join(" · ")+`</div>`;
+    h+=`</div>`;});
+   return h+vdemBlock(iso)+`</div>`;}, iso);
+  layer.appendChild(g);});
+ applyT();
+ document.getElementById('key').innerHTML =
+  C.map(c=>`<span><i style="background:${SWATCH[c]};${c===7
+    ?'border:1px solid var(--grid)':''}"></i>${L[c]}</span>`).join('')+
+  `<span style="color:var(--muted)">circle area ∝ number of people</span>`+
+  (EVID?`<span><i style="background:transparent;border:1.3px dashed var(--ink-2)"></i>`+
+        `documented evidence for codes 3, 4 or 7 — hover for it</span>`:``);
+
+""
+Population map: how many people, displaced by which cause, in each country.
+
+Each country carries a pie sized by total displaced population and divided by
+cause. Hovering names the actual events - IDMC records an event name and trigger
+for every figure, so "armed conflict" becomes "Sudan: Armed clashes - Khartoum"
+and "natural disaster" becomes "Typhoon Kristine".
+
+Three populations, switchable, because they answer different questions:
+
+  IDP STOCK    people currently displaced inside the country. What a household
+               survey in that country would actually encounter.
+  NEW 2025     displacements recorded during the year. Shows what is happening
+               now rather than what has accumulated.
+  REFUGEES     refugees and asylum seekers HOSTED, attributed to the cause mix of
+               their origin countries. This is the one that matters for showcard
+               design in host countries - the causing events happened elsewhere.
+"""
+import json, os, re
+import pandas as pd
+
+OUT = OUT_S
+TIDY = TIDY_S
+UP = UP_S
+TOPO = TOPO_S
+
+from build_dashboard import decode_topology
+from build_allcauses import centroid
+from qualitative_data import Q
+
+# Order matters: it is the slice order in every pie and the legend order.
+# 0 is not a response option - it is IDMC conflict displacement that nobody
+# classified, carried as its own band so shares stay honest.
+CAUSES = [1, 2, 6, 7, 0, 9]
+LABEL = {1: "Armed conflict or war",
+         2: "Widespread violence / public order",
+         6: "Natural disasters",
+         7: "Man-made events (incl. wildfire)",
+         0: "Unattributed \u2014 conflict, type not recorded",
+         9: "Cause not established \u2014 no source covers it"}
+
+
+def clean_event(name, trigger, hazard, violence):
+    """IDMC event names look like
+       'Abyei Area: Communal violence - Abyei Area - 07/04/2025'.
+       Strip the trailing location/date repetition, keep the substance."""
+    s = str(name or "").strip()
+    s = re.sub(r"\s*-\s*\d{2}/\d{2}/\d{4}\s*$", "", s)
+    parts = [p.strip() for p in s.split(" - ") if p.strip()]
+    if len(parts) > 1 and parts[-1].lower() in parts[0].lower():
+        parts = parts[:-1]
+    s = " - ".join(parts)
+    detail = hazard if pd.notna(hazard) else (violence if pd.notna(violence) else None)
+    if detail and str(detail).lower() not in s.lower():
+        s = f"{s} ({detail})"
+    return s[:110]
+
+
+def main():
+    profiles = json.load(open(f"{OUT}/profiles.json"))
+    regions = {r["iso_code"]: r for r in json.load(open(f"{TIDY}/regions.json"))}
+    feats = [f for f in decode_topology(json.load(open(TOPO)))
+             if f["name"] != "Antarctica"]
+    for f in feats:
+        f["c"] = centroid(f["polys"])
+
+    # re-read the source so we keep Event name / trigger, which the tidy
+    # extract dropped
+    src = pd.read_excel(
+        f"{UP}/5140e1e8-IDMC_GIDD_Internal_Displacement_Disaggregated.xlsx",
+        sheet_name="1_Disaggregated_Data")
+    src = src.rename(columns={
+        "ISO3": "iso3", "Country": "country", "Figure cause": "cause",
+        "Figure category": "category", "Total figures": "figures",
+        "Hazard sub type": "hazard_sub_type", "Violence type": "violence_type",
+        "Event name": "event_name", "Event main trigger": "trigger"})
+    vmap = {"International armed conflict (IAC)": 1,
+            "Non-International armed conflict (NIAC)": 1,
+            "Other situations of violence (OSV)": 2, "Unclear/Unknown": 0}
+    HUMAN = {"Wildfire", "Dam release flood", "Sinkhole"}
+    src["code_id"] = src.apply(
+        lambda r: (7 if r["hazard_sub_type"] in HUMAN else 6)
+        if r["cause"] == "Disaster"
+        else (vmap.get(r["violence_type"], 1) if r["cause"] == "Conflict"
+              else (7 if r["cause"] in ("Other", "Development") else None)), axis=1)
+    src = src[src.code_id.notna()].copy()
+    src["code_id"] = src.code_id.astype(int)
+
+    flow = src[src.category == "Internal Displacements"]
+    stock = src[src.category == "IDPs"]
+
+    def pivot_flow(d):
+        """Flows accumulate: sum across every year in the file."""
+        g = d.groupby(["iso3", "code_id"])["figures"].sum()
+        out = {}
+        for (iso, c), v in g.items():
+            if v > 0:
+                out.setdefault(iso, {})[str(int(c))] = float(v)
+        return out
+
+    def pivot_stock(d):
+        """Stocks are a snapshot, not a total. Take each country's latest year."""
+        if d.empty:
+            return {}
+        latest_yr = d.groupby("iso3")["Year"].max().rename("ymax")
+        d = d.join(latest_yr, on="iso3")
+        d = d[d["Year"] == d["ymax"]]
+        g = d.groupby(["iso3", "code_id"])["figures"].sum()
+        out = {}
+        for (iso, c), v in g.items():
+            if v > 0:
+                out.setdefault(iso, {})[str(int(c))] = float(v)
+        return out
+
+    flow_by, stock_by = pivot_flow(flow), pivot_stock(stock)
+    yrs = sorted(int(y) for y in src["Year"].dropna().unique())
+    period = f"{yrs[0]}\u2013{yrs[-1]}" if len(yrs) > 1 else str(yrs[0])
+    print(f"  IDMC file covers {period}")
+
+    # named events, biggest first - this is the "describe the conflict" part
+    ev = (flow.assign(lab=lambda d: [clean_event(n, t, h, v) for n, t, h, v in
+                                     zip(d.event_name, d.trigger,
+                                         d.hazard_sub_type, d.violence_type)])
+          .groupby(["iso3", "code_id", "lab"])["figures"].sum().reset_index())
+    events = {}
+    for (iso, c), grp in ev.groupby(["iso3", "code_id"]):
+        top = grp.sort_values("figures", ascending=False).head(4)
+        events.setdefault(iso, {})[str(int(c))] = [
+            dict(l=r.lab, n=int(r.figures)) for r in top.itertuples() if r.figures > 0]
+
+    # refugees hosted, attributed to the cause mix of their ORIGIN countries
+    pop = pd.read_parquet(f"{TIDY}/unhcr_population.parquet")
+    latest = int(pop.year.max())
+    lp = pop[pop.year == latest].copy()
+    lp["n"] = lp.refugees.fillna(0) + lp.asylum_seekers.fillna(0)
+    lp = lp[(lp.n > 0) & (lp.coo_iso != lp.coa_iso)]
+    # origin cause mix from IDMC stock, falling back to flows
+    mix = {}
+    for iso in set(list(stock_by) + list(flow_by)):
+        d = stock_by.get(iso) or flow_by.get(iso) or {}
+        tot = sum(d.values())
+        if tot > 0:
+            mix[iso] = {k: v / tot for k, v in d.items()}
+    ref_by, ref_origins, ref_totals = {}, {}, {}
+    for coa, grp in lp.groupby("coa_iso"):
+        acc, org = {}, []
+        ref_totals[coa] = float(grp.n.sum())
+        for r in grp.itertuples():
+            org.append((r.coo_name, r.coo_iso, float(r.n)))
+            m = mix.get(r.coo_iso)
+            if m:
+                for c, s in m.items():
+                    acc[c] = acc.get(c, 0) + float(r.n) * s
+        # UNHCR's total is the denominator; whatever the origin cause mixes could
+        # not account for becomes an explicit remainder rather than vanishing.
+        attributed = sum(acc.values())
+        remainder = max(0.0, ref_totals[coa] - attributed)
+        if attributed >= 1 or remainder >= 1:
+            d_ = {k: round(v) for k, v in acc.items() if v >= 1}
+            if remainder >= 1:
+                d_["9"] = round(remainder)
+            ref_by[coa] = d_
+        org.sort(key=lambda x: -x[2])
+        org = [o for o in org if str(o[0]).strip().lower() not in
+               ("unknown", "various", "stateless")] or org
+        ref_origins[coa] = [dict(name=o[0], iso3=o[1], n=int(o[2])) for o in org[:5]]
+
+    ucdp = json.load(open(f"{TIDY}/ucdp_attribution.json"))
+    disasters = json.load(open(f"{TIDY}/disaster_register.json"))
+    gedc = json.load(open(f"{TIDY}/ged_conflicts.json"))
+    geda1 = json.load(open(f"{TIDY}/ged_admin1.json"))
+    points = json.load(open(f"{TIDY}/idmc_points.json"))
+
+    import pyreadr
+    long_idmc = list(pyreadr.read_r(
+        f"{RAW_S}/PopulationStatistics_idmc.rda").values())[0]
+    long_idmc = long_idmc[long_idmc.total > 0]
+    series, peak = {}, {}
+    for iso, grp in long_idmc.groupby("coa_iso"):
+        g = grp.groupby("year")["total"].sum().sort_index()
+        diffs = g.diff()
+        cumulative = float(g.iloc[0]) + float(diffs[diffs > 0].sum())
+        series[iso] = {str(int(y)): int(v) for y, v in g.items()}
+        peak[iso] = dict(n=int(round(cumulative)),
+                         cumulative=int(round(cumulative)),
+                         peak=int(g.max()), peak_year=int(g.idxmax()),
+                         first_year=int(g.index[0]), opening=int(g.iloc[0]),
+                         latest=int(g.iloc[-1]), latest_year=int(g.index[-1]))
+
+    # coverage accounting - the headline honesty number
+    ref_tot = sum(ref_totals.values())
+    ref_unattr = sum(v.get("9", 0) for v in ref_by.values())
+    idp_tot = sum(sum(v.values()) for v in stock_by.values())
+    idp_unattr = sum(v.get("0", 0) for v in stock_by.values())
+    cov = dict(
+        refugee_total=ref_tot, refugee_unattributed=ref_unattr,
+        idp_total=idp_tot, idp_unattributed=idp_unattr,
+        attributable=(ref_tot - ref_unattr + idp_tot - idp_unattr) /
+                     max(ref_tot + idp_tot, 1))
+    print(f"  benchmark coverage: refugees {ref_tot:,.0f} ({ref_unattr/max(ref_tot,1):.0%} "
+          f"unattributable), IDPs {idp_tot:,.0f} ({idp_unattr/max(idp_tot,1):.0%} "
+          f"unattributed) \u2192 {cov['attributable']:.0%} of all displaced people "
+          f"have a cause")
+
+    data = {}
+    for iso, v in profiles.items():
+        data[iso] = dict(
+            name=v["name"], region=(regions.get(iso) or {}).get("unhcr_region"),
+            stock=stock_by.get(iso, {}), flow=flow_by.get(iso, {}),
+            refugees=ref_by.get(iso, {}), events=events.get(iso, {}),
+            origins=ref_origins.get(iso, []),
+            series=series.get(iso, {}), peak=peak.get(iso),
+            attr=ucdp["attribution"].get(iso))
+    # countries with map geometry but no profile still need refugee data
+    for iso, r in ref_by.items():
+        if iso not in data:
+            data[iso] = dict(name=iso, region=(regions.get(iso) or {}).get("unhcr_region"),
+                             stock={}, flow={}, refugees=r, events={},
+                             origins=ref_origins.get(iso, []),
+                             series=series.get(iso, {}), peak=peak.get(iso))
+
+    qual = {iso: {str(c): dict(status=d["status"], scale=d["scale"],
+                               summary=d["summary"], quote=d["quote"],
+                               example=d["example"],
+                               sources=[dict(l=x[0], u=x[1]) for x in d["sources"]])
+                  for c, d in codes.items()}
+            for iso, codes in Q.items()}
+    # origin -> asylum movements, coloured by what caused displacement in the origin
+    dom_of = {}
+    for iso, m in mix.items():
+        if m:
+            dom_of[iso] = int(max(m, key=m.get))
+    flows = []
+    for r in lp.itertuples():
+        if r.n >= 25000 and r.coo_iso and r.coa_iso:
+            flows.append(dict(o=r.coo_iso, a=r.coa_iso, n=int(r.n),
+                              on=r.coo_name, an=r.coa_name,
+                              code=dom_of.get(r.coo_iso)))
+    flows.sort(key=lambda x: -x["n"])
+    flows = flows[:160]
+    print(f"  {len(flows)} refugee movements over 25,000 people")
+
+    vdem = json.load(open(f"{TIDY}/vdem_severity.json"))
+    payload = dict(data=data, geo=feats, causes=CAUSES, labels=LABEL, flows=flows,
+                   coverage=cov,
+                   vdem=vdem, ucdp=ucdp, dis=disasters, gedc=gedc, geda1=geda1, pts=points,
+                   year=latest, period=period, multiyear=len(yrs) > 1,
+                   qual=qual,
+                   qlabels={"3": "Discrimination or persecution",
+                            "4": "Human rights violations by authorities",
+                            "7": "Man-made events"})
+    html = TPL.replace("__DATA__", json.dumps(payload, separators=(",", ":")))
+    open(f"{OUT}/idq_population_by_cause.html", "w").write(html)
+    print(f"wrote population map "
+          f"({os.path.getsize(f'{OUT}/idq_population_by_cause.html')/1e6:.1f} MB); "
+          f"{len(data)} countries, {sum(len(x) for x in events.values())} event groups")
+
+
+TPL = r"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Displaced population by cause</title>
+<style>
+:root{color-scheme:light;--surface-1:#fcfcfb;--plane:#f9f9f7;--ink:#0b0b0b;
+ --ink-2:#52514e;--muted:#898781;--grid:#e1e0d9;
+ --c1:#2a78d6;--c2:#eb6834;--c6:#1baf7a;--unattr:#c9c7bf;--unknown:#e6e4dc;
+ --land:#eceae4;}
+:root[data-theme="dark"]{color-scheme:dark;--surface-1:#1a1a19;--plane:#0d0d0d;
+ --ink:#fff;--ink-2:#c3c2b7;--grid:#2c2c2a;--c1:#3987e5;--c2:#d95926;--c6:#199e70;
+ --unattr:#5a5954;--land:#2a2a28;}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;
+ --surface-1:#1a1a19;--plane:#0d0d0d;--ink:#fff;--ink-2:#c3c2b7;--grid:#2c2c2a;
+ --c1:#3987e5;--c2:#d95926;--c6:#199e70;--unattr:#5a5954;--unknown:#3a3a37;
+ --land:#2a2a28;}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--plane);color:var(--ink);
+ font:15px/1.55 ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+.wrap{max-width:1400px;margin:0 auto;padding:26px 20px 60px}
+h1{font-size:24px;margin:0 0 6px;letter-spacing:-.015em;font-weight:640}
+h2{font-size:17px;margin:28px 0 4px;font-weight:620;letter-spacing:-.01em}
+.sub{color:var(--ink-2);margin:0 0 16px;max-width:84ch;font-size:14.5px}
+.card{background:var(--surface-1);border:1px solid var(--grid);border-radius:12px;
+ padding:16px;margin-top:10px}
+.ctl{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:14px 0 0}
+button,select{font:inherit;font-size:13.5px;padding:7px 12px;border-radius:8px;
+ border:1px solid var(--grid);background:var(--surface-1);color:var(--ink);cursor:pointer}
+button.on{background:var(--ink);color:var(--surface-1);border-color:var(--ink)}
+.grp{font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);
+ font-weight:640;min-width:172px}
+@media(max-width:760px){.grp{min-width:0;width:100%}}
+button.help{border-style:dashed;color:var(--ink-2)}
+.viewctl{display:flex;gap:7px;align-items:center;margin-top:9px;opacity:.7}
+.viewctl span{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);
+ font-weight:640;margin-right:4px}
+.viewctl button{font-size:12.5px;padding:5px 10px;color:var(--ink-2)}
+.help-panel h3{font-size:14px;margin:14px 0 5px;font-weight:640}
+.help-panel h3:first-child{margin-top:2px}
+.ht{border-collapse:collapse;width:100%;font-size:12.5px;margin:4px 0 2px}
+.ht th,.ht td{text-align:left;padding:7px 9px;border-bottom:1px solid var(--grid);
+ vertical-align:top}
+.ht th{color:var(--muted);font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;
+ font-weight:650}
+.ht td.flip{color:var(--c2);font-weight:560}
+.hn{font-size:12.5px;color:var(--ink-2);max-width:94ch;margin:5px 0 0;line-height:1.55}
+.profile{margin-top:12px}
+.profile h2{font-size:19px;margin:0;font-weight:660;letter-spacing:-.015em}
+.profile .ph{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;
+ border-bottom:1px solid var(--grid);padding-bottom:10px;margin-bottom:4px}
+.profile .ph .tot{color:var(--ink-2);font-size:13.5px}
+.profile .close{margin-left:auto;font-size:12.5px;padding:4px 10px}
+.psec{padding:12px 0;border-bottom:1px solid var(--grid)}
+.psec:last-child{border-bottom:0}
+.psec h3{font-size:13px;margin:0 0 7px;font-weight:650;text-transform:uppercase;
+ letter-spacing:.045em;color:var(--muted)}
+.pt{border-collapse:collapse;width:100%;font-size:12.5px}
+.pt th,.pt td{padding:5px 8px;border-bottom:1px solid var(--grid);text-align:left;
+ vertical-align:top}
+.pt td.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.pt th{font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);
+ font-weight:650}
+.dot{width:9px;height:9px;border-radius:2px;display:inline-block;margin-right:5px;
+ vertical-align:-1px}
+.pgrid{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+@media(max-width:900px){.pgrid{grid-template-columns:1fr}}
+path.flow{fill:none;stroke-linecap:round;opacity:.72;cursor:pointer;
+ stroke-dasharray:5 7;animation:march 1.5s linear infinite}
+path.flow:hover{opacity:1;stroke-width:4}
+@keyframes march{to{stroke-dashoffset:-24}}
+@media(prefers-reduced-motion:reduce){path.flow{animation:none;stroke-dasharray:none}}
+.grp{font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);
+ font-weight:640;min-width:170px}
+@media(max-width:760px){.grp{min-width:0;width:100%}}
+button.help{border-style:dashed;color:var(--ink-2)}
+.viewctl{display:flex;gap:7px;align-items:center;margin-top:9px;opacity:.72}
+.viewctl span{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);
+ font-weight:640;margin-right:4px}
+.viewctl button{font-size:12.5px;padding:5px 10px;color:var(--ink-2)}
+.help-panel h3{font-size:14px;margin:14px 0 5px;font-weight:640;letter-spacing:-.005em}
+.help-panel h3:first-child{margin-top:2px}
+.ht{border-collapse:collapse;width:100%;font-size:12.5px;margin:4px 0 2px}
+.ht th,.ht td{text-align:left;padding:7px 9px;border-bottom:1px solid var(--grid);
+ vertical-align:top}
+.ht th{color:var(--muted);font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;
+ font-weight:650}
+.ht td.flip{color:var(--c2);font-weight:560}
+.hn{font-size:12.5px;color:var(--ink-2);max-width:94ch;margin:5px 0 0;line-height:1.55}
+.profile{margin-top:12px}
+.profile h2{font-size:19px;margin:0;font-weight:660;letter-spacing:-.015em}
+.profile .ph{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;
+ border-bottom:1px solid var(--grid);padding-bottom:10px;margin-bottom:4px}
+.profile .ph .tot{color:var(--ink-2);font-size:13.5px}
+.profile .close{margin-left:auto;font-size:12.5px;padding:4px 10px}
+.psec{padding:12px 0;border-bottom:1px solid var(--grid)}
+.psec:last-child{border-bottom:0}
+.psec h3{font-size:13px;margin:0 0 7px;font-weight:650;text-transform:uppercase;
+ letter-spacing:.045em;color:var(--muted)}
+.pt{border-collapse:collapse;width:100%;font-size:12.5px}
+.pt th,.pt td{padding:5px 8px;border-bottom:1px solid var(--grid);text-align:left;
+ vertical-align:top}
+.pt td.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.pt th{font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);
+ font-weight:650}
+.dot{width:9px;height:9px;border-radius:2px;display:inline-block;margin-right:5px;
+ vertical-align:-1px}
+.pgrid{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+@media(max-width:900px){.pgrid{grid-template-columns:1fr}}
+svg{display:block;width:100%;height:auto}
+path.land{fill:var(--land);stroke:var(--surface-1);stroke-width:.4}
+.key{display:flex;gap:18px;flex-wrap:wrap;margin-top:14px;font-size:13px;color:var(--ink-2);
+ align-items:center}
+.key i{width:12px;height:12px;border-radius:3px;display:inline-block;margin-right:6px;
+ vertical-align:-2px}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{padding:6px 9px;border-bottom:1px solid var(--grid);text-align:right}
+th:first-child,td:first-child,th:nth-child(2),td:nth-child(2){text-align:left}
+th{color:var(--ink-2);font-weight:600;font-size:11.5px;text-transform:uppercase;
+ letter-spacing:.04em}
+td{font-variant-numeric:tabular-nums}
+.note{font-size:12.5px;color:var(--ink-2);margin-top:16px;max-width:92ch}
+#tt{position:fixed;pointer-events:none;background:var(--surface-1);color:var(--ink);
+ border:1px solid var(--grid);border-radius:10px;padding:10px 12px;font-size:12.5px;
+ opacity:0;transition:opacity .1s;box-shadow:0 8px 26px rgba(0,0,0,.17);z-index:9;
+ max-width:330px;line-height:1.45}
+#tt.wide{max-width:none;width:400px;max-height:76vh;overflow:auto;padding:0}
+#tt.pinned{pointer-events:auto}
+#tt .ev{color:var(--ink-2);font-size:11.5px;margin-top:2px}
+#tt hr{border:0;border-top:1px solid var(--grid);margin:7px 0}
+#tt .hd{padding:11px 13px 9px;border-bottom:1px solid var(--grid);position:sticky;top:0;
+ background:var(--surface-1);display:flex;align-items:baseline;gap:8px}
+#tt .hd b{font-size:14px;letter-spacing:-.01em}
+#tt .hd .hint{margin-left:auto;font-size:10.5px;color:var(--muted);white-space:nowrap}
+#tt .bd{padding:2px 13px 11px}
+#tt .blk{padding:9px 0;border-bottom:1px solid var(--grid)}
+#tt .blk:last-child{border-bottom:0}
+#tt .ttl{display:flex;gap:7px;align-items:baseline;margin-bottom:4px}
+#tt .cd{font-weight:640;font-size:12.5px;flex:1}
+#tt .badge,.profile .badge{font-size:9.5px;font-weight:700;letter-spacing:.05em;padding:2px 6px;
+ border-radius:4px;text-transform:uppercase;white-space:nowrap}
+#tt .b-doc,.profile .b-doc{background:color-mix(in srgb,#0ca30c 16%,transparent);color:#0ca30c}
+#tt .b-abuse,.profile .b-abuse{background:color-mix(in srgb,#fab219 26%,transparent);color:#8a5d00}
+:root[data-theme="dark"] #tt .b-abuse,.profile .b-abuse{color:#fab219}
+#tt .b-none,.profile .b-none{background:transparent;color:var(--muted);border:1px solid var(--grid)}
+#tt .scale{font-weight:660}
+#tt .qt{margin:6px 0 0;padding:6px 9px;border-left:2.5px solid var(--c1);
+ background:var(--plane);border-radius:0 6px 6px 0;font-style:italic}
+#tt .ex,.profile .ex{margin-top:6px;padding:6px 9px;background:var(--plane);border-radius:6px;
+ border:1px solid var(--grid)}
+#tt .ex b,.profile .ex b{font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);
+ display:block;margin-bottom:2px;font-weight:650}
+#tt .src,.profile .src{margin-top:5px;font-size:11.5px;color:var(--muted)}
+#tt .src a,.profile .src a{color:var(--c1);text-decoration:none}
+#tt .src a:hover,.profile .src a:hover{text-decoration:underline}
+circle.ring{fill:none;stroke:var(--ink-2);stroke-width:1.3;stroke-dasharray:2.5 2.5}
+</style></head><body><div class="wrap">
+
+<h1>Displaced population by cause</h1>
+<p class="sub">One circle per country, sized by how many people are displaced and divided by
+what displaced them. Hover a country to see the numbers and the actual events IDMC
+recorded — the named storm, the named conflict. Scroll to zoom, drag to pan.</p>
+
+<div class="ctl">
+  <span class="grp">Which displaced population</span>
+  <button class="mode on" data-m="both">Everyone displaced (IDPs + refugees)</button>
+  <button class="mode" data-m="stock">IDPs only</button>
+  <button class="mode" data-m="refugees">Refugees only</button>
+  <button class="mode" data-m="flow" id="flowbtn">Total displacements recorded</button>
+  <button class="mode" data-m="period">Total 1990&ndash;2025, conflict only</button>
+  <button class="mode" data-m="flows">Movements between countries</button>
+  <button class="mode" data-m="sub">Subnational &mdash; where within countries</button>
+</div>
+<div class="ctl">
+  <span class="grp">Which cause</span>
+  <button class="cz on" data-c="all">All causes</button>
+  <button class="cz" data-c="1">1. Armed conflict</button>
+  <button class="cz" data-c="2">2. Widespread violence</button>
+  <button class="cz" data-c="3">3. Persecution</button>
+  <button class="cz" data-c="4">4. HR violations</button>
+  <button class="cz" data-c="6">6. Natural disasters</button>
+  <button class="cz" data-c="7">7. Man-made events</button>
+</div>
+<div class="ctl">
+  <span class="grp">Add a layer</span>
+  <button id="evid">Documented evidence for codes 3, 4 and 7</button>
+  <button id="attr">Attribute unknowns via UCDP</button>
+  <button class="help" id="helpbtn">What am I looking at?</button>
+</div>
+
+<div class="card help-panel" id="help" hidden>
+ <h3>The five views, and how they differ</h3>
+ <table class="ht"><thead><tr><th>View</th><th>What it counts</th>
+  <th>Where it is drawn</th><th>Period</th></tr></thead><tbody>
+ <tr><td><b>People currently displaced (IDPs)</b></td>
+  <td>A <b>stock</b> &mdash; people still displaced right now. A snapshot, so nobody is
+      counted twice.</td><td>Country where the displacement happened</td><td>end-2025</td></tr>
+ <tr><td><b>Total displacements recorded</b></td>
+  <td>A <b>flow</b> &mdash; movements recorded during the period. Somebody displaced three
+      times counts three times.</td><td>Country where the displacement happened</td>
+  <td id="hp1">&mdash;</td></tr>
+ <tr><td><b>Whole period, conflict only</b></td>
+  <td>Each country's <b>peak</b> displaced population in any single year, with the whole
+      trajectory in the tooltip. Conflict only &mdash; no disaster split exists for this series.</td>
+  <td>Country where the displacement happened</td><td>1990&ndash;2025</td></tr>
+ <tr><td><b>Refugees hosted, by cause in origin</b></td>
+  <td>People who <b>crossed an international border</b>, attributed to the cause mix of the
+      country they came from.</td>
+  <td class="flip">Country <b>hosting</b> them &mdash; not where events happened</td>
+  <td>latest year</td></tr>
+ <tr><td><b>Refugee movements between countries</b></td>
+  <td>The same refugees, drawn as <b>movements</b> rather than totals. Each arrow runs from
+      origin to host country, coloured by what caused the displacement.</td>
+  <td class="flip">An arrow <b>from</b> origin <b>to</b> host</td><td>latest year</td></tr>
+ </tbody></table>
+ <p class="hn"><b>Watch the third column.</b> Three views put the circle where displacement was
+ caused. The last two are about where displaced people went. Germany shows 2.8m not because
+ anything happened in Germany, but because it hosts that many people displaced elsewhere. That
+ is the view that matters for designing a showcard in a host country, precisely because the
+ causing events happened somewhere else.</p>
+
+ <h3>IDPs and refugees</h3>
+ <p class="hn">An <b>IDP</b> was displaced inside their own country and never crossed an
+ international border &mdash; still their own government's responsibility. A <b>refugee</b>
+ crossed a border and is under international protection. The same event produces both; the only
+ difference is whether the person crossed a line on a map. The first three views are about
+ IDPs. The last two are about refugees. This distinction is the reason the identification
+ questions ask about border crossing and time away at all &mdash; the reason for fleeing can
+ be identical.</p>
+
+ <h3>Why codes 3, 4 and 7 get their own layer</h3>
+ <p class="hn">The response options in the identification question are numbered 1 to 8. Three
+ of them &mdash; <b>3. discrimination or persecution</b>, <b>4. human rights violations by
+ authorities</b>, <b>7. man-made events</b> &mdash; are counted by no displacement database
+ anywhere. IDMC has no category for persecution: a Rohingya family displaced by military
+ persecution is recorded as armed conflict. The layer adds documented evidence from human
+ rights investigations for those three, across the twenty largest displacement contexts.
+ Ringed countries have it &mdash; hover for the evidence, click to pin the sources.</p>
+</div>
+
+<div class="card">
+  <div id="anchor" style="font-size:11.5px;color:var(--muted);margin:0 0 8px"></div>
+  <div id="anchor" style="font-size:11.5px;color:var(--muted);margin:0 0 8px"></div>
+  <svg id="map" viewBox="0 0 1000 500" role="img"
+    aria-label="World map with per-country pie charts of displaced population by cause"></svg>
+  <div class="key" id="key"></div>
+</div>
+<div class="card profile" id="profile" hidden></div>
+<div class="viewctl">
+  <span>Display</span>
+  <button id="shape">Single bubbles</button>
+  <button id="reset">Reset zoom</button>
+  <button id="theme">Dark mode</button>
+</div>
+<p class="note" id="modenote"></p>
+
+<h2>The twenty largest displaced populations</h2>
+<div class="card" style="max-height:520px;overflow:auto">
+<table id="tbl"></table></div>
+
+<p class="note"><b>Caveats.</b> IDMC figures here cover 2025 only, so the stock reflects
+people displaced and still displaced at end-2025, and long-settled protracted caseloads from
+earlier decades are understated. The refugee view attributes each hosted refugee to the cause
+mix of their origin country as a whole — it is a population-weighted estimate, not a count of
+individually-attributed people, and it assumes refugees leave for the same reasons that
+displace people internally in their country. Man-made events (code 7) is absent everywhere
+because no agency counts development-induced displacement.</p>
+</div><div id="tt"></div>
+<script>
+const D=__DATA__, C=D.causes, L=D.labels;
+const COL={1:"var(--c1)",2:"var(--c2)",6:"var(--c6)",
+           7:"url(#hatch)",            // no 4th hue clears CVD separation in both
+           0:"var(--unattr)",           // modes, so texture and neutral instead
+           9:"var(--unknown)"};
+const SWATCH={1:"var(--c1)",2:"var(--c2)",6:"var(--c6)",
+              7:"repeating-linear-gradient(45deg,var(--ink-2) 0 1.6px,transparent 1.6px 4px)",
+              0:"var(--unattr)",9:"var(--unknown)"};
+const W=1000,H=500,LAT0=84,LAT1=-58;
+const px=l=>(l+180)/360*W, py=l=>(LAT0-l)/(LAT0-LAT1)*H;
+const NS="http://www.w3.org/2000/svg";
+const fmt=n=>n>=1e6?(n/1e6).toFixed(n<1e7?2:1)+"m":n>=1e3?Math.round(n/1e3)+"k":String(Math.round(n));
+let MODE="both", SHAPE="pie", CAUSE="all", EVID=false, ATTR=false, PIN=null,
+    Z=1,TX=0,TY=0, notes={};
+// Codes 3 and 4 have no per-country displacement count anywhere. Selecting them
+// switches the map to an evidence encoding rather than faking a magnitude.
+const NO_COUNT = ["3","4"];
+const QB={documented:["b-doc","Documented"],abuse_only:["b-abuse","Abuse only"],
+          none_found:["b-none","None found"]};
+// GED codes one-sided violence to 4 and 5, which are not countable causes and so
+// are absent from LABEL. The profile still has to name them.
+const ALLL=Object.assign({}, {3:"Discrimination or persecution",
+  4:"HR violations by authorities", 5:"Other threats of violence",
+  8:"A different threat"});
+const lab=c=>L[c]||ALLL[c]||"—";
+const colr=c=>(c===7?'var(--ink-2)':(c===0||c===9)?'var(--unattr)':
+  (COL[c]||'var(--unattr)'));
+
+const map=document.getElementById('map');
+map.insertAdjacentHTML("afterbegin",
+ `<defs><pattern id="hatch" width="4" height="4" patternUnits="userSpaceOnUse"
+   patternTransform="rotate(45)">
+   <rect width="4" height="4" fill="var(--surface-1)"/>
+   <line x1="0" y1="0" x2="0" y2="4" stroke="var(--ink-2)" stroke-width="1.7"/>
+  </pattern></defs>`);
+const root=document.createElementNS(NS,"g"); map.appendChild(root);
+const LANDS=[];
+D.geo.forEach(f=>{const p=document.createElementNS(NS,"path");
+ let s="";for(const poly of f.polys)for(const ring of poly){
+  let seg=[],segs=[];
+  for(let i=0;i<ring.length;i++){
+   if(i&&Math.abs(ring[i][0]-ring[i-1][0])>180){segs.push(seg);seg=[];}
+   seg.push(ring[i]);}
+  if(seg.length)segs.push(seg);
+  for(const sg of segs){if(sg.length<2)continue;
+   s+="M"+sg.map((p,i)=>(i?"L":"")+px(p[0]).toFixed(1)+","+py(p[1]).toFixed(1)).join("")+"Z";}}
+ p.setAttribute("d",s);p.setAttribute("class","land");p.dataset.iso=f.iso3||"";
+ root.appendChild(p);LANDS.push(p);});
+const layer=document.createElementNS(NS,"g"); root.appendChild(layer);
+
+const tt=document.getElementById('tt');
+function place(e,wide){
+ const w=wide?400:330, h=Math.min(tt.offsetHeight||240, innerHeight*0.76);
+ let x=e.clientX+15, y=e.clientY+15;
+ if(x+w>innerWidth-12) x=Math.max(12,e.clientX-w-15);
+ if(y+h>innerHeight-12) y=Math.max(12,innerHeight-h-12);
+ tt.style.left=x+"px"; tt.style.top=y+"px";}
+function unpin(){ if(PIN){PIN=null;} tt.classList.remove('pinned'); tt.style.opacity=0; }
+function tip(el,html,iso){
+ el.addEventListener('mousemove',e=>{
+  if(PIN)return;
+  const wide=EVID&&D.qual[iso];
+  tt.className=wide?'wide':''; tt.innerHTML=html(); tt.style.opacity=1; place(e,wide);});
+ el.addEventListener('mouseleave',()=>{if(!PIN)tt.style.opacity=0;});
+ el.addEventListener('click',e=>{
+  if(!iso||!D.data[iso])return;
+  e.stopPropagation(); unpin(); tt.style.opacity=0; showProfile(iso);});}
+document.addEventListener('click',()=>{if(PIN)unpin();});
+
+function vals(d){
+ if(MODE==="flows"||MODE==="sub")return[[],0];
+ if(MODE==="both"){
+   const acc={};let t=0;
+   [["stock",1],["refugees",1]].forEach(([k])=>{
+     const v=d[k]||{};
+     C.forEach(c=>{const n=v[String(c)]||0;if(n>0){acc[c]=(acc[c]||0)+n;t+=n;}});});
+   return[C.filter(c=>acc[c]).map(c=>[c,acc[c]]),t];}
+ if(MODE==="period"){                      // long IDMC conflict series, 1990+
+   if(!d.peak||!d.peak.n)return[[],0];
+   return[[[1,d.peak.n]],d.peak.n];}
+ let v=d[MODE]||{};
+ if(ATTR&&MODE==="stock"&&d.attr&&v["0"]){
+   // reallocate IDMC's "conflict, type not recorded" using UCDP. Imputed, and
+   // labelled as such everywhere it appears.
+   v=Object.assign({},v);
+   const u=v["0"], tot=(d.attr.to_code1+d.attr.to_code2)||1;
+   v["1"]=(v["1"]||0)+u*d.attr.to_code1/tot;
+   v["2"]=(v["2"]||0)+u*d.attr.to_code2/tot;
+   delete v["0"];}
+ const o=[];let t=0;
+ const want = CAUSE==="all" ? C : C.filter(c=>String(c)===CAUSE);
+ want.forEach(c=>{const n=v[String(c)]||0;if(n>0){o.push([c,n]);t+=n;}});return[o,t];}
+
+function valsAll(d){
+ const keep=CAUSE; CAUSE="all";
+ const r=vals(d); CAUSE=keep; return r;}
+
+function spark(series,w,h){                 // trajectory of a country's IDP stock
+ const ys=Object.keys(series).map(Number).sort((a,b)=>a-b);
+ if(ys.length<2)return"";
+ const vs=ys.map(y=>series[String(y)]);
+ const mx=Math.max(...vs), y0=ys[0], y1=ys[ys.length-1];
+ const pts=ys.map((y,i)=>`${((y-y0)/(y1-y0)*w).toFixed(1)},${(h-vs[i]/mx*h).toFixed(1)}`);
+ return `<svg width="${w}" height="${h}" style="display:block;margin:6px 0 2px">
+  <polyline points="${pts.join(" ")}" fill="none" stroke="var(--c1)" stroke-width="1.6"/>
+  </svg><div class="ev">${y0} → ${y1}</div>`;}
+
+const CENT={};
+D.geo.forEach(f=>{if(f.iso3&&f.c)CENT[f.iso3]=f.c;});
+
+
+
+function drawSub(){
+ // IDMC geocodes every figure it records - 7,648 distinct locations, mostly at
+ // ADM2/ADM3, finer than the admin1 layer. This is displaced PEOPLE at the place
+ // they were displaced from, not conflict deaths.
+ const pts = CAUSE==="all" ? D.pts : D.pts.filter(p=>String(p.c)===CAUSE);
+ if(!pts.length){document.getElementById('key').innerHTML=
+   `<span style="color:var(--muted)">no geocoded displacement for this cause</span>`;return;}
+ const mx=Math.max(...D.pts.map(p=>p.n));   // fixed scale across causes
+ pts.slice().sort((a,b)=>b.n-a.n).forEach(p=>{
+  const g=document.createElementNS(NS,"g");
+  g.dataset.base=`translate(${px(p.x).toFixed(1)},${py(p.y).toFixed(1)})`;
+  g.setAttribute("transform",g.dataset.base);
+  const r=0.7+11*Math.sqrt(p.n/mx);
+  const c=document.createElementNS(NS,"circle");
+  c.setAttribute("r",r.toFixed(2));
+  c.setAttribute("fill",p.c===7?"url(#hatch)":(p.c===0?"var(--unattr)":COL[p.c]));
+  c.setAttribute("fill-opacity",".7");
+  c.setAttribute("stroke","var(--surface-1)");c.setAttribute("stroke-width",".4");
+  g.appendChild(c);
+  const hit=document.createElementNS(NS,"circle");
+  hit.setAttribute("r",Math.max(r,4).toFixed(2));hit.setAttribute("fill","transparent");
+  hit.style.cursor="pointer";g.appendChild(hit);
+  const cn=(D.data[p.i]||{}).name||p.i;
+  tip(hit,()=>`<b>${p.l}</b><div class="ev">${cn}</div><hr>`+
+    `<div><b style="color:${p.c===7||p.c===0?'var(--ink-2)':COL[p.c]}">■</b> `+
+    `${lab(p.c)} — <b>${fmt(p.n)}</b> displaced</div>`+
+    (p.h?`<div class="ev">${p.h}</div>`:``)+
+    `<div class="ev" style="margin-top:4px">located at ${p.a} precision</div>`, p.i);
+  layer.appendChild(g);});
+ applyT();
+ document.getElementById('key').innerHTML =
+  C.filter(c=>c!==9).map(c=>`<span><i style="background:${SWATCH[c]};${c===7
+    ?'border:1px solid var(--grid)':''}"></i>${L[c]}</span>`).join('')+
+  `<span style="color:var(--muted)">one point per recorded location \u2014 area \u221d people displaced</span>`;
+ document.getElementById('anchor').innerHTML =
+  `<b>Each point is a place people were displaced FROM</b>, not a country. `+
+  `${pts.length.toLocaleString()} locations, mostly district or town level. Zoom in.`;
+ document.getElementById('modenote').innerHTML="<b>What you are looking at.</b> "+
+  `IDMC geocodes every figure it records, so displacement can be placed at the district `+
+  `or town it happened in rather than smeared across a country. 7,648 locations across `+
+  `146 countries \u2014 62% at ADM3 (town/village), 30% at ADM2 (district). This is the `+
+  `level at which enumerator materials would actually be adapted: Mogadishu's evictions `+
+  `and Somalia's pastoral drought are different places, different causes and different `+
+  `prompts, inside one country.`;
+ document.getElementById('tbl').innerHTML="";
+}
+
+function drawFlows(){
+ const mx=Math.max(...D.flows.map(f=>f.n));
+ // biggest last so they sit on top
+ D.flows.slice().sort((a,b)=>a.n-b.n).forEach(fl=>{
+  const o=CENT[fl.o], a=CENT[fl.a]; if(!o||!a)return;
+  const x0=px(o[0]),y0=py(o[1]),x1=px(a[0]),y1=py(a[1]);
+  // bow the arc perpendicular to the chord so overlapping pairs stay legible
+  const mx0=(x0+x1)/2, my0=(y0+y1)/2, dx=x1-x0, dy=y1-y0;
+  const len=Math.hypot(dx,dy)||1, bow=Math.min(len*0.22,60);
+  const cx=mx0-dy/len*bow, cy=my0+dx/len*bow;
+  const p=document.createElementNS(NS,"path");
+  p.setAttribute("d",`M${x0.toFixed(1)},${y0.toFixed(1)} Q${cx.toFixed(1)},${cy.toFixed(1)} ${x1.toFixed(1)},${y1.toFixed(1)}`);
+  p.setAttribute("class","flow");
+  p.setAttribute("stroke",fl.code?COL[fl.code]:"var(--unattr)");
+  // scale harder than sqrt so the largest movements dominate visually
+  const w=fl.n/mx;
+  p.setAttribute("stroke-width",(0.5+5.2*Math.pow(w,0.62)).toFixed(2));
+  p.setAttribute("opacity",(0.35+0.5*Math.pow(w,0.4)).toFixed(2));
+  layer.appendChild(p);
+  tip(p,()=>`<b>${fl.on} \u2192 ${fl.an}</b><hr>`+
+    `<div><b>${fmt(fl.n)}</b> refugees and asylum seekers</div>`+
+    (fl.code?`<div class="ev">Displacement in ${fl.on} is mostly `+
+      `${L[fl.code].toLowerCase()}</div>`:``), null);
+  // arrowhead at the destination
+  const t=0.94, hx=(1-t)*(1-t)*x0+2*(1-t)*t*cx+t*t*x1, hy=(1-t)*(1-t)*y0+2*(1-t)*t*cy+t*t*y1;
+  const ang=Math.atan2(y1-hy,x1-hx)*180/Math.PI;
+  const h=document.createElementNS(NS,"path");
+  h.setAttribute("d","M0,0 L-4.5,-2.2 L-4.5,2.2 Z");
+  h.setAttribute("transform",`translate(${x1.toFixed(1)},${y1.toFixed(1)}) rotate(${ang.toFixed(1)})`);
+  h.setAttribute("fill",fl.code?COL[fl.code]:"var(--unattr)");
+  h.setAttribute("opacity",".8");
+  layer.appendChild(h);});
+}
+
+const BAND={severe:["b-doc","Severe"],substantial:["b-abuse","Substantial"],
+            moderate:["b-none","Moderate"],limited:["b-none","Limited"]};
+function disasterBlock(iso){
+ const v=D.dis[iso]; if(!v)return "";
+ let h=`<div class="blk"><div class="ttl"><span class="cd">Disaster record (IDMC)</span></div>`+
+  `<div class="ev" style="font-size:12px"><b>${v.n_events}</b> named events, `+
+  `<b>${fmt(v.total)}</b> people displaced`+
+  (v.hazards.length?` · mostly ${v.hazards.slice(0,2).map(x=>x.h.toLowerCase()).join(" and ")}`:``)+
+  `</div>`;
+ if(v.top.length){
+  h+=`<div class="ev" style="font-size:12px;margin-top:5px"><b>Largest events:</b></div>`;
+  v.top.forEach(t=>{h+=`<div class="ev" style="font-size:12px">· <b>${t.name}</b>`+
+   `${t.start?` — ${t.start}`:''} — ${fmt(t.people)} displaced</div>`;});
+  h+=`<div class="ev" style="font-size:11.5px;margin-top:4px;color:var(--muted)">`+
+   `A respondent will name the storm, not the hazard class. These are the usable `+
+   `enumerator prompts.</div>`;}
+ return h+`</div>`;}
+
+function ucdpBlock(iso){
+ const n=D.ucdp.narrative[iso], g0=D.gedc[iso];
+ if(!n&&g0&&g0.length){
+  let hh=`<div class="blk"><div class="ttl"><span class="cd">Named conflicts (UCDP GED)</span></div>`;
+  g0.slice(0,4).forEach(c=>{hh+=`<div class="ev" style="font-size:12px">· <b>${c.dyad}</b> — `+
+   `${c.first}\u2013${c.last}, ${fmt(c.deaths)} deaths across ${c.adm1s} region`+
+   `${c.adm1s===1?'':'s'}</div>`;});
+  return hh+`</div>`;}
+ if(!n)return "";
+ let h=`<div class="blk"><div class="ttl"><span class="cd">Armed conflict record (UCDP)</span></div>`+
+  `<div class="ev" style="font-size:12px"><b>${n.active_years}</b> years with an active `+
+  `state-based armed conflict since 1989 (${n.spans.join(", ")}) · `+
+  `<b>${n.war_intensity_years}</b> at war intensity`+
+  (n.still_active?` · <b style="color:var(--c2)">still active</b>`:` · none recorded since ${n.latest_year}`)+
+  `</div>`;
+ const g=D.gedc[iso];
+ if(g&&g.length){
+  h+=`<div class="ev" style="font-size:12px;margin-top:5px"><b>Named conflicts (UCDP GED):</b></div>`;
+  g.slice(0,4).forEach(c=>{h+=`<div class="ev" style="font-size:12px">· <b>${c.dyad}</b> — `+
+   `${c.first}\u2013${c.last}, ${fmt(c.deaths)} deaths across ${c.adm1s} region`+
+   `${c.adm1s===1?'':'s'}</div>`;});
+ } else if(n.active_now&&n.active_now.length){
+  h+=`<div class="ev" style="font-size:12px;margin-top:5px"><b>Running most recently:</b></div>`;
+  n.active_now.forEach(a=>{h+=`<div class="ev" style="font-size:12px">· ${a.type} over `+
+   `${a.over==="both"?"government and territory":a.over}, began <b>${a.began}</b>`+
+   `${a.war?' — war intensity':''}</div>`;});}
+ const at=D.ucdp.attribution[iso];
+ if(at&&at.unattributed>0)h+=`<div class="ev" style="font-size:12px;margin-top:5px">`+
+  `${fmt(at.unattributed)} people IDMC could not classify. UCDP method: <b>${at.method}</b> `+
+  `→ ${fmt(at.to_code1)} armed conflict, ${fmt(at.to_code2)} widespread violence. `+
+  `<i>Imputed, not recorded.</i></div>`;
+ return h+`</div>`;}
+
+function vdemBlock(iso){
+ const v=D.vdem[iso]; if(!v)return "";
+ let h=`<div class="blk"><div class="ttl"><span class="cd">Conditions today (V-Dem)</span></div>`+
+  `<div class="ev" style="font-size:12px">Measures whether the cause EXISTS here, not how `+
+  `many it displaced \u2014 the same class of evidence as an event count.</div>`;
+ [["3","Discrimination or persecution"],["4","HR violations by authorities"]].forEach(([k,lab])=>{
+  const x=v[k]; if(!x||x.latest===null)return;
+  const [cls,txt]=BAND[x.latest_band]||BAND.limited;
+  h+=`<div style="margin-top:6px"><span class="badge ${cls}">${txt}</span> `+
+     `<b>${k}. ${lab}</b></div>`+
+     `<div class="ev" style="font-size:12px">worst since 1990: `+
+     `<b>${(BAND[x.worst_band]||BAND.limited)[1].toLowerCase()}</b> in ${x.worst_year} · `+
+     `driven by ${x.drivers.join(" and ")}</div>`;});
+ if(v.excluded_pct)h+=`<div class="ev" style="font-size:12px;margin-top:4px">`+
+   `<b>${v.excluded_pct}%</b> of the population excluded from civil liberties by social group</div>`;
+ return h+`</div>`;}
+
+function drawEvidenceCause(cc){
+ // no country-level count exists for these codes; show what evidence there is
+ const band={severe:14,substantial:10,moderate:6,limited:3};
+ D.geo.forEach(f=>{
+  const iso=f.iso3, d=D.data[iso]; if(!iso||!f.c)return;
+  const q=(D.qual[iso]||{})[cc], v=(D.vdem[iso]||{})[cc];
+  if(!q&&!v)return;
+  const documented = q && q.status==="documented";
+  const r = documented ? 11 : (v&&v.latest_band ? band[v.latest_band]||3 : 3);
+  const g=document.createElementNS(NS,"g");
+  g.dataset.base=`translate(${px(f.c[0]).toFixed(1)},${py(f.c[1]).toFixed(1)})`;
+  g.setAttribute("transform",g.dataset.base);
+  const c=document.createElementNS(NS,"circle");
+  c.setAttribute("r",r);
+  c.setAttribute("fill", documented?"var(--c2)":"var(--unattr)");
+  c.setAttribute("fill-opacity", documented?".85":".6");
+  c.setAttribute("stroke","var(--surface-1)");c.setAttribute("stroke-width","1");
+  if(!documented){c.setAttribute("stroke","var(--ink-2)");
+    c.setAttribute("stroke-dasharray","2 2");c.setAttribute("fill-opacity",".35");}
+  g.appendChild(c);
+  const hit=document.createElementNS(NS,"circle");
+  hit.setAttribute("r",Math.max(r,6));hit.setAttribute("fill","transparent");
+  hit.style.cursor="pointer";g.appendChild(hit);
+  tip(hit,()=>{
+   let h=`<div class="hd"><b>${(d||{}).name||iso}</b><span class="hint">${
+     q?"click to pin · sources":"conditions only"}</span></div><div class="bd">`;
+   if(q){const [cls,lab]=QB[q.status];
+    h+=`<div class="blk"><div class="ttl"><span class="cd">${cc}. ${D.qlabels[cc]}</span>`+
+      `<span class="badge ${cls}">${lab}</span></div>`+
+      (q.scale?`<div><span class="scale">${fmt(q.scale)}</span> people</div>`:``)+
+      `<div class="ev" style="font-size:12.5px">${q.summary}</div>`+
+      (q.quote?`<div class="qt">\u201C${q.quote}\u201D</div>`:``)+
+      (q.example?`<div class="ex"><b>Enumerator example</b>\u201C${q.example}\u201D</div>`:``)+
+      (q.sources.length?`<div class="src">`+q.sources.map(x=>
+        `<a href="${x.u}" target="_blank" rel="noopener">${x.l}</a>`).join(" · ")+`</div>`:``)+
+      `</div>`;}
+   return h+vdemBlock(iso)+`</div>`;}, iso);
+  layer.appendChild(g);});
+ applyT();
+ document.getElementById('key').innerHTML =
+  `<span><i style="background:var(--c2)"></i>Documented displacement from this cause</span>`+
+  `<span><i style="background:var(--unattr);border:1.3px dashed var(--ink-2)"></i>`+
+  `V-Dem conditions only — size = severity</span>`+
+  `<span style="color:var(--muted)">no displacement count exists for this code anywhere</span>`;
+ document.getElementById('anchor').innerHTML =
+  `<b style="color:var(--c2)">No database counts people displaced by this cause.</b> `+
+  `Filled circles are the twenty countries with documented research; dashed circles are `+
+  `V-Dem's reading of whether the condition exists, sized by severity.`;
+ document.getElementById('modenote').innerHTML="<b>What you are looking at.</b> "+
+  `Code ${cc} has no per-country displacement figure in IDMC, UNHCR, ACLED or UCDP \u2014 `+
+  `no agency counts it. Rather than invent a magnitude, this view shows the evidence that `+
+  `does exist: documented displacement from human rights investigations, and V-Dem's `+
+  `measure of whether the condition is present. That asymmetry is the finding.`;
+ document.getElementById('tbl').innerHTML="";
+}
+
+function showProfile(iso){
+ const d=D.data[iso]; if(!d)return;
+ const el=document.getElementById('profile');
+ const g=D.gedc[iso]||[], a1=D.geda1[iso]||[], dis=D.dis[iso], q=D.qual[iso];
+ const idp=d.stock||{}, ref=d.refugees||{};
+ const sum=o=>C.reduce((x,c)=>x+((o||{})[String(c)]||0),0);
+ const bar=(o,lbl)=>{const t=sum(o); if(t<=0)return"";
+  return `<div style="margin-bottom:8px"><b style="font-size:12.5px">${lbl} — ${fmt(t)}</b>`+
+   `<div style="display:flex;height:9px;border-radius:3px;overflow:hidden;margin-top:4px;gap:1px">`+
+   C.filter(c=>o[String(c)]>0).map(c=>`<div title="${L[c]}" style="width:${
+     (o[String(c)]/t*100).toFixed(1)}%;background:${
+     c===7?'var(--ink-2)':(c===0||c===9)?'var(--unattr)':COL[c]}"></div>`).join("")+`</div>`+
+   `<div style="font-size:11.5px;color:var(--ink-2);margin-top:4px">`+
+   C.filter(c=>o[String(c)]>0).sort((x,y)=>o[String(y)]-o[String(x)]).map(c=>
+    `<span style="margin-right:12px"><i class="dot" style="background:${
+     c===7?'var(--ink-2)':(c===0||c===9)?'var(--unattr)':COL[c]}"></i>${L[c]} ${fmt(o[String(c)])}</span>`
+   ).join("")+`</div></div>`;};
+
+ let h=`<div class="ph"><h2>${d.name}</h2>`+
+  `<span class="tot">${fmt(sum(idp)+sum(ref))} displaced · `+
+  `${fmt(sum(idp))} IDPs · ${fmt(sum(ref))} refugees hosted</span>`+
+  `<button class="close" id="pclose">Close</button></div>`;
+
+ h+=`<div class="psec">${bar(idp,"IDPs displaced inside this country")}${
+   bar(ref,"Refugees and asylum seekers hosted here")}</div>`;
+
+ h+=`<div class="pgrid"><div>`;
+ if(g.length){
+  h+=`<div class="psec"><h3>Named conflicts — UCDP GED</h3><table class="pt">`+
+   `<thead><tr><th>Conflict</th><th>Parties</th><th class="n">Years</th>`+
+   `<th class="n">Deaths</th><th class="n">Regions</th></tr></thead><tbody>`+
+   g.map(c=>`<tr><td><b>${c.conflict}</b></td><td>${c.dyad}</td>`+
+    `<td class="n">${c.first}–${c.last}</td><td class="n">${fmt(c.deaths)}</td>`+
+    `<td class="n">${c.adm1s}</td></tr>`).join("")+`</tbody></table></div>`;}
+ if(dis&&dis.top.length){
+  h+=`<div class="psec"><h3>Named disaster events — IDMC</h3>`+
+   `<div style="font-size:12.5px;color:var(--ink-2);margin-bottom:6px">`+
+   `${dis.n_events} events, ${fmt(dis.total)} displaced</div><table class="pt">`+
+   `<thead><tr><th>Event</th><th class="n">Date</th><th class="n">Displaced</th></tr></thead><tbody>`+
+   dis.top.map(t=>`<tr><td><b>${t.name}</b></td><td class="n">${t.start||"—"}</td>`+
+    `<td class="n">${fmt(t.people)}</td></tr>`).join("")+`</tbody></table></div>`;}
+ h+=`</div><div>`;
+ if(a1.length){
+  h+=`<div class="psec"><h3>Where within the country — GED admin1</h3><table class="pt">`+
+   `<thead><tr><th>Region</th><th>Dominant cause</th><th class="n">Deaths</th>`+
+   `<th class="n">Events</th></tr></thead><tbody>`+
+   a1.map(r=>`<tr><td><b>${r.a}</b><div style="font-size:11px;color:var(--muted)">${r.k}</div></td>`+
+    `<td><i class="dot" style="background:${colr(r.c)}"></i>${lab(r.c)}</td>`+
+    `<td class="n">${fmt(r.d)}</td><td class="n">${fmt(r.e)}</td></tr>`).join("")+
+   `</tbody></table><div style="font-size:11.5px;color:var(--muted);margin-top:6px">`+
+   `Conflict deaths, not displacement. Shows where within the country the violence `+
+   `happened — the basis for adapting enumerator materials below national level.</div></div>`;}
+ if(q){
+  h+=`<div class="psec"><h3>Documented evidence — codes 3, 4, 7</h3>`;
+  [3,4,7].forEach(cc=>{const e=q[String(cc)]; if(!e)return;
+   const [cls,lab]=QB[e.status];
+   h+=`<div style="margin-bottom:9px"><span class="badge ${cls}">${lab}</span> `+
+    `<b style="font-size:12.5px">${cc}. ${D.qlabels[cc]}</b>`+
+    (e.scale?` <b>${fmt(e.scale)}</b>`:``)+
+    `<div style="font-size:12.5px;color:var(--ink-2);margin-top:3px">${e.summary}</div>`+
+    (e.example?`<div class="ex" style="margin-top:5px"><b>Enumerator example</b>\u201C${e.example}\u201D</div>`:``)+
+    (e.sources.length?`<div class="src">`+e.sources.map(x=>
+      `<a href="${x.u}" target="_blank" rel="noopener">${x.l}</a>`).join(" · ")+`</div>`:``)+
+    `</div>`;});
+  h+=`</div>`;}
+ h+=`</div></div>`;
+ el.innerHTML=h; el.hidden=false;
+ document.getElementById('pclose').addEventListener('click',ev=>{
+   ev.stopPropagation(); el.hidden=true;});
+ el.scrollIntoView({behavior:"smooth",block:"nearest"});
+}
+
+function draw(){
+ layer.innerHTML="";
+ if(MODE==="sub"){drawSub();return;}
+ if(CAUSE!=="all"&&NO_COUNT.includes(CAUSE)&&MODE!=="flows"){drawEvidenceCause(CAUSE);return;}
+ if(MODE==="flows"){
+  drawFlows(); applyT();
+  document.getElementById('key').innerHTML =
+   C.filter(c=>c!==0).map(c=>`<span><i style="background:${SWATCH[c]};${c===7
+     ?'border:1px solid var(--grid)':''}"></i>${L[c]}</span>`).join('')+
+   `<span style="color:var(--muted)">arrow width \u221d number of people · `+
+   `colour = dominant cause in the origin country</span>`;
+  document.getElementById('anchor').innerHTML =
+   `<b style="color:var(--c2)">Arrows run FROM where people fled TO where they are hosted.</b>`;
+  document.getElementById('modenote').innerHTML="<b>What you are looking at.</b> "+notes.flows;
+  const rank=D.flows.slice(0,20);
+  document.getElementById('tbl').innerHTML=
+   `<thead><tr><th>From</th><th>To</th><th>People</th><th>Dominant cause in origin</th></tr></thead>`+
+   `<tbody>`+rank.map(f=>`<tr><td>${f.on}</td><td>${f.an}</td>`+
+    `<td><b>${fmt(f.n)}</b></td><td style="color:var(--ink-2)">${f.code?L[f.code]:"\u2014"}</td></tr>`)
+    .join('')+`</tbody>`;
+  return;}
+ // scale from the all-causes total, never from the selected cause's own maximum
+ let max=0;
+ D.geo.forEach(f=>{const d=f.iso3&&D.data[f.iso3];if(d)max=Math.max(max,valsAll(d)[1]);});
+ if(!max)max=1;
+ // area-proportional: radius scales with the square root of the population
+ // no additive floor when a single cause is selected: a country with almost
+ // nothing from that cause SHOULD render as almost nothing
+ const R=t=>(CAUSE==="all"?2.2:0.6)+13*Math.sqrt(t/max);
+
+ D.geo.forEach(f=>{
+  const d=f.iso3&&D.data[f.iso3]; if(!d||!f.c)return;
+  const [parts,total]=vals(d);
+  if(total<=0){
+   if(!(EVID&&D.qual[f.iso3]))return;
+   // researched but nothing counted in this view - show the ring alone, which is
+   // itself the finding: documented displacement that no database carries
+   const g0=document.createElementNS(NS,"g");
+   g0.dataset.base=`translate(${px(f.c[0]).toFixed(1)},${py(f.c[1]).toFixed(1)})`;
+   g0.setAttribute("transform",g0.dataset.base);
+   const ring=document.createElementNS(NS,"circle");
+   ring.setAttribute("class","ring"); ring.setAttribute("r","5");
+   g0.appendChild(ring);
+   const h0=document.createElementNS(NS,"circle");
+   h0.setAttribute("r","8"); h0.setAttribute("fill","transparent");
+   h0.style.cursor="pointer"; g0.appendChild(h0);
+   const iso0=f.iso3;
+   tip(h0,()=>{
+    const q=D.qual[iso0]; let h=`<div class="hd"><b>${d.name}</b>`+
+      `<span class="hint">click for full profile</span></div><div class="bd">`+
+      `<div class="blk" style="color:var(--muted)">Nothing counted in this view.</div>`;
+    [3,4,7].forEach(cc=>{
+     const e=q[String(cc)]; if(!e)return;
+     const [cls,lab]=QB[e.status];
+     h+=`<div class="blk"><div class="ttl"><span class="cd">${cc}. ${D.qlabels[cc]}</span>`+
+        `<span class="badge ${cls}">${lab}</span></div>`;
+     if(e.scale)h+=`<div><span class="scale">${fmt(e.scale)}</span> people</div>`;
+     h+=`<div class="ev" style="font-size:12.5px">${e.summary}</div>`;
+     if(e.quote)h+=`<div class="qt">\u201C${e.quote}\u201D</div>`;
+     if(e.example)h+=`<div class="ex"><b>Enumerator example</b>\u201C${e.example}\u201D</div>`;
+     if(e.sources.length)h+=`<div class="src">`+e.sources.map(s=>
+        `<a href="${s.u}" target="_blank" rel="noopener">${s.l}</a>`).join(" · ")+`</div>`;
+     h+=`</div>`;});
+    return h+`</div>`;}, iso0);
+   layer.appendChild(g0);
+   return;}
+  const cx=px(f.c[0]), cy=py(f.c[1]), r=R(total);
+  const g=document.createElementNS(NS,"g");
+  g.dataset.base=`translate(${cx.toFixed(1)},${cy.toFixed(1)})`;
+  g.setAttribute("transform",g.dataset.base);
+
+  if(MODE==="both"){
+   // area-true nesting: inner disc area is proportional to the IDP count, the
+   // annulus to the hosted refugee count, so the two populations are comparable
+   // by eye and the whole circle is the total displaced population present.
+   let idp=d.stock||{}, ref=d.refugees||{};
+   if(CAUSE!=="all"){   // the ring renderer must honour the cause filter too
+     const pick=o=>{const r={}; if(o[CAUSE])r[CAUSE]=o[CAUSE]; return r;};
+     idp=pick(idp); ref=pick(ref);}
+   const idpT=C.reduce((a,c)=>a+(idp[String(c)]||0),0);
+   const rIn=r*Math.sqrt(Math.max(0,Math.min(1,idpT/total)));
+   const arcs=(obj,r0,r1)=>{
+     const tot=C.reduce((a,c)=>a+(obj[String(c)]||0),0); if(tot<=0||r1<=r0)return;
+     const present=C.filter(c=>(obj[String(c)]||0)>0);
+     if(present.length===1){
+      // A single slice is a full circle, and an SVG arc cannot draw one - its
+      // start and end points coincide and the path collapses to nothing. Draw
+      // a disc (or a ring, via even-odd fill) instead.
+      const c=present[0];
+      const p=document.createElementNS(NS,"path");
+      const circ=(rr)=>`M0,${(-rr).toFixed(2)} A${rr.toFixed(2)},${rr.toFixed(2)} 0 1 1 0,${rr.toFixed(2)} `+
+                       `A${rr.toFixed(2)},${rr.toFixed(2)} 0 1 1 0,${(-rr).toFixed(2)} Z`;
+      p.setAttribute("d", r0<=0.01 ? circ(r1) : circ(r1)+circ(r0));
+      p.setAttribute("fill-rule","evenodd");
+      p.setAttribute("fill",COL[c]);p.setAttribute("fill-opacity",".88");
+      p.setAttribute("stroke","var(--surface-1)");p.setAttribute("stroke-width","0.6");
+      g.appendChild(p); return;}
+     let a0=-Math.PI/2;
+     C.forEach(c=>{const n=obj[String(c)]||0; if(n<=0)return;
+      const a1=a0+2*Math.PI*(n/tot);
+      const big=(a1-a0)>Math.PI?1:0;
+      const p=document.createElementNS(NS,"path");
+      if(r0<=0.01){
+       p.setAttribute("d",`M0,0 L${(r1*Math.cos(a0)).toFixed(2)},${(r1*Math.sin(a0)).toFixed(2)} `+
+        `A${r1.toFixed(2)},${r1.toFixed(2)} 0 ${big} 1 ${(r1*Math.cos(a1)).toFixed(2)},${(r1*Math.sin(a1)).toFixed(2)} Z`);
+      } else {
+       p.setAttribute("d",
+        `M${(r0*Math.cos(a0)).toFixed(2)},${(r0*Math.sin(a0)).toFixed(2)} `+
+        `L${(r1*Math.cos(a0)).toFixed(2)},${(r1*Math.sin(a0)).toFixed(2)} `+
+        `A${r1.toFixed(2)},${r1.toFixed(2)} 0 ${big} 1 ${(r1*Math.cos(a1)).toFixed(2)},${(r1*Math.sin(a1)).toFixed(2)} `+
+        `L${(r0*Math.cos(a1)).toFixed(2)},${(r0*Math.sin(a1)).toFixed(2)} `+
+        `A${r0.toFixed(2)},${r0.toFixed(2)} 0 ${big} 0 ${(r0*Math.cos(a0)).toFixed(2)},${(r0*Math.sin(a0)).toFixed(2)} Z`);}
+      p.setAttribute("fill",COL[c]);p.setAttribute("fill-opacity",".88");
+      p.setAttribute("stroke","var(--surface-1)");p.setAttribute("stroke-width","0.6");
+      g.appendChild(p); a0=a1;});};
+   arcs(idp,0,rIn);
+   arcs(ref,rIn+0.5,r);
+   if(rIn>0.5&&rIn<r-0.5){
+    const sep=document.createElementNS(NS,"circle");
+    sep.setAttribute("r",rIn.toFixed(2));sep.setAttribute("fill","none");
+    sep.setAttribute("stroke","var(--surface-1)");sep.setAttribute("stroke-width","1.1");
+    g.appendChild(sep);}
+  } else if(SHAPE==="bubble"||parts.length===1){
+   const dom=parts.slice().sort((a,b)=>b[1]-a[1])[0][0];
+   const c=document.createElementNS(NS,"circle");
+   c.setAttribute("r",r.toFixed(2));c.setAttribute("fill",COL[dom]);
+   c.setAttribute("fill-opacity",".82");
+   c.setAttribute("stroke","var(--surface-1)");c.setAttribute("stroke-width","1");
+   g.appendChild(c);
+  } else {
+   let a0=-Math.PI/2;
+   parts.forEach(([c,n])=>{
+    const a1=a0+2*Math.PI*(n/total);
+    const x0=r*Math.cos(a0),y0=r*Math.sin(a0),x1=r*Math.cos(a1),y1=r*Math.sin(a1);
+    const big=(a1-a0)>Math.PI?1:0;
+    const p=document.createElementNS(NS,"path");
+    p.setAttribute("d",`M0,0 L${x0.toFixed(2)},${y0.toFixed(2)} `+
+      `A${r.toFixed(2)},${r.toFixed(2)} 0 ${big} 1 ${x1.toFixed(2)},${y1.toFixed(2)} Z`);
+    p.setAttribute("fill",COL[c]);p.setAttribute("fill-opacity",".88");
+    p.setAttribute("stroke","var(--surface-1)");p.setAttribute("stroke-width","0.7");
+    g.appendChild(p); a0=a1;});
+  }
+  if(EVID&&D.qual[f.iso3]){
+   const ring=document.createElementNS(NS,"circle");
+   ring.setAttribute("class","ring");
+   ring.setAttribute("r",(Math.max(r,3.4)+3.4).toFixed(2));
+   g.appendChild(ring);}
+  const hit=document.createElementNS(NS,"circle");
+  hit.setAttribute("r",Math.max(r,5).toFixed(2));hit.setAttribute("fill","transparent");
+  hit.style.cursor="pointer";g.appendChild(hit);
+
+  let rows;
+  if(MODE==="both"){
+   let idp=d.stock||{}, ref=d.refugees||{};
+   if(CAUSE!=="all"){   // the ring renderer must honour the cause filter too
+     const pick=o=>{const r={}; if(o[CAUSE])r[CAUSE]=o[CAUSE]; return r;};
+     idp=pick(idp); ref=pick(ref);}
+   const sum=o=>C.reduce((a,c)=>a+(o[String(c)]||0),0);
+   const line=(o,lbl)=>{const t=sum(o); if(t<=0)return"";
+     return `<div style="margin-top:5px"><b>${lbl} — ${fmt(t)}</b></div>`+
+      C.filter(c=>o[String(c)]>0).sort((a,b)=>o[String(b)]-o[String(a)])
+       .map(c=>`<div class="ev" style="font-size:12px"><b style="color:${
+         c===7||c===0||c===9?'var(--ink-2)':COL[c]}">${c===7?'▨':(c===0||c===9)?'▩':'■'}</b> ${L[c]} — `+
+         `${fmt(o[String(c)])} (${Math.round(o[String(c)]/t*100)}%)</div>`).join("");};
+   rows=line(idp,"IDPs displaced inside this country")+
+        line(ref,"Refugees and asylum seekers hosted here");
+   if(d.origins.length)rows+=`<hr><div class="ev"><b>Refugee origins:</b> `+
+     d.origins.map(o=>`${o.name} ${fmt(o.n)}`).join(" · ")+`</div>`;
+   rows+=`<div class="ev" style="margin-top:5px">Inner disc = IDPs, outer ring = refugees; `+
+     `areas are proportional so the two are comparable by eye.</div>`;
+  } else rows=parts.slice().sort((a,b)=>b[1]-a[1]).map(([c,n])=>{
+    let s=`<div><b style="color:${c===7||c===0||c===9?'var(--ink-2)':COL[c]}">`+
+          `${c===7?'▨':(c===0||c===9)?'▩':'■'}</b> ${L[c]} — <b>${fmt(n)}</b> `+
+          `(${Math.round(n/total*100)}%)</div>`;
+    const evs=(d.events[String(c)]||[]).slice(0,3);
+    if(evs.length&&MODE!=="refugees")
+      s+=`<div class="ev">`+evs.map(e=>`· ${e.l} — ${fmt(e.n)}`).join("<br>")+`</div>`;
+    return s;}).join("");
+  if(MODE==="period"&&d.peak){
+    rows=`<div><b style="color:${COL[1]}">■</b> <b>${fmt(d.peak.cumulative)}</b> people `+
+      `displaced by conflict across ${d.peak.first_year}\u2013${d.peak.latest_year}</div>`+
+      `<div class="ev">Peaked at ${fmt(d.peak.peak)} in ${d.peak.peak_year} · `+
+      `${fmt(d.peak.latest)} still displaced in ${d.peak.latest_year}</div>`+
+      spark(d.series,220,34)+
+      `<div class="ev">Estimated as the ${d.peak.first_year} stock plus every subsequent `+
+      `year-on-year increase, so nobody still displaced from the previous year is counted `+
+      `twice. It undercounts people who returned and fled again within a single year. `+
+      `Conflict only \u2014 no disaster series exists for this period.</div>`;}
+  if(MODE==="refugees"&&d.origins.length)
+    rows+=`<hr><div class="ev"><b>Origins:</b> `+
+      d.origins.map(o=>`${o.name} ${fmt(o.n)}`).join(" · ")+`</div>`;
+  const iso=f.iso3;
+  tip(hit,()=>{
+   const q=EVID?D.qual[iso]:null;
+   if(!q) return `<b>${d.name}</b> — ${fmt(total)} people`+
+     (MODE==="period"?` in total`:``)+`<hr>${rows}`;
+   let h=`<div class="hd"><b>${d.name}</b><span class="hint">click for full profile</span></div>`+
+     `<div class="bd"><div class="blk"><div class="ttl"><span class="cd">Counted \u2014 `+
+     `${fmt(total)} people</span></div>${rows}</div>`+
+     ucdpBlock(iso)+disasterBlock(iso);
+   [3,4,7].forEach(cc=>{
+    const e=q[String(cc)]; if(!e)return;
+    const [cls,lab]=QB[e.status];
+    h+=`<div class="blk"><div class="ttl"><span class="cd">${cc}. ${D.qlabels[cc]}</span>`+
+       `<span class="badge ${cls}">${lab}</span></div>`;
+    if(e.scale)h+=`<div><span class="scale">${fmt(e.scale)}</span> people `+
+       `<span style="color:var(--muted)">(where a source gives a figure)</span></div>`;
+    h+=`<div class="ev" style="font-size:12.5px">${e.summary}</div>`;
+    if(e.quote)h+=`<div class="qt">\u201C${e.quote}\u201D</div>`;
+    if(e.example)h+=`<div class="ex"><b>Enumerator example</b>\u201C${e.example}\u201D</div>`;
+    if(e.sources.length)h+=`<div class="src">`+e.sources.map(s=>
+       `<a href="${s.u}" target="_blank" rel="noopener">${s.l}</a>`).join(" · ")+`</div>`;
+    h+=`</div>`;});
+   return h+vdemBlock(iso)+`</div>`;}, iso);
+  layer.appendChild(g);});
+ applyT();
+ document.getElementById('key').innerHTML =
+  C.map(c=>`<span><i style="background:${SWATCH[c]};${c===7
+    ?'border:1px solid var(--grid)':''}"></i>${L[c]}</span>`).join('')+
+  `<span style="color:var(--muted)">circle area ∝ number of people</span>`+
+  (EVID?`<span><i style="background:transparent;border:1.3px dashed var(--ink-2)"></i>`+
+        `documented evidence for codes 3, 4 or 7 — hover for it</span>`:``);
+ notes={period:"IDMC's conflict-displacement stock for every year from 1990, shipped "+
+   "with UNHCR's <code>refugees</code> package. Circles are sized by each country's PEAK "+
+   "displaced population over the period, and the tooltip traces the whole trajectory. "+
+   "<b>Conflict only</b> — this series carries no disaster split. To get the whole "+
+   "period broken down by cause, the all-years IDMC GIDD export is needed; the file "+
+   "currently loaded covers "+D.period+" only.",
+  stock:"People still displaced inside their own country at the end of 2025 — "+
+   "the population a household survey there would actually encounter.",
+  flow:"Displacements recorded across "+D.period+", summed. A person displaced twice is "+
+   "counted twice, "+
+   "and short pre-emptive evacuations are included, which inflates the disaster share "+
+   "relative to what a respondent would call having to flee a home.",
+  refugees:"Refugees and asylum seekers hosted, each attributed to the cause mix of their "+
+   "origin country. This is the view that matters for designing a showcard in a host "+
+   "country, because the causing events happened somewhere else. <b>Treat the disaster "+
+   "slice with suspicion:</b> it assumes people cross a border for the same reasons that "+
+   "displace people internally, and crossing a border to seek protection is far more "+
+   "strongly selected on conflict and persecution than internal movement is. The conflict "+
+   "share here is more likely understated than overstated."};
+ document.getElementById('anchor').innerHTML = MODE==="both"
+   ? `<b>Circles sit on the country where a survey would be fielded.</b> Inner disc = IDPs `+
+     `displaced there; outer ring = refugees hosted there, displaced elsewhere.`
+   : MODE==="refugees"
+   ? `<b style="color:var(--c2)">Circles sit on the country HOSTING these people</b> — `+
+     `not where the displacement was caused.`
+   : `Circles sit on the country where the displacement happened.`;
+ if(CAUSE!=="all"){
+   document.getElementById('key').innerHTML =
+    `<span><i style="background:${SWATCH[CAUSE]||'var(--unattr)'}"></i>${L[CAUSE]}</span>`+
+    `<span style="color:var(--muted)">circle area \u221d people displaced by this cause `+
+    `\u2014 same scale as every other cause, so sizes are comparable</span>`;
+ }
+ document.getElementById('modenote').innerHTML="<b>What you are looking at.</b> "+
+  (CAUSE!=="all"?`Showing <b>${L[CAUSE]}</b> only. Circles are on the SAME scale as the `+
+   `all-causes view, so they shrink to the share this one cause accounts for \u2014 `+
+   `switch between causes and compare how much the map empties out. `:``)+notes[MODE]+
+  (ATTR?` <b>Unknowns attributed.</b> IDMC's "conflict, type not recorded" band has been `+
+    `reallocated to armed conflict or widespread violence using each country's own observed `+
+    `ratio where it has one, and UCDP's record of whether a state-based conflict was running `+
+    `where it does not. All 6.45m of the unattributed IDP stock resolves this way. These `+
+    `figures are <b>imputed, not recorded</b> — the tooltip states the method per country.`:``)+
+  (EVID?` <b>Evidence layer on.</b> Every country now carries a V-Dem reading of whether `+
+    `persecution and state repression exist there \u2014 hover the land, not just the circle. `+
+    `Ringed countries additionally carry documented displacement from `+
+    `persecution, state abuse or man-made events \u2014 none of which any displacement `+
+    `database counts. Somalia alone documents 1.5m people affected by forced eviction `+
+    `(2018\u20132024), against 696k for man-made events in the entire global dataset.`:``);
+
+ const rank=Object.entries(D.data).map(([iso,d])=>{const[p,t]=vals(d);return{iso,d,p,t};})
+   .filter(x=>x.t>0).sort((a,b)=>b.t-a.t).slice(0,20);
+ document.getElementById('tbl').innerHTML=
+  `<thead><tr><th>Country</th><th>${MODE==="both"?"Split":"Largest recorded event"}</th>`+
+  `<th>Total</th>`+
+  C.map(c=>`<th>${c===0?"Unattrib.":L[c].split(" ")[0]}</th>`).join('')+`</tr></thead><tbody>`+
+  rank.map(x=>{
+   const top=x.p.slice().sort((a,b)=>b[1]-a[1])[0][0];
+   const ev=(x.d.events[String(top)]||[])[0];
+   if(MODE==="both"){
+    const sum=o=>C.reduce((a,c)=>a+((o||{})[String(c)]||0),0);
+    return `<tr><td>${x.d.name}</td><td style="color:var(--ink-2)">`+
+     `${fmt(sum(x.d.stock))} IDPs · ${fmt(sum(x.d.refugees))} refugees</td>`+
+     `<td><b>${fmt(x.t)}</b></td>`+
+     C.map(c=>{const n=((x.d.stock||{})[String(c)]||0)+((x.d.refugees||{})[String(c)]||0);
+       return `<td>${n?fmt(n):'<span style="color:var(--muted)">—</span>'}</td>`;}).join('')+
+     `</tr>`;}
+   const desc = MODE==="period" ? (x.d.peak?`peaked ${fmt(x.d.peak.peak)} in ${x.d.peak.peak_year}`:"—")
+     : MODE==="refugees" ? (x.d.origins[0]?"from "+x.d.origins[0].name:"—")
+     : (ev?ev.l:"—");
+   return `<tr><td>${x.d.name}</td><td style="color:var(--ink-2)">${desc}</td>`+
+    `<td><b>${fmt(x.t)}</b></td>`+
+    C.map(c=>{const n=MODE==="period"?(c===1&&x.d.peak?x.d.peak.n:0)
+        :((x.d[MODE]||{})[String(c)]||0);
+      return `<td>${n?fmt(n):'<span style="color:var(--muted)">—</span>'}</td>`;}).join('')+
+    `</tr>`;}).join('')+`</tbody>`;
+}
+
+function applyT(){root.setAttribute("transform",`translate(${TX},${TY}) scale(${Z})`);
+ layer.querySelectorAll("g").forEach(g=>{
+  if(g.dataset.base)g.setAttribute("transform",g.dataset.base+` scale(${(1/Z).toFixed(3)})`);});}
+map.addEventListener("wheel",e=>{e.preventDefault();
+ const r=map.getBoundingClientRect();
+ const mx=(e.clientX-r.left)/r.width*W,my=(e.clientY-r.top)/r.height*H;
+ const f=e.deltaY<0?1.18:1/1.18,nz=Math.min(12,Math.max(1,Z*f));
+ TX=mx-(mx-TX)*(nz/Z);TY=my-(my-TY)*(nz/Z);Z=nz;
+ if(Z===1){TX=0;TY=0;}applyT();},{passive:false});
+let drag=null;
+map.addEventListener("mousedown",e=>{drag=[e.clientX,e.clientY,TX,TY];});
+addEventListener("mouseup",()=>drag=null);
+addEventListener("mousemove",e=>{if(!drag)return;const r=map.getBoundingClientRect();
+ TX=drag[2]+(e.clientX-drag[0])/r.width*W;TY=drag[3]+(e.clientY-drag[1])/r.height*H;applyT();});
+
+document.querySelectorAll('.cz').forEach(b=>b.addEventListener('click',e=>{
+ e.stopPropagation();
+ document.querySelectorAll('.cz').forEach(x=>x.classList.remove('on'));
+ b.classList.add('on');CAUSE=b.dataset.c;unpin();draw();}));
+document.querySelectorAll('.mode').forEach(b=>b.addEventListener('click',()=>{
+ document.querySelectorAll('.mode').forEach(x=>x.classList.remove('on'));
+ b.classList.add('on');MODE=b.dataset.m;draw();}));
+LANDS.forEach(p=>{
+ const iso=p.dataset.iso; if(!iso)return;
+ p.addEventListener('mousemove',e=>{
+  if(PIN||!EVID||!D.vdem[iso])return;
+  const nm=(D.data[iso]||{}).name||D.vdem[iso].name;
+  tt.className='wide';
+  tt.innerHTML=`<div class="hd"><b>${nm}</b><span class="hint">conditions only</span></div>`+
+    `<div class="bd">${ucdpBlock(iso)}${disasterBlock(iso)}${vdemBlock(iso)}`+
+    (D.qual[iso]?``:`<div class="blk" style="color:var(--muted)">Not among the twenty `+
+      `countries with documented displacement research.</div>`)+`</div>`;
+  tt.style.opacity=1; place(e,true);});
+ p.addEventListener('mouseleave',()=>{if(!PIN)tt.style.opacity=0;});});
+
+document.getElementById('attr').addEventListener('click',e=>{
+ e.stopPropagation(); ATTR=!ATTR; unpin();
+ e.target.textContent=ATTR?"Attribute unknowns via UCDP  \u2713":"Attribute unknowns via UCDP";
+ e.target.classList.toggle('on',ATTR); draw();});
+document.getElementById('helpbtn').addEventListener('click',e=>{
+ e.stopPropagation(); const h=document.getElementById('help');
+ h.hidden=!h.hidden; e.target.classList.toggle('on',!h.hidden);
+ e.target.textContent=h.hidden?"What am I looking at?":"Hide explanation";});
+document.getElementById('evid').addEventListener('click',e=>{
+ e.stopPropagation(); EVID=!EVID; unpin();
+ e.target.textContent=EVID?"Documented evidence for codes 3, 4 and 7  \u2713"
+                          :"Documented evidence for codes 3, 4 and 7";
+ e.target.classList.toggle('on',EVID); draw();});
+document.getElementById('shape').addEventListener('click',e=>{
+ e.stopPropagation(); SHAPE=SHAPE==="pie"?"bubble":"pie";
+ e.target.textContent=SHAPE==="pie"?"Single bubbles":"Pie charts";draw();});
+document.getElementById('reset').addEventListener('click',()=>{Z=1;TX=0;TY=0;applyT();});
+document.getElementById('theme').addEventListener('click',()=>{
+ const c=document.documentElement.getAttribute('data-theme');
+ document.documentElement.setAttribute('data-theme',c==='dark'?'light':'dark');});
+draw();
+</script></body></html>"""
+
+if __name__ == "__main__":
+    main()
