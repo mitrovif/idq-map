@@ -30,3 +30,7 @@ __pycache__/
 .venv/
 venv/
 .DS_Store
+
+# IOM DTM pulls, fetched with a personal subscription key. IOM's terms require
+# the key to stay private; the data itself is also not ours to redistribute.
+data/raw/dtm/

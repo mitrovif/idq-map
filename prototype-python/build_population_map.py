@@ -242,6 +242,31 @@ def main():
     print(f"  {len(flows)} refugee movements over 25,000 people")
 
     vdem = json.load(open(f"{TIDY}/vdem_severity.json"))
+    # IOM DTM: the only evidence here that comes from displaced people rather
+    # than from an analyst reading an event. Kept in its own key and never
+    # merged with the attributed causes - it is a check on them, not a part.
+    dtm = {}
+    try:
+        dd = pd.read_parquet(f"{TIDY}/dtm_reported.parquet")
+        cmpf = f"{OUT}/dtm_reported_vs_attributed.csv"
+        verdict = {}
+        if os.path.exists(cmpf):
+            cv = pd.read_csv(cmpf)
+            verdict = {r.iso3: str(r.disagreement) for r in cv.itertuples()
+                       if isinstance(getattr(r, "iso3", None), str)}
+        for iso, g in dd.groupby("iso3"):
+            rec = {"total": float(g.people.sum()), "by": {}, "econ": 0.0,
+                   "composite": bool(g.composite.any()),
+                   "verdict": verdict.get(iso)}
+            for r in g.itertuples():
+                if pd.isna(r.code_id):
+                    rec["econ"] += float(r.people)
+                else:
+                    rec["by"][str(int(r.code_id))] = float(r.people)
+            dtm[iso] = rec
+        print(f"  DTM reported reasons: {len(dtm)} countries")
+    except FileNotFoundError:
+        print("  DTM reported reasons: not present - run build_dtm.py")
     # The showcard recommendation IS the question the paper asks - which options
     # belong in front of a respondent here, and what worked examples go with them.
     # It was being written to CSV and never shown, so the dashboard answered
@@ -304,7 +329,7 @@ def main():
         ev = {}
         print("  events layer: events.json missing - run build_events.py")
     payload = dict(data=data, geo=feats, causes=CAUSES, labels=LABEL, flows=flows,
-                   coverage=cov, ev=ev, sc=sc, public=PUBLIC,
+                   coverage=cov, ev=ev, sc=sc, dtm=dtm, public=PUBLIC,
                    vdem=vdem, ucdp=ucdp, dis=disasters, gedc=gedc, geda1=geda1, pts=points,
                    year=latest, period=period, multiyear=len(yrs) > 1,
                    qual=qual,
@@ -1455,6 +1480,47 @@ function showProfile(iso){
     `</div><div style="font-size:11.5px;color:var(--muted);margin-top:5px">`+
     `How often things happened, not how many people moved. Codes 4 and 5 appear here `+
     `and in no displacement count anywhere.</div></div>`;}}
+
+ // IOM DTM — what people said, not what a monitor inferred. Deliberately the
+ // last bar and visually separated: it is a CHECK on the two above it, measured
+ // on a different population, and must never be read as a third estimate of the
+ // same thing.
+ const dt=D.dtm&&D.dtm[iso];
+ if(dt&&dt.total>0){
+  const V={boundary:["var(--c2)","People and sources disagree about WHICH violence option — "+
+     "the distinction the questions ask respondents to draw"],
+    caseload:["var(--muted)","Different caseloads rather than different labels: DTM tracks "+
+     "protracted conflict displacement, the IDMC file here covers recent flows"],
+    unreported:["var(--muted)","One side has no cause recorded at all"],
+    agree:["var(--c6)","People's own answers agree with what we attributed"]};
+  const vv=V[dt.verdict]||null;
+  const keys=Object.keys(dt.by).filter(c=>dt.by[c]>0);
+  const t2=keys.reduce((a,c)=>a+dt.by[c],0)+dt.econ;
+  h+=`<div style="margin-top:14px;padding-top:12px;border-top:2px solid var(--grid)">`+
+   `<b style="font-size:12.5px">What displaced people themselves said — ${fmt(t2)}</b>`+
+   `<div style="display:flex;height:9px;border-radius:3px;overflow:hidden;margin-top:4px;gap:1px">`+
+   keys.map(c=>`<div title="${lab(+c)}" style="width:${(dt.by[c]/t2*100).toFixed(1)}%;`+
+     `background:${colr(+c)}"></div>`).join("")+
+   (dt.econ?`<div title="Economic reasons" style="width:${(dt.econ/t2*100).toFixed(1)}%;`+
+     `background:repeating-linear-gradient(45deg,var(--muted) 0 2px,transparent 2px 5px)"></div>`:``)+
+   `</div><div style="font-size:11.5px;color:var(--ink-2);margin-top:4px">`+
+   keys.sort((a,b)=>dt.by[b]-dt.by[a]).map(c=>
+     `<span style="margin-right:12px"><i class="dot" style="background:${colr(+c)}"></i>`+
+     `${lab(+c)} ${fmt(dt.by[c])}</span>`).join("")+
+   (dt.econ?`<span style="margin-right:12px"><i class="dot" style="background:var(--muted)`+
+     `;opacity:.5"></i>economic reasons ${fmt(dt.econ)}</span>`:``)+
+   `</div>`+
+   (vv?`<div class="ev" style="margin-top:6px;color:${vv[0]}">${vv[1]}</div>`:``)+
+   (dt.econ?`<div class="warn" style="margin-top:7px"><b>${(100*dt.econ/t2).toFixed(0)}% `+
+     `gave economic reasons.</b> Not a cause of forced displacement under IRIS, but DTM `+
+     `counts these people as IDPs — a difference in who is in the population, before any `+
+     `question about why.</div>`:``)+
+   (dt.composite?`<div class="ev" style="margin-top:5px">Some answers named more than one `+
+     `reason at once; each named cause is credited with the whole figure, so shares can `+
+     `exceed 100%.</div>`:``)+
+   `<div class="ev" style="margin-top:5px;color:var(--muted)">IOM DTM, latest round. The `+
+   `only source here where the reason comes from the household rather than an analyst.`+
+   `</div></div>`;}
  h+=`</div>`;
 
  h+=`<div class="pgrid"><div>`;

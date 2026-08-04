@@ -48,7 +48,7 @@ IDQ_ROOT=$(pwd) python3 prototype-python/run_all.py
 |---|---|---|
 | 1 | Threat of armed conflict or war | **strong** — UCDP GED state-based, IDMC IAC/NIAC |
 | 2 | Widespread violence / breakdown of public order | **good** — IDMC "other situations of violence", ACLED riots, UCDP non-state |
-| 3 | Discrimination or persecution | **indirect** — UNHCR recognition rates, V-Dem, documented research |
+| 3 | Discrimination or persecution | **indirect** — UNHCR recognition rates, V-Dem, documented research; DTM's answer list has no option for it |
 | 4 | HR violations by authorities | **partial** — UCDP one-sided (state perpetrator), V-Dem; misses all non-lethal repression |
 | 5 | Other threats of violence | **residual** — not evidenceable, always retained |
 | 6 | Natural disasters | **strong** — IDMC disaster displacement by hazard subtype |
@@ -74,7 +74,7 @@ by events and 5th by IDPs, because a cyclone is one event and moves millions. A 
 built only on the population view would give Mexican enumerators no worked example for
 the option that describes almost everything happening around them.
 
-## Four findings the pipeline produces
+## Five findings the pipeline produces
 
 **Code 7 is uncounted, not rare.** Every displacement database returns it as unevidenced
 almost everywhere. Human rights investigations across the twenty largest displacement
@@ -94,6 +94,23 @@ attributes population to state one-sided violence (code 4) or non-state one-side
 events view can. That is a direct argument for keeping both in the instrument, and the
 clearest case for having built the second view at all.
 
+**Where people and sources disagree, it is about which violence option.** IOM DTM is the
+only source here that asks the household rather than reading an event. Across the twenty
+countries it covers, 11 agree with our attribution on the dominant cause. Of the nine that
+do not, four disagree *within* the violence family — Haiti, Libya, Niger, Nigeria — which is
+precisely the option 1 versus option 2 distinction the questionnaire asks respondents to
+draw. In Haiti people said armed conflict and the sources said widespread violence; in Niger
+it is the other way round. That is the sharpest available argument for cognitive testing on
+that boundary. The rest are caseload differences, not coding disagreements, and are labelled
+as such.
+
+**DTM cannot ask about persecution either.** Its reason list runs Conflict, Insecurity,
+Natural disaster, Economic reasons, Other — with "Political reasons" in one country out of
+twenty, covering 100,179 people, 0.2% of the total. So options 3 and 4 are absent from what
+displaced people were *asked*, not merely from what was recorded. And 24% of Libya's DTM
+caseload gave economic reasons, which is not a cause of forced displacement under IRIS at
+all — a difference in who is in the population, before any question about why.
+
 **Two populations in one country need one showcard.** Uganda's IDPs are 88% disaster-displaced;
 its 1.92m hosted refugees are 30% armed conflict. Bangladesh has 5.5m disaster IDPs and 1.18m
 Rohingya refugees. A single instrument has to work for both, which is the strongest argument
@@ -107,6 +124,7 @@ R/01_sources.R            ingestion; fetch_*() and read_local_*() per source
 R/02_profiles.R           crosswalk + showcard decision rule
 R/03_outputs.R            ggplot figures
 R/04_dtm.R                IOM DTM — reported reasons, a different class of evidence
+prototype-python/fetch_dtm.py   pull DTM with your key, on a machine with network access
 R/05_independence.R       what may and may not be combined (errors, not warns)
 R/06_visuals.R            calls the Python layer
 config/crosswalk.yaml     the crosswalk and every decision taken, as reviewable config
@@ -129,6 +147,7 @@ outputs/                  generated
 | `ucdp_conflict_register.csv` | named conflicts with parties, dates, deaths, regional spread |
 | `subnational_displacement_points.csv` | 7,648 geocoded locations, mostly ADM2/ADM3 |
 | `admin1_conflict_profiles.csv` | region × cause |
+| `dtm_reported_vs_attributed.csv` | what people said vs what we inferred, per country, with the disagreement classified |
 
 ## Things to know before trusting a number
 
