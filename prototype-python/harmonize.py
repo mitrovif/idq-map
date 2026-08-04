@@ -316,7 +316,20 @@ def main():
     print(f"  {len(acled):,} rows, {acled.iso3.nunique()} countries")
 
     print("IDMC ...")
-    idmc, idmc_detail = load_idmc(os.path.join(UP, "5140e1e8-IDMC_GIDD_Internal_Displacement_Disaggregated.xlsx"))
+    # IDMC's export filenames carry a per-download hash prefix, so pinning one
+    # name means the next person's download - or an all-years re-export, which is
+    # the single highest-value input still missing - silently does not load.
+    # Take the newest GIDD disaggregated file present, whatever it is called.
+    gidd = sorted(glob.glob(os.path.join(UP, "*GIDD*Disaggregated*.xlsx")))
+    if not gidd:
+        raise FileNotFoundError(
+            f"No IDMC GIDD disaggregated export in {UP}. Download the "
+            f"'Disaggregated data' export, ALL YEARS, from "
+            f"https://www.internal-displacement.org/database/ and drop it there.")
+    if len(gidd) > 1:
+        print(f"  {len(gidd)} GIDD exports present, using the newest: "
+              f"{os.path.basename(gidd[-1])}")
+    idmc, idmc_detail = load_idmc(gidd[-1])
     print(f"  {len(idmc):,} rows, {idmc.iso3.nunique()} countries")
 
     print("UCDP one-sided ...")
