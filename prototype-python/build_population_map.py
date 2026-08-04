@@ -246,18 +246,36 @@ def main():
     # belong in front of a respondent here, and what worked examples go with them.
     # It was being written to CSV and never shown, so the dashboard answered
     # everything except the thing someone actually opens it for.
+    PUBLIC = os.environ.get("IDQ_PUBLIC") == "1"
     sc = {}
     try:
         s = pd.read_csv(f"{OUT}/showcard_recommendations.csv")
         for iso, g in s.groupby("iso3"):
             if len(str(iso)) != 3:
                 continue
-            sc[iso] = [dict(c=int(r.code_id), l=str(r.code_label),
-                            s=str(r.status),
-                            w=("" if pd.isna(r.rationale) else str(r.rationale)),
-                            e=("" if pd.isna(r.local_examples)
-                               else str(r.local_examples)))
-                       for r in g.sort_values("code_id").itertuples()]
+            rows = []
+            for r in g.sort_values("code_id").itertuples():
+                why = "" if pd.isna(r.rationale) else str(r.rationale)
+                if PUBLIC:
+                    # the rationale strings carry ACLED counts too, e.g.
+                    # "4,457 ACLED events 2018+ (92% of ...)" - same licence
+                    # question as the events layer, so out they go with it
+                    kept = [x for x in why.split(" | ") if "ACLED" not in x]
+                    if not kept and why:
+                        # the recommendation stands - it was computed on the full
+                        # data - but its only supporting reason was an ACLED count.
+                        # Say that, rather than leaving a bare status with no
+                        # justification, which reads as a bug.
+                        why = ("Supported by ACLED political-violence event counts, "
+                               "which are not republished here — see the repository "
+                               "to reproduce with ACLED included")
+                    else:
+                        why = " | ".join(kept)
+                rows.append(dict(c=int(r.code_id), l=str(r.code_label),
+                                 s=str(r.status), w=why,
+                                 e=("" if pd.isna(r.local_examples)
+                                    else str(r.local_examples))))
+            sc[iso] = rows
         print(f"  showcards: {len(sc)} countries")
     except FileNotFoundError:
         print("  showcards: showcard_recommendations.csv missing")
@@ -266,15 +284,27 @@ def main():
     # A cause can be frequent and displace few (Mexico) or rare and displace
     # millions (one cyclone), and only the first tells you whether a respondent
     # needs the option to exist at all.
+    # PUBLIC BUILD. ACLED's Content Usage Terms prohibit anything that "creates a
+    # functional substitute" for their dataset, and say the reading is theirs to
+    # make. Country x admin1 x cause event counts on a public page is close enough
+    # to that line that it is not worth testing. UCDP GED is CC-BY-4.0 and carries
+    # the events view on its own, so the public build simply drops the ACLED layer.
     try:
         ev = json.load(open(f"{TIDY}/events.json"))
+        if PUBLIC:
+            for v in ev.values():
+                v["acled"] = {}; v["acled_deaths"] = {}
+                v.pop("acled_years", None)
+                for a in v.get("adm", []):
+                    a["a"] = {}
+            print("  PUBLIC BUILD - ACLED counts omitted (licence)")
         print(f"  events layer: {len(ev)} countries, "
               f"{sum(len(v['adm']) for v in ev.values())} admin1 areas")
     except FileNotFoundError:
         ev = {}
         print("  events layer: events.json missing - run build_events.py")
     payload = dict(data=data, geo=feats, causes=CAUSES, labels=LABEL, flows=flows,
-                   coverage=cov, ev=ev, sc=sc,
+                   coverage=cov, ev=ev, sc=sc, public=PUBLIC,
                    vdem=vdem, ucdp=ucdp, dis=disasters, gedc=gedc, geda1=geda1, pts=points,
                    year=latest, period=period, multiyear=len(yrs) > 1,
                    qual=qual,
@@ -282,9 +312,10 @@ def main():
                             "4": "Human rights violations by authorities",
                             "7": "Man-made events"})
     html = TPL.replace("__DATA__", json.dumps(payload, separators=(",", ":")))
-    open(f"{OUT}/idq_population_by_cause.html", "w").write(html)
+    name = "idq_population_by_cause.html"
+    open(f"{OUT}/{name}", "w").write(html)
     print(f"wrote population map "
-          f"({os.path.getsize(f'{OUT}/idq_population_by_cause.html')/1e6:.1f} MB); "
+          f"({os.path.getsize(f'{OUT}/{name}')/1e6:.1f} MB); "
           f"{len(data)} countries, {sum(len(x) for x in events.values())} event groups")
 
 
@@ -696,6 +727,14 @@ const ELAB={1:"Armed conflict or war",2:"Widespread violence / public order",
   5:"Other threats of violence (non-state one-sided)",
   6:"Natural disasters",7:"Man-made events (incl. wildfire)"};
 const ESRCNAME={ucdp:"UCDP GED",acled:"ACLED"};
+// In the public build the ACLED layer is absent for licence reasons, so say that
+// rather than leaving a button that silently empties the map.
+if(D.public){
+ const ab=document.querySelector('.esrc[data-s="acled"]');
+ if(ab){ab.disabled=true;ab.style.opacity=".45";ab.style.cursor="not-allowed";
+  ab.title="ACLED's terms restrict republishing their data, so this layer is not "+
+   "in the shared build. It is available when you run the pipeline yourself.";
+  ab.innerHTML='All violent events <em>not in shared build</em>';}}
 // Codes 3 and 4 have no per-country displacement count anywhere. Selecting them
 // switches the map to an evidence encoding rather than faking a magnitude.
 const NO_COUNT = ["3","4"];
