@@ -242,6 +242,25 @@ def main():
     print(f"  {len(flows)} refugee movements over 25,000 people")
 
     vdem = json.load(open(f"{TIDY}/vdem_severity.json"))
+    # The showcard recommendation IS the question the paper asks - which options
+    # belong in front of a respondent here, and what worked examples go with them.
+    # It was being written to CSV and never shown, so the dashboard answered
+    # everything except the thing someone actually opens it for.
+    sc = {}
+    try:
+        s = pd.read_csv(f"{OUT}/showcard_recommendations.csv")
+        for iso, g in s.groupby("iso3"):
+            if len(str(iso)) != 3:
+                continue
+            sc[iso] = [dict(c=int(r.code_id), l=str(r.code_label),
+                            s=str(r.status),
+                            w=("" if pd.isna(r.rationale) else str(r.rationale)),
+                            e=("" if pd.isna(r.local_examples)
+                               else str(r.local_examples)))
+                       for r in g.sort_values("code_id").itertuples()]
+        print(f"  showcards: {len(sc)} countries")
+    except FileNotFoundError:
+        print("  showcards: showcard_recommendations.csv missing")
     # The events layer answers a different question from everything above it:
     # not "how many people are displaced here" but "what happens here, how often".
     # A cause can be frequent and displace few (Mexico) or rare and displace
@@ -255,7 +274,7 @@ def main():
         ev = {}
         print("  events layer: events.json missing - run build_events.py")
     payload = dict(data=data, geo=feats, causes=CAUSES, labels=LABEL, flows=flows,
-                   coverage=cov, ev=ev,
+                   coverage=cov, ev=ev, sc=sc,
                    vdem=vdem, ucdp=ucdp, dis=disasters, gedc=gedc, geda1=geda1, pts=points,
                    year=latest, period=period, multiyear=len(yrs) > 1,
                    qual=qual,
@@ -298,8 +317,38 @@ h2{font-size:17px;margin:28px 0 4px;font-weight:620;letter-spacing:-.01em}
 button,select{font:inherit;font-size:13.5px;padding:7px 12px;border-radius:8px;
  border:1px solid var(--grid);background:var(--surface-1);color:var(--ink);cursor:pointer}
 button.on{background:var(--ink);color:var(--surface-1);border-color:var(--ink)}
+button em{font-style:normal;display:block;font-size:10.5px;letter-spacing:.02em;
+ color:var(--muted);font-weight:500;margin-top:1px}
+button.on em{color:var(--surface-1);opacity:.72}
 .viewsw{margin-bottom:2px;padding-bottom:12px;border-bottom:1px solid var(--grid)}
 .viewsw button{font-size:14px;padding:8px 15px;font-weight:560}
+.findwrap{position:relative;margin-left:auto}
+#find{font:inherit;font-size:13.5px;padding:8px 13px;border-radius:8px;
+ border:1px solid var(--grid);background:var(--surface-1);color:var(--ink);width:250px}
+#find:focus{outline:2px solid var(--c1);outline-offset:-1px}
+#findlist{position:absolute;z-index:12;top:calc(100% + 4px);right:0;width:290px;
+ background:var(--surface-1);border:1px solid var(--grid);border-radius:9px;
+ box-shadow:0 10px 30px rgba(0,0,0,.18);max-height:320px;overflow:auto;padding:4px}
+#findlist div{padding:7px 10px;border-radius:6px;cursor:pointer;font-size:13.5px}
+#findlist div:hover,#findlist div.sel{background:var(--plane)}
+#findlist div span{color:var(--muted);font-size:11.5px;float:right}
+@media(max-width:760px){.findwrap{margin-left:0;width:100%}#find{width:100%}
+ #findlist{width:100%;left:0}}
+.rec{display:grid;grid-template-columns:auto 1fr;gap:7px 12px;align-items:start}
+.rec .st{font-size:9.5px;font-weight:700;letter-spacing:.05em;padding:3px 7px;
+ border-radius:4px;text-transform:uppercase;white-space:nowrap;margin-top:2px}
+.st-rec{background:color-mix(in srgb,#0ca30c 16%,transparent);color:#0ca30c}
+.st-res{background:transparent;color:var(--muted);border:1px solid var(--grid)}
+.st-un{background:color-mix(in srgb,#fab219 26%,transparent);color:#8a5d00}
+:root[data-theme="dark"] .st-un{color:#fab219}
+.st-low{background:transparent;color:var(--muted);border:1px dashed var(--grid)}
+.rec .rl{font-weight:620;font-size:13px}
+.rec .rw{font-size:12.5px;color:var(--ink-2)}
+.rec .re{font-size:12.5px;margin-top:3px;padding:5px 9px;background:var(--plane);
+ border-radius:6px;border:1px solid var(--grid)}
+.warn{margin-top:8px;padding:8px 11px;border-radius:7px;font-size:12.5px;
+ background:color-mix(in srgb,#fab219 14%,transparent);
+ border:1px solid color-mix(in srgb,#fab219 38%,transparent)}
 .grp{font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);
  font-weight:640;min-width:172px}
 @media(max-width:760px){.grp{min-width:0;width:100%}}
@@ -437,6 +486,11 @@ recorded — the named storm, the named conflict. Scroll to zoom, drag to pan.</
   <span class="grp">What the map shows</span>
   <button class="view on" data-v="pop">People displaced</button>
   <button class="view" data-v="events">Events that happened</button>
+  <span class="findwrap">
+    <input id="find" type="search" autocomplete="off" spellcheck="false"
+           placeholder="Find a country &mdash; e.g. Chad" aria-label="Find a country">
+    <div id="findlist" hidden></div>
+  </span>
 </div>
 
 <div class="ctl" id="evctl" hidden>
@@ -444,19 +498,19 @@ recorded — the named storm, the named conflict. Scroll to zoom, drag to pan.</
   <button class="lvl on" data-l="country">Countries</button>
   <button class="lvl" data-l="adm1">Subnational areas</button>
   <span style="width:14px"></span>
-  <button class="esrc on" data-s="ucdp">Conflict: UCDP GED</button>
-  <button class="esrc" data-s="acled">Conflict: ACLED</button>
+  <button class="esrc on" data-s="ucdp">Deadly incidents <em>worldwide</em></button>
+  <button class="esrc" data-s="acled">All violent events <em>68 countries</em></button>
 </div>
 
 <div class="ctl" id="popctl">
   <span class="grp">Which displaced population</span>
-  <button class="mode on" data-m="both">Everyone displaced (IDPs + refugees)</button>
-  <button class="mode" data-m="stock">IDPs only</button>
-  <button class="mode" data-m="refugees">Refugees only</button>
-  <button class="mode" data-m="flow" id="flowbtn">Total displacements recorded</button>
-  <button class="mode" data-m="period">Total 1990&ndash;2025, conflict only</button>
-  <button class="mode" data-m="flows">Movements between countries</button>
-  <button class="mode" data-m="sub">Subnational &mdash; where within countries</button>
+  <button class="mode on" data-m="both">Everyone displaced now <em>snapshot</em></button>
+  <button class="mode" data-m="stock">IDPs only <em>snapshot</em></button>
+  <button class="mode" data-m="refugees">Refugees only <em>snapshot</em></button>
+  <button class="mode" data-m="flow" id="flowbtn">Displacements recorded <em>running total &mdash; repeats counted</em></button>
+  <button class="mode" data-m="period">1990&ndash;2025, conflict only <em>each country’s worst year</em></button>
+  <button class="mode" data-m="flows">Movements between countries <em>arrows</em></button>
+  <button class="mode" data-m="sub">Where within countries <em>towns and districts</em></button>
 </div>
 <div class="ctl">
   <span class="grp">Which cause</span>
@@ -469,11 +523,66 @@ recorded — the named storm, the named conflict. Scroll to zoom, drag to pan.</
   <button class="cz" data-c="6">6. Natural disasters</button>
   <button class="cz" data-c="7">7. Man-made events</button>
 </div>
-<div class="ctl" id="layerctl">
-  <span class="grp">Add a layer</span>
+<div class="ctl" id="basicctl">
+  <button class="help" id="helpbtn">How to read this</button>
+  <button class="help" id="srcbtn">Where these numbers come from</button>
+  <button class="help" id="advbtn">More options</button>
+</div>
+<div class="ctl" id="layerctl" hidden>
+  <span class="grp">More options</span>
   <button id="evid">Documented evidence for codes 3, 4 and 7</button>
   <button id="attr">Attribute unknowns via UCDP</button>
-  <button class="help" id="helpbtn">What am I looking at?</button>
+</div>
+
+<div class="card help-panel" id="srcpanel" hidden>
+ <h3>Where these numbers come from</h3>
+ <p class="hn">Nobody measures "why did you leave home" directly at scale. Every figure
+ here is assembled from organisations that count something adjacent, and the join between
+ what they count and the eight response options is the thing this project had to build.
+ That join is a judgement, not a fact, and it is written down in
+ <code>config/crosswalk.yaml</code> so you can disagree with it.</p>
+ <table class="ht"><thead><tr><th>Who</th><th>What they actually count</th>
+  <th>Which options that can speak to</th></tr></thead><tbody>
+ <tr><td><b>IDMC</b><div class="ev">Internal Displacement Monitoring Centre</div></td>
+  <td><b>People.</b> How many were displaced inside their own country, and what the
+      agency recorded as the trigger — a named storm, a named armed conflict.</td>
+  <td>1, 2, 6, 7 — the entire population half of this dashboard</td></tr>
+ <tr><td><b>UNHCR</b></td>
+  <td><b>People.</b> Refugees and asylum seekers, by country of origin and country of
+      asylum, plus how often each nationality's claims are recognised.</td>
+  <td>everything shown for refugees; recognition rates stand in for 3</td></tr>
+ <tr><td><b>UCDP</b><div class="ev">Uppsala Conflict Data Program</div></td>
+  <td><b>Incidents.</b> One record per event in which at least one person was killed in
+      organised violence, placed on a map, from 1989, worldwide. No deaths, no record.</td>
+  <td>1, 2, 4, 5 — the events half</td></tr>
+ <tr><td><b>ACLED</b></td>
+  <td><b>Incidents.</b> Political violence and protest, whether or not anyone died — so
+      several times more events than UCDP for the same conflicts. 68 countries.</td>
+  <td>same options as UCDP, as an <b>alternative</b> reading, never added to it</td></tr>
+ <tr><td><b>IOM DTM</b></td>
+  <td><b>What displaced people say.</b> The only source here where the reason comes from
+      the person rather than from an analyst.</td>
+  <td>a reality check on all of the above</td></tr>
+ <tr><td><b>V-Dem</b></td>
+  <td><b>Conditions, not displacement.</b> Expert ratings of torture, political killing,
+      religious freedom, discrimination by social group.</td>
+  <td>3 and 4 — proof the cause exists here, not proof it moved anyone</td></tr>
+ </tbody></table>
+ <p class="hn"><b>The three things most likely to trip you up.</b>
+ <b>One:</b> people and incidents are different units and are never added together —
+ the two views exist precisely so they stay apart.
+ <b>Two:</b> sources are not summed. IDMC derives its figures from IOM DTM in twelve
+ countries, so treating them as independent agreement is circular; UCDP and ACLED code
+ the same events. The only legitimate sum on this page is IDPs plus hosted refugees.
+ <b>Three:</b> none of this is causation. "61% drought-attributed" describes
+ co-occurrence in administrative statistics, not why any individual left.</p>
+ <p class="hn"><b>What is missing, and it matters.</b> No database anywhere has a category
+ for persecution or for state repression short of killing. A Rohingya family displaced by
+ military persecution is recorded by IDMC as armed conflict. Across IDMC's own methodology
+ notes, the words "persecution", "ethnic", "discrimination" and "torture" appear zero
+ times. Options 3 and 7 look empty in the data because nobody counts them, not because
+ they are rare — which is an argument for keeping them on the questionnaire, not for
+ dropping them.</p>
 </div>
 
 <div class="card help-panel" id="help" hidden>
@@ -598,7 +707,7 @@ const ALLL=Object.assign({}, {3:"Discrimination or persecution",
   4:"HR violations by authorities", 5:"Other threats of violence",
   8:"A different threat"});
 const lab=c=>L[c]||ALLL[c]||"—";
-const colr=c=>(c===7?'var(--ink-2)':(c===0||c===9)?'var(--unattr)':
+const colr=c=>((c===4||c===7)?'var(--ink-2)':(c===0||c===5||c===9)?'var(--unattr)':
   (COL[c]||'var(--unattr)'));
 
 const map=document.getElementById('map');
@@ -1110,8 +1219,59 @@ function showProfile(iso){
   `${fmt(sum(idp))} IDPs · ${fmt(sum(ref))} refugees hosted</span>`+
   `<button class="close" id="pclose">Close</button></div>`;
 
+ // The recommendation goes FIRST. Everything below it is the working that
+ // supports it, and a reader who stops after this section has the answer.
+ const rec=D.sc[iso];
+ if(rec){
+  const ST={RECOMMENDED:["st-rec","Give examples"],
+            RESIDUAL:["st-res","Always keep"],
+            UNEVIDENCED:["st-un","Keep — no data"],
+            LOW_SALIENCE:["st-low","Low salience"]};
+  h+=`<div class="psec"><h3>What to put on the showcard here</h3>`+
+    `<div style="font-size:12.5px;color:var(--ink-2);margin:-2px 0 9px">`+
+    `All eight options stay on the questionnaire everywhere — that is what makes the `+
+    `data comparable. What changes by country is which ones the enumerator gives a `+
+    `worked example for.</div><div class="rec">`+
+   rec.map(r=>{const [cls,txt]=ST[r.s]||["st-res",r.s];
+    return `<span class="st ${cls}">${txt}</span><div>`+
+     `<div class="rl">${r.c}. ${r.l}</div>`+
+     (r.w?`<div class="rw">${r.w.replace(/\|/g,"·")}</div>`:``)+
+     (r.e?`<div class="re"><b style="font-size:10px;text-transform:uppercase;`+
+          `letter-spacing:.04em;color:var(--muted)">Local examples</b><br>`+
+          `${r.e.replace(/;/g,"<br>")}</div>`:``)+
+     `</div>`;}).join("")+`</div></div>`;}
+
  h+=`<div class="psec">${bar(idp,"IDPs displaced inside this country")}${
-   bar(ref,"Refugees and asylum seekers hosted here")}</div>`;
+   bar(ref,"Refugees and asylum seekers hosted here")}`;
+ // the unattributed share, stated plainly - a country whose split is mostly
+ // unknown should not read the same as one that is fully attributed
+ const it=sum(idp), unk=(idp["0"]||0)+(idp["9"]||0);
+ if(it>0&&unk/it>0.25)
+  h+=`<div class="warn"><b>${(100*unk/it).toFixed(0)}% of this country's IDPs have no `+
+     `recorded cause.</b> The split above is based on the remaining `+
+     `${fmt(it-unk)}. Treat the shares as indicative, not as measurements.</div>`;
+ // the same country in the events view, so the two answers sit side by side
+ const e=D.ev[iso];
+ if(e){
+  const cf=e.ucdp||{}, hz=e.idmc||{}, eo={};
+  [1,2,4,5,6,7].forEach(c=>{const n=(cf[String(c)]||0)+(hz[String(c)]||0);
+    if(n>0)eo[c]=n;});
+  const et=Object.values(eo).reduce((a,b)=>a+b,0);
+  if(et>0){
+   h+=`<div style="margin-top:12px"><b style="font-size:12.5px">Events recorded here `+
+    `— ${et.toLocaleString()}</b>`+
+    `<div style="display:flex;height:9px;border-radius:3px;overflow:hidden;margin-top:4px;gap:1px">`+
+    Object.keys(eo).map(c=>`<div title="${ELAB[c]}" style="width:${(eo[c]/et*100).toFixed(1)}%;`+
+      `background:${(c==="4"||c==="7")?'var(--ink-2)':c==="5"?'var(--unattr)':COL[c]}"></div>`).join("")+
+    `</div><div style="font-size:11.5px;color:var(--ink-2);margin-top:4px">`+
+    Object.keys(eo).sort((a,b)=>eo[b]-eo[a]).map(c=>
+     `<span style="margin-right:12px"><i class="dot" style="background:${
+      (c==="4"||c==="7")?'var(--ink-2)':c==="5"?'var(--unattr)':COL[c]}"></i>`+
+     `${ELAB[c]} ${eo[c].toLocaleString()}</span>`).join("")+
+    `</div><div style="font-size:11.5px;color:var(--muted);margin-top:5px">`+
+    `How often things happened, not how many people moved. Codes 4 and 5 appear here `+
+    `and in no displacement count anywhere.</div></div>`;}}
+ h+=`</div>`;
 
  h+=`<div class="pgrid"><div>`;
  if(g.length){
@@ -1158,6 +1318,23 @@ function showProfile(iso){
    ev.stopPropagation(); el.hidden=true;});
  el.scrollIntoView({behavior:"smooth",block:"nearest"});
 }
+
+function sizeKey(max,unit){
+ // Three reference circles at round numbers, drawn with the live radius function,
+ // so magnitude is readable off the map instead of only rank.
+ if(!max||!isFinite(max))return"";
+ const nice=[1e3,5e3,1e4,5e4,1e5,5e5,1e6,5e6,1e7,5e7];
+ const picks=nice.filter(v=>v<=max*0.95).slice(-3);
+ if(!picks.length)return"";
+ const R=t=>(CAUSE==="all"?2.2:0.6)+13*Math.sqrt(t/max);
+ const w=Math.ceil(R(picks[picks.length-1])*2)+4;
+ return `<span style="display:inline-flex;align-items:flex-end;gap:9px;color:var(--muted)">`+
+  picks.map(v=>`<span style="display:inline-flex;flex-direction:column;align-items:center;gap:2px">`+
+   `<svg width="${w}" height="${Math.ceil(R(v)*2)+2}" style="display:block;overflow:visible">`+
+   `<circle cx="${w/2}" cy="${R(v)+1}" r="${R(v).toFixed(2)}" fill="none" `+
+   `stroke="var(--ink-2)" stroke-width="1"/></svg>`+
+   `<span style="font-size:10.5px">${fmt(v)}</span></span>`).join("")+
+  `<span style="font-size:12px">${unit||"people"} — circle area ∝ the number</span></span>`;}
 
 function draw(){
  layer.innerHTML="";
@@ -1379,7 +1556,7 @@ function draw(){
  document.getElementById('key').innerHTML =
   C.map(c=>`<span><i style="background:${SWATCH[c]};${c===7
     ?'border:1px solid var(--grid)':''}"></i>${L[c]}</span>`).join('')+
-  `<span style="color:var(--muted)">circle area ∝ number of people</span>`+
+  sizeKey(max)+
   (EVID?`<span><i style="background:transparent;border:1.3px dashed var(--ink-2)"></i>`+
         `documented evidence for codes 3, 4 or 7 — hover for it</span>`:``);
  notes={period:"IDMC's conflict-displacement stock for every year from 1990, shipped "+
@@ -1388,8 +1565,15 @@ function draw(){
    "<b>Conflict only</b> — this series carries no disaster split. To get the whole "+
    "period broken down by cause, the all-years IDMC GIDD export is needed; the file "+
    "currently loaded covers "+D.period+" only.",
+  both:"IDPs and hosted refugees together — everyone displaced who is physically "+
+   "present in that country now, which is who a household survey there would sample. "+
+   "The inner disc is people displaced inside the country; the outer ring is refugees it "+
+   "hosts, displaced somewhere else. It is a <b>snapshot</b>, so nobody is counted twice.",
+  sub:"IDMC geocodes every figure it records, so displacement can be placed at the "+
+   "district or town it happened in rather than smeared across a country.",
   stock:"People still displaced inside their own country at the end of 2025 — "+
-   "the population a household survey there would actually encounter.",
+   "the population a household survey there would actually encounter. A <b>snapshot</b> "+
+   "of who is displaced now, not a count of everyone ever displaced.",
   flow:"Displacements recorded across "+D.period+", summed. A person displaced twice is "+
    "counted twice, "+
    "and short pre-emptive evacuations are included, which inflates the disaster share "+
@@ -1435,7 +1619,8 @@ function draw(){
  document.getElementById('tbl').innerHTML=
   `<thead><tr><th>Country</th><th>${MODE==="both"?"Split":"Largest recorded event"}</th>`+
   `<th>Total</th>`+
-  C.map(c=>`<th>${c===0?"Unattrib.":L[c].split(" ")[0]}</th>`).join('')+`</tr></thead><tbody>`+
+  C.map(c=>`<th title="${L[c]}">${c===0?"Cause not recorded"
+    :c===9?"No source covers":L[c].split(" ")[0]}</th>`).join('')+`</tr></thead><tbody>`+
   rank.map(x=>{
    const top=x.p.slice().sort((a,b)=>b[1]-a[1])[0][0];
    const ev=(x.d.events[String(top)]||[])[0];
@@ -1506,6 +1691,37 @@ function applyView(){
      `what displaced them. Hover a country to see the numbers and the actual events IDMC `+
      `recorded — the named storm, the named conflict. Scroll to zoom, drag to pan.`;
  unpin();draw();}
+/* Find a country. Hunting for Uganda on a world map is not a reasonable ask of
+   someone who came here with a specific country in mind. */
+const FIND=Object.entries(D.data).map(([iso,d])=>({iso,n:d.name,
+  k:(d.name||"").toLowerCase()}))
+  .concat(Object.entries(D.ev).filter(([iso])=>!D.data[iso])
+    .map(([iso,d])=>({iso,n:d.name,k:(d.name||"").toLowerCase()})))
+  .sort((a,b)=>a.n.localeCompare(b.n));
+const fin=document.getElementById('find'), flist=document.getElementById('findlist');
+let fsel=-1, fhits=[];
+function frender(){
+ if(!fhits.length){flist.hidden=true;return;}
+ flist.innerHTML=fhits.map((h,i)=>`<div class="${i===fsel?'sel':''}" data-i="${i}">`+
+   `${h.n}<span>${D.sc[h.iso]?"showcard":""}</span></div>`).join("");
+ flist.hidden=false;}
+function fgo(i){
+ const h=fhits[i]; if(!h)return;
+ fin.value=""; fhits=[]; flist.hidden=true; fin.blur();
+ showProfile(h.iso);}
+fin.addEventListener('input',()=>{
+ const q=fin.value.trim().toLowerCase();
+ fhits = q.length<1 ? [] : FIND.filter(f=>f.k.includes(q)).slice(0,12);
+ fsel = fhits.length?0:-1; frender();});
+fin.addEventListener('keydown',e=>{
+ if(e.key==="ArrowDown"){fsel=Math.min(fsel+1,fhits.length-1);frender();e.preventDefault();}
+ else if(e.key==="ArrowUp"){fsel=Math.max(fsel-1,0);frender();e.preventDefault();}
+ else if(e.key==="Enter"){fgo(fsel);e.preventDefault();}
+ else if(e.key==="Escape"){fhits=[];flist.hidden=true;fin.blur();}});
+flist.addEventListener('mousedown',e=>{
+ const d=e.target.closest('[data-i]'); if(d){e.preventDefault();fgo(+d.dataset.i);}});
+fin.addEventListener('blur',()=>setTimeout(()=>{flist.hidden=true;},120));
+
 document.querySelectorAll('.view').forEach(b=>b.addEventListener('click',()=>{
  document.querySelectorAll('.view').forEach(x=>x.classList.remove('on'));
  b.classList.add('on');VIEW=b.dataset.v;applyView();}));
@@ -1532,10 +1748,18 @@ document.getElementById('attr').addEventListener('click',e=>{
  e.stopPropagation(); ATTR=!ATTR; unpin();
  e.target.textContent=ATTR?"Attribute unknowns via UCDP  \u2713":"Attribute unknowns via UCDP";
  e.target.classList.toggle('on',ATTR); draw();});
-document.getElementById('helpbtn').addEventListener('click',e=>{
- e.stopPropagation(); const h=document.getElementById('help');
+function panelToggle(btnId,panelId,openTxt,shutTxt){
+ document.getElementById(btnId).addEventListener('click',e=>{
+  e.stopPropagation(); const h=document.getElementById(panelId);
+  h.hidden=!h.hidden; e.target.classList.toggle('on',!h.hidden);
+  e.target.textContent=h.hidden?openTxt:shutTxt;
+  if(!h.hidden)h.scrollIntoView({behavior:"smooth",block:"nearest"});});}
+panelToggle('helpbtn','help',"How to read this","Hide");
+panelToggle('srcbtn','srcpanel',"Where these numbers come from","Hide");
+document.getElementById('advbtn').addEventListener('click',e=>{
+ e.stopPropagation(); const h=document.getElementById('layerctl');
  h.hidden=!h.hidden; e.target.classList.toggle('on',!h.hidden);
- e.target.textContent=h.hidden?"What am I looking at?":"Hide explanation";});
+ e.target.textContent=h.hidden?"More options":"Fewer options";});
 document.getElementById('evid').addEventListener('click',e=>{
  e.stopPropagation(); EVID=!EVID; unpin();
  e.target.textContent=EVID?"Documented evidence for codes 3, 4 and 7  \u2713"

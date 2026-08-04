@@ -120,12 +120,12 @@ outputs/                  generated
 
 | File | What |
 |---|---|
-| `idq_population_by_cause.html` | main map — **two views**: people displaced (six population modes) and events that happened (country / 1,847 admin1 areas, UCDP or ACLED); seven causes, evidence layer |
+| `idq_population_by_cause.html` | main map — **two views**: people displaced (six population modes) and events that happened (country / 1,847 admin1 areas, UCDP or ACLED); seven causes, country search, per-country showcard panel, evidence layer |
 | `idq_crosswalk_explorer.html` | all 68 source categories and where each lands |
 | `idq_subreasons.html` | 66 mechanisms beneath the eight options |
 | `idq_evidence_map.html` | counted vs documented |
 | `idq_all_causes_map.html` | every cause at once, plus region × cause |
-| `showcard_recommendations.csv` | country × code with status, rationale and local examples |
+| `showcard_recommendations.csv` | country × code with status, rationale and local examples — also surfaced per country in the map |
 | `ucdp_conflict_register.csv` | named conflicts with parties, dates, deaths, regional spread |
 | `subnational_displacement_points.csv` | 7,648 geocoded locations, mostly ADM2/ADM3 |
 | `admin1_conflict_profiles.csv` | region × cause |
