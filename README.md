@@ -152,6 +152,26 @@ GDE, clashes between Bonde dos 13, PCC and Comando Vermelho…" six times over; 
 "clashes between armed groups, including Comando Vermelho, PCC, GDE, Bonde dos 13 and
 Sindicato do Crime".
 
+**Rendered as a form, in the language of the country, at the level that makes sense.** The
+draft appears as it would on a questionnaire page — item code, routing instruction,
+checkboxes — rather than as a bulleted list, because that is what a reviewer needs to judge.
+The stem and the eight options exist in all six UN official languages, and each country
+opens in the one most likely to be used in a national survey there. **Those translations are
+unreviewed drafts**: translating an instrument is a specialist job (TRAPD, or forward-and-back
+with reconciliation), and cognitive testing on an unreviewed translation tests the
+translation rather than the question. Two words need a professional decision — *flee*, where
+several languages separate fleeing-in-panic from leaving-under-duress and the item means the
+second, and *persecution*, a legal term of art that in everyday registers reads as ordinary
+harassment. Actor names are never translated; they are proper nouns.
+
+**298 subnational sets across 58 countries** are offered where the region says something the
+national set does not. A region whose examples merely repeat the national list is not shown —
+DRC's provinces all collapsed to the same category phrasing and were dropped. The identity
+rule is stricter at this level, because UCDP's admin1 communal-violence dyads are ethnic
+groups by name with none of the markers that catch the national ones: an actor is named
+subnationally only if it is also a party to a state-based or one-sided conflict in that
+country.
+
 These are drafts for the task team, not enumerator text. The names are UCDP's, not a
 respondent's.
 

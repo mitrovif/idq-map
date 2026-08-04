@@ -39,6 +39,7 @@ THREE THINGS THAT MAKE THIS A DRAFT AND NOT A DELIVERABLE
      about those countries.
 """
 from paths import TIDY_S, OUT_S
+from question_i18n import (LANGS, T, lang_for, translate_example)
 import json
 import re
 
@@ -228,6 +229,29 @@ def merge_same_stem(items, max_actors=5):
     return out
 
 
+# At admin1 the identity problem is worse, not better. UCDP's communal-violence
+# dyads there read "Afisare, Anaguta, Birom - Fulani, Hausa" - ethnic groups by
+# name, with none of the "(Country)" marker that catches the national ones. So
+# the rule at subnational level is inverted: an actor is only named if it is
+# ALSO a party to a state-based or one-sided conflict in that country, or is in
+# KNOWN_AS. Everything else falls back to a category phrase.
+def organised_actors(country_conflicts):
+    out = set()
+    for c in country_conflicts:
+        if c.get("code") in (1, 4, 5):
+            for x in (c.get("a"), c.get("b")):
+                n = re.sub(r"^Government of\s+", "", str(x or "")).strip()
+                if n and n.lower() != "civilians":
+                    out.add(n.lower())
+    return (out | {k.lower() for k in KNOWN_AS}
+                | {v.lower() for v in KNOWN_AS.values()}
+                | {v.lower().removeprefix("the ") for v in KNOWN_AS.values()})
+
+
+MIN_ADM1_EVENTS = 40      # below this an admin1 example is an anecdote
+MAX_ADM1 = 8
+
+
 def main():
     conflicts = json.load(open(f"{TIDY}/ged_conflicts.json"))
     disasters = json.load(open(f"{TIDY}/disaster_register.json"))
@@ -349,6 +373,24 @@ def main():
                                           "none derivable from data",
                                  in_read_out=True, rank=1, incidents=None))
 
+        # structured form, so the page can render checkboxes and translate
+        lang = lang_for(iso)
+        form, untranslated = [], 0
+        for code, label, generic in OPTIONS:
+            picked = ex.get(code)
+            items, items_t = [], []
+            if picked:
+                for e in picked:
+                    items.append(e["text"])
+                    tt, ok = translate_example(e["text"], lang)
+                    items_t.append(tt)
+                    untranslated += 0 if ok else 1
+            elif generic:
+                items = [generic]
+                items_t = [T[lang]["generic"].get(code, generic)]
+            form.append(dict(code=code, n=len(items),
+                             eg=items, eg_t=items_t))
+
         d = dtm[dtm.iso3 == iso] if len(dtm) else dtm
         out[iso] = dict(
             name=regions.get(iso, iso),
@@ -361,8 +403,101 @@ def main():
             n_available=sum(avail.values()),
             n_beyond_read_out=sum(max(0, v - READ_OUT_MAX) for v in avail.values()),
             has_reported=bool(len(d)),
+            form=form,
+            untranslated=untranslated,
+            _ex=ex,
         )
         rows.extend(prov)
+
+    # ---- admin1 variants, where they say something different ------------
+    try:
+        ga = pd.read_parquet(f"{TIDY}/ged_admin1.parquet")
+    except FileNotFoundError:
+        ga = pd.DataFrame()
+    n_adm = 0
+    if len(ga):
+        for iso, g in ga.groupby("iso3"):
+            if iso not in out:
+                continue
+            allowed = organised_actors(conflicts.get(iso, []))
+            nat_actors = {e["text"].lower()
+                          for v in out[iso].get("_ex", {}).values() for e in v}
+            regions_out = []
+            tot = g.groupby("adm_1").events.sum().sort_values(ascending=False)
+            for adm in tot.index[:MAX_ADM1 * 3]:
+                sub = g[g.adm_1 == adm]
+                if sub.events.sum() < MIN_ADM1_EVENTS:
+                    continue
+                aex = {}
+                for r in sub.itertuples():
+                    code = int(r.code_id)
+                    if code not in (1, 2, 4, 5):
+                        continue
+                    names = [n.strip() for n in str(r.conflicts or "").split(";")
+                             if n.strip()]
+                    picked = []
+                    for nm in names:
+                        if " - " in nm:
+                            parts = [p.strip() for p in nm.split(" - ")]
+                            actor = parts[-1]
+                            if actor.lower() == "civilians":
+                                actor = parts[0]
+                        elif ": " in nm:
+                            actor = nm.split(": ", 1)[1].strip()
+                        else:
+                            actor = nm.strip()
+                        actor = re.sub(r"^Government of\s+", "", actor).strip()
+                        safe = (actor.lower() in allowed
+                                and not identity_party(actor))
+                        if code == 4:
+                            txt, kind = ("action by government forces against "
+                                         "civilians", "category")
+                        elif not safe:
+                            txt, kind = ({1: ("fighting between armed forces",
+                                              "category"),
+                                          2: ("communal or intercommunal violence",
+                                              "category")}
+                                         .get(code, ("attacks on civilians by "
+                                                     "armed groups", "category")))
+                        elif code == 1:
+                            txt, kind = f"the fighting involving {party(actor)}", "actor"
+                        elif code == 2:
+                            txt, kind = f"clashes between armed groups, including {party(actor)}", "actor"
+                        else:
+                            txt, kind = f"attacks on civilians by {party(actor)}", "actor"
+                        if txt not in [x["text"] for x in picked]:
+                            picked.append(dict(text=txt, kind=kind, src="UCDP GED",
+                                               detail=f"{nm} in {adm}",
+                                               n=int(r.events)))
+                    if picked:
+                        aex[code] = merge_same_stem(picked)[:SHOWCARD_MAX]
+                if not aex:
+                    continue
+                # only worth showing if it says something the national set does not
+                new_txt = {e["text"].lower() for v in aex.values() for e in v}
+                named = {e["text"].lower() for v in aex.values() for e in v
+                         if e["kind"] in ("actor", "actor-merged")}
+                if not named or named <= nat_actors:
+                    continue
+                regions_out.append(dict(
+                    name=str(adm), codes=sorted(aex),
+                    ex={str(k): [dict(text=e["text"], kind=e["kind"]) for e in v]
+                        for k, v in aex.items()},
+                    events=int(sub.events.sum()),
+                    differs=sorted(new_txt - nat_actors)[:6]))
+                if len(regions_out) >= MAX_ADM1:
+                    break
+            if regions_out:
+                out[iso]["adm1"] = regions_out
+                n_adm += len(regions_out)
+    for v in out.values():
+        v.pop("_ex", None)
+    print(f"  admin1 variants that differ from the national set: {n_adm} "
+          f"across {sum(1 for v in out.values() if v.get('adm1'))} countries")
+
+    # ---- language ---------------------------------------------------------
+    for iso, v in out.items():
+        v["lang"] = lang_for(iso)
 
     json.dump(out, open(f"{TIDY}/localised_questions.json", "w"))
     pd.DataFrame(rows).to_csv(f"{OUT}/localised_question_examples.csv", index=False)
@@ -383,129 +518,228 @@ def main():
 
 PAGE = """<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Localised examples for the forced-to-flee question</title><style>
-:root{color-scheme:light dark;--s:#fcfcfb;--p:#f9f9f7;--i:#0b0b0b;--i2:#52514e;
- --m:#898781;--g:#e1e0d9;--a:#2a78d6;--w:#fab219}
-@media(prefers-color-scheme:dark){:root{--s:#1a1a19;--p:#0d0d0d;--i:#fff;
- --i2:#c3c2b7;--g:#2c2c2a;--a:#3987e5}}
+<title>Forced to flee — localised question form</title><style>
+:root{color-scheme:light dark;--s:#fcfcfb;--p:#f2f1ec;--i:#111;--i2:#4a4945;
+ --m:#8a8880;--g:#d9d8d0;--a:#2a78d6;--w:#fab219;--paper:#fff}
+@media(prefers-color-scheme:dark){:root{--s:#1c1c1a;--p:#111110;--i:#f4f3ee;
+ --i2:#c3c2b7;--g:#33332f;--a:#5aa0f0;--paper:#1c1c1a}}
 *{box-sizing:border-box}
-body{margin:0;background:var(--p);color:var(--i);font:15.5px/1.6 ui-sans-serif,
+body{margin:0;background:var(--p);color:var(--i);font:15px/1.6 ui-sans-serif,
  -apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
-.w{max-width:900px;margin:0 auto;padding:44px 22px 80px}
-h1{font-size:26px;margin:0 0 10px;letter-spacing:-.02em;font-weight:660}
-p.lede{color:var(--i2);margin:0 0 18px}
-.ctl{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
-.ctl button{font:inherit;font-size:13.5px;padding:8px 13px;border-radius:9px;
+.w{max-width:980px;margin:0 auto;padding:38px 20px 80px}
+h1{font-size:23px;margin:0 0 8px;letter-spacing:-.02em;font-weight:660}
+p.lede{color:var(--i2);margin:0 0 16px;font-size:14.5px;max-width:76ch}
+.bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:14px 0 6px}
+select,.bar button{font:inherit;font-size:13.5px;padding:8px 12px;border-radius:8px;
  border:1px solid var(--g);background:var(--s);color:var(--i);cursor:pointer}
-.ctl button.on{background:var(--i);color:var(--s);border-color:var(--i)}
-.ctl button em{font-style:normal;display:block;font-size:10.5px;color:var(--m);
- margin-top:1px}
-.ctl button.on em{color:var(--s);opacity:.7}
-select{font:inherit;font-size:15px;padding:9px 13px;border-radius:9px;
- border:1px solid var(--g);background:var(--s);color:var(--i);width:100%;max-width:420px}
-.q{background:var(--s);border:1px solid var(--g);border-radius:12px;padding:20px 22px;
- margin-top:16px;white-space:pre-wrap;font-size:15.5px;line-height:1.75}
-.q b{font-weight:640}
-.eg{color:var(--a);font-weight:560}
+select{min-width:250px}
+.bar button.on{background:var(--i);color:var(--p);border-color:var(--i)}
+.bar span.lbl{font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;
+ color:var(--m);font-weight:680;margin-left:6px}
+/* ---- the form itself ---- */
+.form{background:var(--paper);border:1px solid var(--g);border-radius:4px;
+ padding:34px 38px 30px;margin-top:14px;
+ box-shadow:0 1px 2px rgba(0,0,0,.05),0 8px 26px rgba(0,0,0,.06);
+ font-family:ui-serif,Georgia,"Times New Roman",serif;font-size:15.5px;line-height:1.62}
+.form[dir="rtl"]{direction:rtl;text-align:right;
+ font-family:ui-serif,"Times New Roman",serif}
+.fhead{display:flex;align-items:baseline;gap:12px;border-bottom:2px solid var(--i);
+ padding-bottom:7px;margin-bottom:15px;font-family:ui-sans-serif,-apple-system,sans-serif}
+.fitem{font-weight:700;font-size:13px;letter-spacing:.06em}
+.fask{font-size:12px;color:var(--i2);font-style:italic}
+.fcountry{margin-inline-start:auto;font-size:12px;color:var(--m);
+ text-transform:uppercase;letter-spacing:.06em;font-weight:650}
+.stem{margin:0 0 9px}
+.lead{margin:14px 0 4px;font-weight:600}
+.instr{font-family:ui-sans-serif,-apple-system,sans-serif;font-size:11px;
+ letter-spacing:.05em;color:var(--i2);border:1px solid var(--g);
+ padding:5px 9px;border-radius:3px;display:inline-block;margin-bottom:12px}
+ol.opts{list-style:none;margin:0;padding:0}
+ol.opts li{display:flex;gap:11px;align-items:flex-start;padding:6.5px 0;
+ border-bottom:1px dotted var(--g)}
+ol.opts li:last-child{border-bottom:0}
+.box{flex:0 0 auto;width:14px;height:14px;border:1.5px solid var(--i);
+ margin-top:5px;border-radius:2px}
+.num{flex:0 0 auto;width:20px;color:var(--m);font-size:12.5px;margin-top:3px;
+ font-family:ui-sans-serif,sans-serif}
+.otext{flex:1}
+.eg{color:var(--a)}
+.eg .lab{font-style:italic;color:var(--i2)}
 .gen{color:var(--m);font-style:italic}
+.more{font-size:11.5px;color:var(--m);font-family:ui-sans-serif,sans-serif}
+.excl{font-size:11px;color:var(--m);font-family:ui-sans-serif,sans-serif}
 .warn{background:color-mix(in srgb,var(--w) 13%,transparent);
- border:1px solid color-mix(in srgb,var(--w) 42%,transparent);border-radius:10px;
- padding:13px 16px;margin-top:16px;font-size:14px;color:var(--i2)}
-table{border-collapse:collapse;width:100%;font-size:13.5px;margin-top:14px}
-th,td{padding:7px 9px;border-bottom:1px solid var(--g);text-align:left;vertical-align:top}
-th{color:var(--m);font-size:11px;text-transform:uppercase;letter-spacing:.04em}
-h2{font-size:16px;margin:30px 0 4px;font-weight:640}
-.k{font-size:10px;text-transform:uppercase;letter-spacing:.05em;padding:2px 6px;
- border-radius:4px;font-weight:700}
-.k-actor{background:color-mix(in srgb,var(--a) 16%,transparent);color:var(--a)}
+ border:1px solid color-mix(in srgb,var(--w) 42%,transparent);border-radius:9px;
+ padding:12px 15px;margin-top:14px;font-size:13.5px;color:var(--i2)}
+table{border-collapse:collapse;width:100%;font-size:13px;margin-top:12px}
+th,td{padding:6px 9px;border-bottom:1px solid var(--g);text-align:left;vertical-align:top}
+th{color:var(--m);font-size:10.5px;text-transform:uppercase;letter-spacing:.04em}
+h2{font-size:15px;margin:28px 0 2px;font-weight:640}
+.k{font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;padding:2px 6px;
+ border-radius:4px;font-weight:700;white-space:nowrap}
+.k-actor,.k-actor-merged{background:color-mix(in srgb,var(--a) 16%,transparent);color:var(--a)}
 .k-category{background:color-mix(in srgb,#0ca30c 16%,transparent);color:#0ca30c}
 .k-generic{background:transparent;color:var(--m);border:1px solid var(--g)}
 .k-none{background:transparent;color:var(--m);border:1px dashed var(--g)}
-.k-actor-merged{background:color-mix(in srgb,var(--a) 16%,transparent);color:var(--a)}
 .ro{font-size:10px;color:var(--m)}
+@media print{body{background:#fff}.bar,select,h1,p.lede,h2,table,.warn{display:none}
+ .form{box-shadow:none;border:0;padding:0}}
+@media(max-width:700px){.form{padding:22px 18px}select{min-width:0;width:100%}}
 </style></head><body><div class="w">
-<h1>Localised examples for the forced-to-flee question</h1>
-<p class="lede">Version 3 of the item, with the text after each &ldquo;e.g.&rdquo;
-drafted from what was actually recorded in that country. <b>The response options do
-not change</b> &mdash; only the examples, which the question variants document
-permits localising and which the desk review found respondents depend on.</p>
-<select id="pick"></select>
-<div class="ctl">
-  <button class="len on" data-l="read_out">Read aloud <em>short</em></button>
-  <button class="len" data-l="showcard">Showcard <em>everything recorded</em></button>
+<h1>Forced to flee &mdash; localised question form</h1>
+<p class="lede">Version 3 of the item, rendered as it would appear on a form, with
+the text after each &ldquo;e.g.&rdquo; drafted from what was recorded in that
+country. <b>The response options never change</b> &mdash; only the examples, which
+the question variants document permits localising and which the desk review found
+respondents depend on.</p>
+
+<div class="bar">
+  <select id="pick"></select>
+  <span class="lbl">Level</span>
+  <select id="lvl"></select>
 </div>
-<div class="q" id="q"></div>
+<div class="bar">
+  <span class="lbl">Length</span>
+  <button class="len on" data-l="read_out">Read aloud</button>
+  <button class="len" data-l="showcard">Showcard</button>
+  <span class="lbl">Language</span>
+  <span id="langs"></span>
+</div>
+
+<div class="form" id="form"></div>
 <div class="warn" id="warn"></div>
+
 <h2>Where each example comes from</h2>
 <table id="prov"><thead><tr><th>Option</th><th>Example</th><th>Type</th>
 <th>Source</th><th>Evidence</th></tr></thead><tbody></tbody></table>
+
 <h2>Read this before using any of it</h2>
 <div class="warn">
 <b>These are drafts for review, not enumerator text.</b><br><br>
+<b>The translations are unreviewed.</b> Translating an instrument is a specialist
+job &mdash; TRAPD, or forward-and-back translation with reconciliation &mdash;
+because a question has to be <i>understood</i> the same way, not merely mean the
+same thing. Cognitive testing on an unreviewed translation tests the translation,
+not the question. Two words need a professional decision in particular:
+<b>flee</b>, where several languages separate fleeing-in-panic from
+leaving-under-duress and the item means the second; and <b>persecution</b>, a
+legal term of art that in everyday registers reads as ordinary harassment.<br><br>
 <b>The names are UCDP&rsquo;s, not a respondent&rsquo;s.</b> UCDP writes
-&ldquo;JAS&rdquo; where a Nigerian respondent says Boko Haram. A handful of the
-best-known are translated here; the rest need someone in the country.<br><br>
-<b>Naming actors risks anchoring.</b> Someone displaced by a group not named may
-conclude the option does not cover them &mdash; the opposite of what an example is
-for. Where the data allowed, a category phrase was preferred to a name, and each
-example is tagged with which it is.<br><br>
+&ldquo;JAS&rdquo; where a Nigerian respondent says Boko Haram. Actor names are
+never translated &mdash; they are proper nouns.<br><br>
 <b>Identity groups are never named.</b> UCDP codes communal violence as, for
-example, &ldquo;Christians (Nigeria) &ndash; Muslims (Nigeria)&rdquo;. Correct as
-conflict coding, unusable in an instrument a government enumerator reads aloud.
-Those become &ldquo;communal or intercommunal violence&rdquo;.<br><br>
-<b>Options 3 and 7 stay generic almost everywhere</b> because no event source
-records discrimination, persecution or development-induced displacement. That is a
-finding about the data, not about those countries.
+example, &ldquo;Christians (Nigeria) &ndash; Muslims (Nigeria)&rdquo;, and at
+subnational level as named ethnic groups. Correct as conflict coding, unusable in
+an instrument a government enumerator reads aloud. Those become &ldquo;communal or
+intercommunal violence&rdquo;.<br><br>
+<b>Naming actors risks anchoring.</b> Someone displaced by a group not named may
+conclude the option does not cover them. Category phrasing is preferred where the
+data allows, and every example is tagged with which it is.<br><br>
+<b>Subnational sets appear only where they say something different.</b> A region
+whose examples merely repeat the national list is not shown.
 </div>
-<p style="font-size:13px;color:var(--m);margin-top:26px">Sources: UCDP GED for
+<p style="font-size:12.5px;color:var(--m);margin-top:24px">Sources: UCDP GED for
 conflict, IDMC for hazards. Generated by
-<code>prototype-python/build_questions.py</code>.</p>
+<code>prototype-python/build_questions.py</code>. Ctrl/Cmd-P prints the form alone.</p>
 </div><script>
-const Q=__DATA__, P=__PROV__;
-const LBL={1:"1. Armed conflict or war",2:"2. Widespread violence",
- 3:"3. Discrimination or persecution",4:"4. HR violations by authorities",
- 5:"5. Other threats of violence",6:"6. Natural disasters",
+const Q=__DATA__, P=__PROV__, T=__T__, LANGS=__LANGS__;
+const CODES=[1,2,3,4,5,6,7,8];
+const LBL={1:"1. Armed conflict",2:"2. Widespread violence",3:"3. Persecution",
+ 4:"4. HR violations",5:"5. Other violence",6:"6. Natural disasters",
  7:"7. Man-made events",8:"8. A different threat"};
-const sel=document.getElementById('pick');
+let LEN="read_out", LANG=null, ADM=-1;
+const sel=document.getElementById('pick'), lvl=document.getElementById('lvl');
 Object.entries(Q).sort((a,b)=>a[1].name.localeCompare(b[1].name))
  .forEach(([k,v])=>{const o=document.createElement('option');
-  o.value=k;o.textContent=`${v.name} — ${v.n_localised} of 7 options localised`;
+  o.value=k;o.textContent=`${v.name} — ${v.n_localised}/7 options localised`;
   sel.appendChild(o);});
-function esc(s){return s.replace(/&/g,"&amp;").replace(/</g,"&lt;");}
-let LEN="read_out";
-function show(iso){
- const v=Q[iso];
- document.getElementById('q').innerHTML=esc(v[LEN]||v.question)
-   .replace(/e\.g\. (.+)/g,(m,p1)=>`<span class="eg">e.g. ${p1}</span>`)
-   .replace(/^- /gm,"— ");
+function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;");}
+
+function buildLangs(){
+ document.getElementById('langs').innerHTML=Object.entries(LANGS)
+  .map(([k,v])=>`<button class="lang${k===LANG?' on':''}" data-k="${k}">${v[0]}</button>`)
+  .join(" ");
+ document.querySelectorAll('.lang').forEach(b=>b.addEventListener('click',()=>{
+  LANG=b.dataset.k; buildLangs(); render();}));}
+
+function buildLevels(v){
+ lvl.innerHTML=`<option value="-1">Whole country</option>`+
+  (v.adm1||[]).map((r,i)=>`<option value="${i}">${esc(r.name)} — ${r.events.toLocaleString()} events</option>`).join("");
+ lvl.disabled=!(v.adm1&&v.adm1.length);
+ if(ADM>=(v.adm1||[]).length)ADM=-1;
+ lvl.value=String(ADM);}
+
+function render(){
+ const iso=sel.value, v=Q[iso], t=T[LANG]||T.en, dir=(LANGS[LANG]||["","ltr"])[1];
+ const lim=LEN==="read_out"?3:8;
+ const region=ADM>=0?(v.adm1||[])[ADM]:null;
+ const f=document.getElementById('form');
+ f.setAttribute('dir',dir);
+ let h=`<div class="fhead"><span class="fitem">${t.item}</span>`+
+   `<span class="fask">${esc(t.ask)}</span>`+
+   `<span class="fcountry">${esc(v.name)}${region?" · "+esc(region.name):""}</span></div>`+
+   `<p class="stem">${t.stem1}</p><p class="stem">${t.stem2}</p>`+
+   `<p class="lead">${esc(t.lead)}</p>`+
+   `<div class="instr">${esc(t.instr)}</div><ol class="opts">`;
+ CODES.forEach(c=>{
+  // region examples override the national ones for the codes they cover
+  let items=null, generic=false;
+  if(region&&region.ex[String(c)]){
+   items=region.ex[String(c)].map(e=>e.text);
+  }else{
+   const row=(v.form||[]).find(x=>x.code===c);
+   if(row&&row.n){items=(LANG==="en"?row.eg:row.eg_t);
+     generic=!v.localised.includes(c);}
+  }
+  let eg="";
+  if(items&&items.length){
+   const use=items.slice(0,lim), more=items.length-use.length;
+   eg=` <span class="eg ${generic?'gen':''}"><span class="lab">${esc(t.eg)}</span> `+
+      `${esc(use.join(", "))}</span>`+
+      (more?` <span class="more">${esc(t.more.replace("{n}",more))}</span>`:``);}
+  h+=`<li><span class="box"></span><span class="num">${c}</span>`+
+     `<span class="otext">${t.opts[c]}${c===8?" "+esc(t.specify):""}${eg}</span></li>`;});
+ h+=`<li><span class="box"></span><span class="num">99</span>`+
+    `<span class="otext">${esc(t.none)} <span class="excl">${esc(t.excl)}</span>`+
+    `</span></li></ol>`;
+ f.innerHTML=h;
+
  const rows=P.filter(r=>r.iso3===iso);
  const miss=rows.filter(r=>r.kind==="generic"||r.kind==="none").length;
  document.getElementById('warn').innerHTML=
-  `<b>${v.n_localised} of 7 response options have country-specific examples`+
-  `, ${v.n_available} examples in total.</b> ${miss} options still carry the `+
-  `generic wording or none at all — see the table. `+
-  (v.n_beyond_read_out
-    ? `<b>${v.n_beyond_read_out} more</b> are recorded than fit a read-aloud list; `+
-      `the showcard version includes them.`
-    : `Everything recorded fits the read-aloud list.`);
+  `<b>${v.n_localised} of 7 options carry country-specific examples, `+
+  `${v.n_available} in total.</b> ${miss} still use the questionnaire's generic `+
+  `wording or none at all. `+
+  (v.n_beyond_read_out?`<b>${v.n_beyond_read_out} more examples are recorded</b> `+
+    `than belong in a read-aloud list — the showcard length includes them. `:``)+
+  ((v.adm1&&v.adm1.length)?`<b>${v.adm1.length} subnational sets</b> differ from the `+
+    `national one and are in the Level menu. `:`No subnational set differs enough from `+
+    `the national one to be worth showing. `)+
+  (LANG!=="en"?`<b>The ${LANGS[LANG][0]} text is an unreviewed draft translation.</b>`:``);
  document.querySelector('#prov tbody').innerHTML=rows.map(r=>
   `<tr><td>${LBL[r.code_id]||r.code_id}</td><td>${esc(r.example||"—")}</td>`+
   `<td><span class="k k-${r.kind}">${r.kind}</span></td><td>${r.source||"—"}</td>`+
   `<td style="color:var(--i2)">${esc(r.evidence||"")}`+
-  (r.in_read_out===false?`<div class="ro">showcard only</div>`:``)+
-  `</td></tr>`).join("");}
-sel.addEventListener('change',()=>show(sel.value));
+  (r.in_read_out===false?`<div class="ro">showcard only</div>`:``)+`</td></tr>`).join("");}
+
+function pickCountry(){
+ const v=Q[sel.value]; LANG=v.lang||"en"; ADM=-1;
+ buildLangs(); buildLevels(v); render();}
+sel.addEventListener('change',pickCountry);
+lvl.addEventListener('change',()=>{ADM=+lvl.value;render();});
 document.querySelectorAll('.len').forEach(b=>b.addEventListener('click',()=>{
  document.querySelectorAll('.len').forEach(x=>x.classList.remove('on'));
- b.classList.add('on');LEN=b.dataset.l;show(sel.value);}));
+ b.classList.add('on');LEN=b.dataset.l;render();}));
 sel.value = Q["NGA"] ? "NGA" : Object.keys(Q)[0];
-show(sel.value);
+pickCountry();
 </script></body></html>"""
 
 
 def write_page(out, rows):
     html = (PAGE.replace("__DATA__", json.dumps(out, separators=(",", ":")))
-                .replace("__PROV__", json.dumps(rows, separators=(",", ":"))))
+                .replace("__PROV__", json.dumps(rows, separators=(",", ":")))
+                .replace("__T__", json.dumps(T, separators=(",", ":")))
+                .replace("__LANGS__", json.dumps(LANGS, separators=(",", ":"))))
     open(f"{OUT}/idq_localised_questions.html", "w").write(html)
     print(f"\nwrote idq_localised_questions.html "
           f"({len(html)/1e6:.2f} MB, {len(out)} countries)")
