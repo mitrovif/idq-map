@@ -13,7 +13,7 @@ in `data/raw/`. Filenames are matched by pattern, so downloads work unchanged.
 | **ACLED aggregated** | [acleddata.com](https://acleddata.com/) → Data Export Tool, aggregated regional files, **all six regions** | no | codes 1, 2, 4, 5 · weekly × admin1 |
 | **UNHCR** | R package `refugees` — ships the data offline | no | refugee and IDP stocks, origin × asylum, recognition rates |
 | **V-Dem** | `vdem.RData` from the [vdemdata repo](https://github.com/vdeminstitute/vdemdata) | no | conditions behind codes 3 and 4 |
-| **IOM DTM** | [dtm-apim-portal.iom.int](https://dtm-apim-portal.iom.int/) | **yes**, free | reported reasons — what displaced people say |
+| **IOM DTM** | [dtm-apim-portal.iom.int](https://dtm-apim-portal.iom.int/) → then run `prototype-python/fetch_dtm.py` on a machine with normal network access | **yes**, free | reported reasons — the only source here where the reason comes from the displaced person rather than an analyst |
 | **UCDP API** | [ucdp.uu.se/apidocs](https://ucdp.uu.se/apidocs/) | **yes** | reproducible refresh (bulk downloads need no key) |
 | **IDMC API** | email ch.datainfo@idmc.ch | **yes** | reproducible refresh (the GIDD export needs no key) — see [`idmc_access_request.md`](idmc_access_request.md) |
 
@@ -57,3 +57,19 @@ gracefully — the pipeline reports what it skipped rather than failing.
 **ACLED restricts redistribution.** Do not commit ACLED files or any output that
 reproduces ACLED rows. UCDP, IDMC and UNHCR all require citation; see each
 publisher's terms. `.gitignore` excludes `data/` for this reason.
+
+
+## A note on where the API-key sources can run
+
+UCDP, IDMC and IOM DTM all sit behind hosts that the Cowork sandbox cannot reach —
+every request fails at the proxy, with or without a key. The on-device shell is
+equally blocked. So an API key is only usable from a normal terminal:
+
+- **IOM DTM** — `python3 -m pip install --user dtmapi pandas`, then
+  `DTM_KEY=<key> python3 prototype-python/fetch_dtm.py`. Writes CSVs that carry no
+  credential; those are what to share.
+- **IDMC / UCDP** — `source("run_all.R")` locally, with the keys in `.Renviron`.
+
+Never paste a key into a chat transcript to work around this. It does not help —
+the call still cannot be made — and IOM's own documentation says the same:
+*"Never share your API key or commit it to version control."*
