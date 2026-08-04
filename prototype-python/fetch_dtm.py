@@ -35,9 +35,27 @@ import sys
 import traceback
 from pathlib import Path
 
-KEY = os.environ.get("DTM_KEY", "").strip()
+KEY = os.environ.get("DTM_KEY", "").strip().strip("\"'")
 if not KEY:
-    sys.exit("DTM_KEY is not set. Run:  DTM_KEY=your-key-here python3 fetch_dtm.py")
+    sys.exit("DTM_KEY is not set. Run:  DTM_KEY=<key> python3 fetch_dtm.py")
+
+# A DTM subscription key is 32 lowercase hex characters. Checking the SHAPE
+# before spending 63 API calls on it catches the most likely mistake by far:
+# pasting over part of the placeholder and leaving a stray character on the
+# front, which fails as "401 Access Denied" and looks like a permissions
+# problem rather than a typo.
+import re
+if not re.fullmatch(r"[0-9a-fA-F]{32}", KEY):
+    print(f"WARNING: that does not look like a DTM key.")
+    print(f"  got {len(KEY)} characters: {KEY[:4]}...{KEY[-4:]}")
+    print(f"  expected exactly 32 hex characters (0-9, a-f) and nothing else.")
+    stray = KEY.lstrip("0123456789abcdefABCDEF")
+    if len(KEY) == 33 and re.fullmatch(r"[0-9a-fA-F]{32}", KEY[1:]):
+        print(f"  It looks like there is an extra '{KEY[0]}' on the front — a "
+              f"leftover from the placeholder text. Try: DTM_KEY={KEY[1:]}")
+    elif stray:
+        print(f"  Unexpected characters present: {stray[:20]!r}")
+    print("  Continuing anyway in case the format has changed.\n")
 
 try:
     import pandas as pd
@@ -86,7 +104,12 @@ try:
         else:
             print(f"  not in DTM's country list, skipping: {w}")
     print(f"\n{len(available)} of {len(WANT)} target countries available\n")
-except Exception:
+except Exception as e:
+    if "401" in str(e) or "Authentication" in str(e):
+        sys.exit("\nThe API rejected the key (401) on the very first call.\n"
+                 "  A DTM key is exactly 32 hex characters — check for a stray\n"
+                 "  character on the front, and try the secondary key.\n"
+                 f"  Key supplied was {len(KEY)} characters long.")
     print("could not fetch the country list; falling back to the names as written\n")
     traceback.print_exc(limit=1)
     available = WANT
@@ -113,7 +136,16 @@ for country in available:
                     vals = sorted(set(df[cols[0]].dropna().astype(str)))[:12]
                     got["reasons"] = vals
         except Exception as e:
-            got[level] = f"error: {str(e)[:60]}"
+            msg = str(e)
+            got[level] = f"error: {msg[:60]}"
+            if "401" in msg or "Authentication" in msg:
+                print(f"\n  STOPPING: the API rejected the key (401).\n")
+                print("  This is almost always the key itself, not permissions:")
+                print("    - check for a stray character on the front or back")
+                print("    - a DTM key is exactly 32 hex characters")
+                print("    - try the SECONDARY key; the portal issues two")
+                print("    - a brand-new subscription can take a few minutes")
+                sys.exit(1)
     summary.append((country, got))
     r = got.get("reason_cols")
     flag = "REASON FIELD" if r else "no reason field"
