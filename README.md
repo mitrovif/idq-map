@@ -63,9 +63,9 @@ The main output carries two views of the same eight options, switched at the top
 displaced them. Magnitude.
 
 **Events that happened** — circles sized by how many events were *recorded*, at country
-level or across 1,847 subnational areas. Frequency. Conflict incidents from UCDP GED
-(126 countries, 1989+) or ACLED (68 countries) as alternatives, never summed; hazard
-records from IDMC.
+level or across 2,045 subnational areas. Frequency. Conflict incidents from UCDP GED
+(417,968 incidents, 126 countries, 1989+) or ACLED (1,841,683 events, 203 countries) as
+alternatives, never summed; hazard records from IDMC.
 
 They disagree, and the disagreement is the finding. Mexico ranks **4th in the world by
 recorded events** — 98% of them code 2, widespread violence — and **32nd by displaced

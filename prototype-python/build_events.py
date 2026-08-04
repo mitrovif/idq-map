@@ -26,6 +26,8 @@ time. Switching the conflict source swaps GED for ACLED rather than adding it.
 """
 from paths import TIDY_S
 import json
+import re
+import unicodedata
 from collections import defaultdict
 
 import pandas as pd
@@ -38,6 +40,38 @@ HUMAN_TRIGGERED = {"Wildfire", "Dam release flood", "Sinkhole"}
 MIN_ADM1_EVENTS = 3       # below this an admin1 point is noise, not a pattern
 MAX_ADM1_PER_COUNTRY = 60  # keeps the payload sane; countries rarely exceed it
 MAX_NAMED = 6
+
+
+# ACLED and UCDP name the same province differently: UCDP appends the
+# administrative type ("Adamawa State", "Badakhshan province"), ACLED does not
+# ("Adamawa"). Joining on the raw string matched 4 of 3,022 pairs - 0.1% - so
+# the ACLED subnational layer was silently near-empty rather than wrong-looking.
+ADMIN_TYPES = {
+    "province", "region", "state", "department", "district", "governorate",
+    "county", "oblast", "rayon", "prefecture", "municipality", "division",
+    "zone", "community", "territory", "district", "city", "area", "council",
+    "emirate", "canton", "parish", "commune", "voivodeship", "okrug", "krai",
+    "republic", "autonomous", "metropolitan", "capital", "federal",
+}
+
+
+def norm_admin1(name):
+    """Comparable form of an admin1 name across sources."""
+    if not isinstance(name, str):
+        return None
+    s = unicodedata.normalize("NFKD", name)
+    s = "".join(c for c in s if not unicodedata.combining(c)).lower()
+    s = re.sub(r"[^a-z0-9 ]+", " ", s)
+    words = [w for w in s.split() if w]
+    # strip administrative-type words from either end, repeatedly
+    changed = True
+    while changed and len(words) > 1:
+        changed = False
+        if words[-1] in ADMIN_TYPES:
+            words.pop(); changed = True
+        if len(words) > 1 and words[0] in ADMIN_TYPES:
+            words.pop(0); changed = True
+    return " ".join(words) or None
 
 
 def _num(x):
@@ -156,22 +190,40 @@ def main():
             rec["named"][k] = sorted(v, key=lambda x: -x["n"])[:MAX_NAMED]
 
         # ---- admin1 ---------------------------------------------------------
+        # Keyed on the NORMALISED name so the three sources land in the same
+        # bucket; "label" keeps the most human of the raw spellings for display.
         adm = defaultdict(lambda: {"u": {}, "a": {}, "d": {}, "k": 0.0,
-                                   "lat": None, "lon": None, "cf": ""})
+                                   "lat": None, "lon": None, "cf": "",
+                                   "label": None})
+
+        def bucket(raw):
+            key = norm_admin1(raw)
+            if not key:
+                return None
+            a = adm[key]
+            # prefer the longer spelling: "Adamawa State" reads better than "Adamawa"
+            if a["label"] is None or len(str(raw)) > len(a["label"]):
+                a["label"] = str(raw)
+            return a
+
         for t in ucdp_a[ucdp_a.iso3 == iso].itertuples():
             if t.events <= 0:
                 continue
-            a = adm[t.admin1]
+            a = bucket(t.admin1)
+            if a is None:
+                continue
             a["u"][str(int(t.code_id))] = _num(t.events)
             a["d"][str(int(t.code_id))] = _num(t.deaths)
         for t in acled_a[acled_a.iso3 == iso].itertuples():
             if t.events <= 0:
                 continue
-            adm[t.admin1]["a"][str(int(t.code_id))] = _num(t.events)
+            a = bucket(t.admin1)
+            if a is not None:
+                a["a"][str(int(t.code_id))] = _num(t.events)
         for name, g in dd.groupby("adm1"):
-            if not isinstance(name, str) or not name:
+            a = bucket(name)
+            if a is None:
                 continue
-            a = adm[name]
             for code, gg in g.groupby("code_id"):
                 a["u"][str(int(code))] = a["u"].get(str(int(code)), 0) + len(gg)
                 a["k"] += float(gg.figures.sum())
@@ -179,15 +231,17 @@ def main():
             if len(ll) and a["lat"] is None:
                 a["lat"], a["lon"] = float(ll.lat.iloc[0]), float(ll.lon.iloc[0])
 
-        for name, a in adm.items():
+        ncoords = {(i, norm_admin1(n)): xy for (i, n), xy in coords.items()}
+        for key, a in adm.items():
             if a["lat"] is None:
-                xy = coords.get((iso, name))
+                xy = ncoords.get((iso, key))
                 if xy:
                     a["lat"], a["lon"] = xy
         # conflicts named per admin1, for the drill-down tooltip
         for t in ga[ga.iso3 == iso].itertuples():
-            if t.adm_1 in adm and t.conflicts and not adm[t.adm_1]["cf"]:
-                adm[t.adm_1]["cf"] = t.conflicts
+            k = norm_admin1(t.adm_1)
+            if k in adm and t.conflicts and not adm[k]["cf"]:
+                adm[k]["cf"] = t.conflicts
 
         rows = []
         for name, a in adm.items():
@@ -195,7 +249,8 @@ def main():
             tot_a = sum(a["a"].values())
             if a["lat"] is None or max(tot_u, tot_a) < MIN_ADM1_EVENTS:
                 continue
-            rows.append({"n": name, "y": round(a["lat"], 3), "x": round(a["lon"], 3),
+            rows.append({"n": a["label"] or name,
+                         "y": round(a["lat"], 3), "x": round(a["lon"], 3),
                          "u": a["u"], "a": a["a"], "d": a["d"],
                          "k": _num(a["k"]), "cf": a["cf"][:220]})
         rows.sort(key=lambda z: -sum(z["u"].values()))

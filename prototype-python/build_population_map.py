@@ -568,7 +568,7 @@ recorded — the named storm, the named conflict. Scroll to zoom, drag to pan.</
   <button class="lvl" data-l="adm1">Subnational areas</button>
   <span style="width:14px"></span>
   <button class="esrc on" data-s="ucdp">Deadly incidents <em>worldwide</em></button>
-  <button class="esrc" data-s="acled">All violent events <em>68 countries</em></button>
+  <button class="esrc" data-s="acled">All violent events <em id="acledn">&mdash;</em></button>
 </div>
 
 <div class="ctl" id="popctl">
@@ -767,6 +767,10 @@ const ELAB={1:"Armed conflict or war",2:"Widespread violence / public order",
   5:"Other threats of violence (non-state one-sided)",
   6:"Natural disasters",7:"Man-made events (incl. wildfire)"};
 const ESRCNAME={ucdp:"UCDP GED",acled:"ACLED"};
+// Coverage counts were hardcoded and went stale the moment more ACLED regions
+// were added. Derive them, so the label cannot disagree with the data again.
+const NCOV=src=>Object.values(D.ev).filter(v=>Object.keys(v[src]||{}).length).length;
+const NUCDP=NCOV("ucdp"), NACLED=NCOV("acled");
 /* PLAIN ENGLISH. Every one of these is a term a displacement specialist uses
    without noticing and a non-specialist reads straight past while quietly losing
    the thread. Definitions are written for someone with no background, and are
@@ -1170,8 +1174,8 @@ function drawEvents(){
   `<b>${ESRCNAME[ESRC]}</b>; hazard records from IDMC. `+
   (ESRC==="acled"
    ? `ACLED counts every political-violence event whether or not anyone died, so its totals `+
-     `are several times UCDP's for the same conflicts, and it covers 68 countries rather `+
-     `than 126. It is an <b>alternative</b> to UCDP GED, never an addition — the two `+
+     `are several times UCDP's for the same conflicts — it covers ${NACLED} countries against `+
+     `UCDP's ${NUCDP}. It is an <b>alternative</b> to UCDP GED, never an addition — the two `+
      `code the same underlying events.`
    : `UCDP GED counts geocoded incidents with at least one battle-related death, 1989 `+
      `onwards, globally. Events with no fatalities are invisible to it, which understates `+
@@ -1915,6 +1919,8 @@ function panelToggle(btnId,panelId,openTxt,shutTxt){
 panelToggle('helpbtn','help',"How to read this","Hide");
 panelToggle('srcbtn','srcpanel',"Where these numbers come from","Hide");
 document.getElementById('glosspanel').innerHTML=glossPanel();
+{const e=document.getElementById('acledn');
+ if(e)e.innerHTML=NACLED?`${NACLED} countries`:"not in shared build";}
 panelToggle('glossbtn','glosspanel',"Plain English","Hide");
 document.getElementById('advbtn').addEventListener('click',e=>{
  e.stopPropagation(); const h=document.getElementById('layerctl');
