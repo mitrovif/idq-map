@@ -6,14 +6,16 @@ Budget an hour, most of it waiting for exports.
 
 ## How each source is actually connected
 
-This matters more than it sounds: **only one source is reached by API.**
-Everything else is a manual export or an offline package, which is why the
-figures are pinned to a download date rather than live.
+This matters more than it sounds: **only one source has a confirmed, working
+API connection — IOM DTM.** IDMC has since issued an API key too (2026-08-07),
+but it has not yet been run live, so the manual export stays the default route
+for now. Everything else is a manual export or an offline package, which is
+why the figures are pinned to a download date rather than live.
 
 | Source | How it is connected | Key | Notes |
 |---|---|---|---|
 | **UCDP GED** | manual bulk download (CSV) | no | An API exists and a token was requested (`ucdp_access_request.md`); bulk downloads need no key, so the token is for reproducible refresh, not first results |
-| **IDMC GIDD** | manual export, one year per download | no | Disaggregated data exists **only from 2023**, one year at a time. The aggregated export covers 2008–2025 but distinguishes nothing finer than Conflict vs Disaster. API request drafted in `idmc_access_request.md` — key goes in the **query string**, not a header |
+| **IDMC GIDD** | manual export (no key) **or** API (`IDMC_KEY`, received) | manual: no / API: yes | Manual disaggregated export: **only from 2023**, one year at a time; aggregated export covers 2008–2025 but distinguishes nothing finer than Conflict vs Disaster. API (`conflicts/` + `disasters/` endpoints, key in the **query string**, `MODE <- "api"`): reproducible refresh — see `idmc_access_request.md` for the endpoints and what's still unconfirmed about their granularity |
 | **ACLED** | manual export, six regional files | account | Data Export Tool. Their terms restrict republishing, so ACLED counts are stripped from the published build |
 | **UNHCR** | R package `refugees` — ships the data offline | no | No network call at all |
 | **IOM DTM** | **API — the only one** | **yes**, free | `prototype-python/fetch_dtm.py` using IOM's own `dtmapi` client. Key from [dtm-apim-portal.iom.int](https://dtm-apim-portal.iom.int/), passed as a header. Must run on a machine with normal network access |

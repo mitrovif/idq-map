@@ -23,9 +23,11 @@ missing <- setdiff(pkgs, rownames(installed.packages()))
 if (length(missing)) install.packages(missing)
 invisible(lapply(pkgs, library, character.only = TRUE))
 ## optional, only for MODE = "api":
-##   install.packages(c("acledR", "idmc"))
+##   install.packages("acledR")
 ##   Sys.setenv(ACLED_EMAIL = "...", ACLED_KEY = "...")   # acleddata.com
-##   Sys.setenv(IDMC_API = "...")                          # request from IDMC
+##   Sys.setenv(IDMC_KEY = "...")                          # client_id from IDMC (see
+##                                                          # docs/idmc_access_request.md) -
+##                                                          # goes in .Renviron, not here
 ##   Sys.setenv(DTM_KEY  = "...")                          # dtm-apim-portal.iom.int
 
 source("R/01_sources.R")
@@ -73,8 +75,12 @@ if (MODE == "local") {
 } else {
   acled       <- fetch_acled()
   ged         <- fetch_ucdp_ged(); ucdp <- tidy_ucdp_ged(ged)
-  idu         <- fetch_idmc_idu()
-  idmc_l      <- tidy_idmc_idu(idu); idmc <- idmc_l$long; idmc_detail <- idmc_l$detail
+  ## GIDD conflicts/ + disasters/ endpoints, client_id from IDMC's onboarding
+  ## email. NOT yet confirmed to carry the same violence_type/hazard_sub_type
+  ## detail as the manual disaggregated export - see the long comment above
+  ## fetch_idmc_gidd_api() in R/01_sources.R before relying on this for a
+  ## paper figure.
+  idmc_l      <- fetch_idmc_gidd_api(); idmc <- idmc_l$long; idmc_detail <- idmc_l$detail
 }
 
 ## IOM DTM - the only source that records what DISPLACED PEOPLE SAID, rather

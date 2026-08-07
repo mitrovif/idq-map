@@ -311,16 +311,55 @@ IDMC_VIOLENCE_TO_CODE <- c(
 ## composition, never the bare figure.
 HUMAN_TRIGGERED_HAZARDS <- c("Wildfire", "Dam release flood", "Sinkhole")
 
-read_local_idmc_gidd <- function(path, sheet = "1_Disaggregated_Data") {
-  raw <- read_excel(path, sheet = sheet) |>
-    rename(iso3 = ISO3, country = Country, year = Year,
-           cause = `Figure cause`, category = `Figure category`,
-           figures = `Total figures`, hazard_type = `Hazard type`,
-           hazard_sub_type = `Hazard sub type`, violence_type = `Violence type`,
-           coords = `Locations coordinates`, loc_name = `Locations name`,
-           loc_accuracy = `Locations accuracy`,
-           disp_occurred = `Displacement occurred`,
-           sources = Sources) |>
+## The manual export (Excel) and the GIDD API's displacement-export endpoint
+## carry the same underlying figures but are not guaranteed to use identical
+## column headers - the Excel sheet is written for a human, the API for a
+## machine. ALIASES lets one transform serve both without duplicating the
+## code_id / evidence_type logic. This has only been checked against the
+## Excel headers; the API side is written from IDMC's documented field names
+## and has NOT been run against a live response (the API host is unreachable
+## from this sandbox - see the "note on where this can run" below). First run
+## against the real API should be treated as a check on this mapping, not a
+## formality: if standardize_idmc_cols() stops with "missing required
+## column(s)", the message lists what the API actually sent.
+IDMC_COL_ALIASES <- list(
+  iso3          = c("ISO3", "iso3", "iso3_string"),
+  country       = c("Country", "country", "country_name", "geo_name"),
+  year          = c("Year", "year"),
+  cause         = c("Figure cause", "cause", "figure_cause"),
+  category      = c("Figure category", "category", "figure_category", "displacement_type",
+                     "type"),
+  figures       = c("Total figures", "figures", "total_figures", "figure"),
+  hazard_type   = c("Hazard type", "hazard_type"),
+  hazard_sub_type = c("Hazard sub type", "hazard_sub_type", "hazard_subtype"),
+  violence_type = c("Violence type", "violence_type"),
+  coords        = c("Locations coordinates", "coords", "locations_coordinates"),
+  loc_name      = c("Locations name", "loc_name", "locations_name"),
+  loc_accuracy  = c("Locations accuracy", "loc_accuracy", "locations_accuracy"),
+  disp_occurred = c("Displacement occurred", "disp_occurred", "displacement_occurred"),
+  sources       = c("Sources", "sources", "source")
+)
+
+standardize_idmc_cols <- function(df) {
+  found <- purrr::map_chr(names(IDMC_COL_ALIASES), function(target) {
+    hit <- intersect(IDMC_COL_ALIASES[[target]], names(df))
+    if (length(hit)) hit[1] else NA_character_
+  })
+  names(found) <- names(IDMC_COL_ALIASES)
+  required <- c("iso3", "country", "year", "cause", "category", "figures")
+  missing <- required[is.na(found[required])]
+  if (length(missing)) {
+    stop("IDMC data: missing required column(s): ", paste(missing, collapse = ", "),
+         ".\nColumns actually present: ", paste(names(df), collapse = ", "),
+         "\nAdd the real name(s) to IDMC_COL_ALIASES in R/01_sources.R and re-run.")
+  }
+  present <- found[!is.na(found)]
+  df |> rename(!!!setNames(present, names(present)))
+}
+
+transform_idmc_gidd <- function(raw0) {
+  raw <- raw0 |>
+    standardize_idmc_cols() |>
     mutate(
       code_id = case_when(
         cause == "Disaster" & hazard_sub_type %in% HUMAN_TRIGGERED_HAZARDS ~ 7L,
@@ -336,18 +375,146 @@ read_local_idmc_gidd <- function(path, sheet = "1_Disaggregated_Data") {
       human_triggered = hazard_sub_type %in% HUMAN_TRIGGERED_HAZARDS) |>
     filter(!is.na(code_id))
 
+  ## Matched by pattern, not exact string, so the API's own wording for these
+  ## two categories (whatever it turns out to be) has a chance of still
+  ## matching without a code edit - "New displacement"/"Flow" for the flow
+  ## figure, "IDPs"/"Stock" for the stock figure are the likely variants
+  ## alongside the Excel export's literal "Internal Displacements"/"IDPs".
+  cat_lower <- tolower(coalesce(raw$category, ""))
+  is_flow  <- str_detect(cat_lower, "internal displacement|new displacement|flow")
+  is_stock <- str_detect(cat_lower, "^idps$|idp stock|stock")
+  unmatched <- raw$category[!is_flow & !is_stock]
+  if (length(unmatched) && !all(is.na(unmatched))) {
+    warning("IDMC data: ", length(unique(unmatched)), " distinct `category` value(s) ",
+            "matched neither displacement-flow nor IDP-stock and were dropped: ",
+            paste(head(unique(unmatched), 5), collapse = ", "),
+            ". Check the pattern in transform_idmc_gidd() in R/01_sources.R.")
+  }
+
   long <- bind_rows(
-    raw |> filter(category == "Internal Displacements") |>
+    raw[is_flow, ] |>
       group_by(iso3, country, year, code_id) |>
       summarise(value = sum(figures, na.rm = TRUE), .groups = "drop") |>
       mutate(evidence_type = "displaced"),
-    raw |> filter(category == "IDPs") |>
+    raw[is_stock, ] |>
       group_by(iso3, country, year, code_id) |>
       summarise(value = sum(figures, na.rm = TRUE), .groups = "drop") |>
       mutate(evidence_type = "idp_stock")
   ) |> mutate(admin1 = NA_character_, source = "IDMC GIDD")
 
   list(long = long, detail = raw)
+}
+
+read_local_idmc_gidd <- function(path, sheet = "1_Disaggregated_Data") {
+  transform_idmc_gidd(read_excel(path, sheet = sheet))
+}
+
+## GIDD API - the client_id IDMC issues on request (see docs/idmc_access_request.md).
+## Passed as a QUERY PARAMETER, not a header - the one detail that makes an
+## otherwise-correct key 401.
+##
+## IDMC's onboarding email (2026-08-07) documents four "Annual Global
+## Estimates (curated & validated)" endpoints, all under
+## https://helix-tools-api.idmcdb.org/external-api/gidd/ :
+##   conflicts/                query client_id, format=json
+##   disasters/                query client_id, format=json
+##   displacements/             conflicts + disasters combined
+##   public-figure-analyses/   methods/caveats/history, not figures
+## There is also an IDU (Internal Displacement Updates) family for timely,
+## preliminary figures - the onboarding email listed it but the endpoint URLs
+## were not captured here; add them below if/when you have them.
+##
+## WHAT IS STILL UNVERIFIED: whether conflicts/ and disasters/ carry the same
+## granularity as the manual "disaggregated" Excel export (violence_type,
+## hazard_sub_type, geocoded locations) or only the coarser per-country-year
+## totals that the "aggregated" Excel export has. This has NOT been checked
+## against a live response - the API host is unreachable from this sandbox.
+## idmc_gidd_paginated() and the column aliases below are written from the
+## endpoint names and IDMC's general API conventions (Django REST Framework
+## pagination: {"results": [...], "next": "..."}), not from a captured
+## response. If fetch_idmc_gidd_api() stops with "missing required column(s)"
+## the first time you run it, that error lists exactly what the API sent -
+## paste that column list back and the aliases below get a one-line fix.
+idmc_gidd_paginated <- function(url) {
+  pages <- list()
+  while (!is.null(url) && nzchar(url)) {
+    resp <- request(url) |> req_perform()
+    parsed <- jsonlite::fromJSON(resp_body_string(resp), flatten = TRUE)
+    if (is.list(parsed) && !is.null(parsed$results)) {
+      pages[[length(pages) + 1]] <- as.data.frame(parsed$results)
+      url <- parsed[["next"]]
+    } else {
+      pages[[length(pages) + 1]] <- as.data.frame(parsed)
+      url <- NULL
+    }
+  }
+  bind_rows(pages)
+}
+
+idmc_gidd_key <- function() {
+  key <- Sys.getenv("IDMC_KEY")
+  if (!nzchar(key)) {
+    warning("IDMC_KEY not set. Add the client_id IDMC emailed you to .Renviron ",
+            "as IDMC_KEY=<client_id> (usethis::edit_r_environ()), not into any ",
+            "script or chat. Falling back requires the manual GIDD export via ",
+            "read_local_idmc_gidd().")
+    return(NULL)
+  }
+  key
+}
+
+## Column names below are best guesses at IDMC's JSON field naming (they
+## publish "conflicts" and "disasters" as separate endpoints, so unlike the
+## Excel export there is likely no single "cause" column - cause is implied by
+## which endpoint the row came from). Extra aliases are cheap; wrong ones are
+## silently ignored by standardize_idmc_cols() since it only needs to find one
+## match per target.
+IDMC_API_CONFLICT_ALIASES <- c("violence_type", "type_of_violence", "violenceType")
+IDMC_API_DISASTER_ALIASES <- c("hazard_sub_type", "hazard_subtype", "hazardSubType")
+
+fetch_idmc_gidd_conflict <- function() {
+  key <- idmc_gidd_key(); if (is.null(key)) return(NULL)
+  idmc_gidd_paginated(paste0(
+    "https://helix-tools-api.idmcdb.org/external-api/gidd/conflicts/",
+    "?client_id=", key, "&format=json"))
+}
+
+fetch_idmc_gidd_disaster <- function() {
+  key <- idmc_gidd_key(); if (is.null(key)) return(NULL)
+  idmc_gidd_paginated(paste0(
+    "https://helix-tools-api.idmcdb.org/external-api/gidd/disasters/",
+    "?client_id=", key, "&format=json"))
+}
+
+## Combines the two endpoints above into the same shape transform_idmc_gidd()
+## expects from the manual Excel export - a single frame with a `cause` column
+## ("Conflict"/"Disaster") - so everything downstream (run_all.R, the
+## crosswalk, the profiles) is unchanged whether the data came from a file or
+## the API.
+fetch_idmc_gidd_api <- function() {
+  key <- idmc_gidd_key(); if (is.null(key)) return(NULL)
+
+  conflict <- fetch_idmc_gidd_conflict()
+  disaster <- fetch_idmc_gidd_disaster()
+  if (is.null(conflict) && is.null(disaster)) return(NULL)
+
+  add_cause_col <- function(df, cause, type_aliases) {
+    if (is.null(df) || !nrow(df)) return(NULL)
+    hit <- intersect(type_aliases, names(df))
+    if (length(hit)) names(df)[names(df) == hit[1]] <- if (cause == "Conflict")
+      "violence_type" else "hazard_sub_type"
+    df$cause <- cause
+    df
+  }
+  raw <- bind_rows(
+    add_cause_col(conflict, "Conflict", IDMC_API_CONFLICT_ALIASES),
+    add_cause_col(disaster, "Disaster", IDMC_API_DISASTER_ALIASES)
+  )
+  if (is.null(raw) || !nrow(raw)) {
+    warning("IDMC GIDD API returned no rows from either endpoint.")
+    return(NULL)
+  }
+  transform_idmc_gidd(raw)
 }
 
 fetch_idmc_idu <- function() {

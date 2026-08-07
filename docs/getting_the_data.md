@@ -19,7 +19,7 @@ in `data/raw/`. Filenames are matched by pattern, so downloads work unchanged.
 | **V-Dem** | `vdem.RData` from the [vdemdata repo](https://github.com/vdeminstitute/vdemdata) | no | conditions behind codes 3 and 4 |
 | **IOM DTM** | [dtm-apim-portal.iom.int](https://dtm-apim-portal.iom.int/) → then run `prototype-python/fetch_dtm.py` on a machine with normal network access | **yes**, free | reported reasons — the only source here where the reason comes from the displaced person rather than an analyst |
 | **UCDP API** | [ucdp.uu.se/apidocs](https://ucdp.uu.se/apidocs/) | **yes** | reproducible refresh (bulk downloads need no key) |
-| **IDMC API** | email ch.datainfo@idmc.ch | **yes** | reproducible refresh (the GIDD export needs no key) — see [`idmc_access_request.md`](idmc_access_request.md) |
+| **IDMC API** | email ch.datainfo@idmc.ch (key received 2026-08-07) | **yes** | `conflicts/` + `disasters/` endpoints via `fetch_idmc_gidd_api()` — reproducible refresh; whether it matches the disaggregated export's detail is unconfirmed until run live. See [`idmc_access_request.md`](idmc_access_request.md) |
 
 ## The basemap
 

@@ -138,7 +138,8 @@ administrative statistics, not why any individual left.</p>
 restrict republishing, and the analysis runs on UCDP alone. Anyone running the pipeline
 themselves gets the ACLED layer back.</p>
 <h2>How each source is connected</h2>
-<p>Worth knowing before trusting a refresh date: <b>only one source is reached by API.</b>
+<p>Worth knowing before trusting a refresh date: <b>only one source has a confirmed, working
+API connection</b> &mdash; IOM DTM. IDMC has since issued an API key too, not yet run live.
 Everything else is a manual export or an offline package, so the figures are pinned to a
 download date rather than live.</p>
 <table class="src"><tbody>
@@ -146,9 +147,10 @@ download date rather than live.</p>
  <code>dtmapi</code> client</td></tr>
 <tr><td><b>UCDP GED</b></td><td>bulk CSV download &mdash; no key needed. An API token was
  requested for reproducible refresh, not for first results</td></tr>
-<tr><td><b>IDMC</b></td><td>manual export. Disaggregated data exists only from 2023, one
- year per download; the long 2008&ndash;2025 series distinguishes only conflict vs disaster.
- API access requested</td></tr>
+<tr><td><b>IDMC</b></td><td>manual export (default). Disaggregated data exists only from 2023,
+ one year per download; the long 2008&ndash;2025 series distinguishes only conflict vs disaster.
+ An API key has since been issued; not yet confirmed to carry the same detail as the manual
+ disaggregated file</td></tr>
 <tr><td><b>ACLED</b></td><td>manual export, six regional files. Counts stripped from this
  published copy on licence grounds</td></tr>
 <tr><td><b>UNHCR</b></td><td>the <code>refugees</code> R package, which ships the data

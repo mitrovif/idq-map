@@ -93,6 +93,13 @@ fmitrovic27@gmail.com
 
 ## After the key arrives
 
+**Never paste the key itself into a chat, an issue, or anywhere else that gets
+logged or shared** — not because this key is unusually dangerous (it's
+read-only access to published statistics, not a GitHub-style write
+credential), but because a key typed into a chat transcript should be treated
+as no longer private. If that already happened, it costs nothing to ask IDMC
+for a fresh one.
+
 Add it to `.Renviron` (`usethis::edit_r_environ()`):
 
 ```
@@ -103,11 +110,36 @@ IDMC passes it as a **query parameter**, not a header — unusual, and the reaso
 key that looks correct can still 401 if it is sent the usual way:
 
 ```
-https://helix-tools-api.idmcdb.org/external-api/gidd/...?client_id=<key>
+https://helix-tools-api.idmcdb.org/external-api/gidd/conflicts/?client_id=<key>&format=json
 ```
+
+**The actual endpoints**, per IDMC's onboarding email, all under
+`https://helix-tools-api.idmcdb.org/external-api/gidd/`:
+
+| Endpoint | What |
+|---|---|
+| `conflicts/` | annual conflict displacement, curated & validated |
+| `disasters/` | annual disaster displacement, curated & validated |
+| `displacements/` | conflicts + disasters combined |
+| `public-figure-analyses/` | methods, caveats, historical revisions — not figures |
+
+There is also an **IDU** (Internal Displacement Updates) family for timely,
+preliminary figures; ask IDMC for those endpoint URLs specifically if you want
+them — the onboarding email's IDU section didn't list any.
+
+`fetch_idmc_gidd_api()` in `R/01_sources.R` calls `conflicts/` and `disasters/`
+and reshapes both into the same table the manual Excel export produces, so
+nothing downstream changes. **What is not yet confirmed:** whether these two
+endpoints carry the same detail as the disaggregated Excel export — violence
+type (IAC/NIAC vs OSV), hazard sub-type, geocoded locations — or only the
+coarser per-country-year totals the *aggregated* export has. That can only be
+checked by running it once against the live API. If it stops with "missing
+required column(s)", the error message lists exactly what the API sent back —
+paste that column list into the next session and the mapping gets a one-line
+fix.
 
 **A note on where this can run.** The IDMC API host is not reachable from the
 Cowork cloud sandbox (all requests time out), so the key only helps in an
 environment with open network access — your own machine, via
-`source("run_all.R")`. In the sandbox the manual GIDD download remains the route,
-and yields the same data.
+`source("run_all.R")` with `MODE <- "api"`. In the sandbox the manual GIDD
+download remains the route, and yields at least as much detail.
