@@ -1,5 +1,9 @@
 # Getting the data
 
+For the full run-it-yourself walkthrough — including how each source is
+connected, and the figures to check your run against — see
+[`reproduce.md`](reproduce.md).
+
 No source data is in this repository. Every file below is downloaded directly
 from its publisher — a licence requirement, not an inconvenience. Put everything
 in `data/raw/`. Filenames are matched by pattern, so downloads work unchanged.

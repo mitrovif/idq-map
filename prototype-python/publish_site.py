@@ -110,6 +110,12 @@ code{background:var(--s);border:1px solid var(--g);border-radius:4px;padding:1px
  font-size:13px}
 .note{background:var(--s);border:1px solid var(--g);border-radius:10px;padding:14px 17px;
  font-size:14px;color:var(--i2)}
+table.src{border-collapse:collapse;width:100%;font-size:13.5px;margin:6px 0 4px}
+table.src td{padding:7px 10px;border-bottom:1px solid var(--g);vertical-align:top;
+ color:var(--i2)}
+table.src td:first-child{width:118px;color:var(--i);white-space:nowrap}
+pre{background:var(--s);border:1px solid var(--g);border-radius:8px;padding:11px 13px;
+ font-size:12.5px;overflow-x:auto;color:var(--i)}
 a{color:var(--a)}
 </style></head><body><div class="w">
 <h1>Causing events and the identification questions</h1>
@@ -131,10 +137,37 @@ administrative statistics, not why any individual left.</p>
 <b>ACLED event counts are omitted from this published copy</b> &mdash; their terms
 restrict republishing, and the analysis runs on UCDP alone. Anyone running the pipeline
 themselves gets the ACLED layer back.</p>
-<h2>Code</h2>
+<h2>How each source is connected</h2>
+<p>Worth knowing before trusting a refresh date: <b>only one source is reached by API.</b>
+Everything else is a manual export or an offline package, so the figures are pinned to a
+download date rather than live.</p>
+<table class="src"><tbody>
+<tr><td><b>IOM DTM</b></td><td><b>API</b>, with a free subscription key, via IOM&rsquo;s own
+ <code>dtmapi</code> client</td></tr>
+<tr><td><b>UCDP GED</b></td><td>bulk CSV download &mdash; no key needed. An API token was
+ requested for reproducible refresh, not for first results</td></tr>
+<tr><td><b>IDMC</b></td><td>manual export. Disaggregated data exists only from 2023, one
+ year per download; the long 2008&ndash;2025 series distinguishes only conflict vs disaster.
+ API access requested</td></tr>
+<tr><td><b>ACLED</b></td><td>manual export, six regional files. Counts stripped from this
+ published copy on licence grounds</td></tr>
+<tr><td><b>UNHCR</b></td><td>the <code>refugees</code> R package, which ships the data
+ offline &mdash; no network call</td></tr>
+<tr><td><b>V-Dem</b></td><td>file from the <code>vdemdata</code> repository</td></tr>
+</tbody></table>
+
+<h2>Code, and re-running it</h2>
 <p><a href="https://github.com/mitrovif/idq-map">github.com/mitrovif/idq-map</a> &mdash;
 R analysis with a Python visualisation layer. No source data is bundled; every input is
-downloaded from its publisher, which is a licence requirement.</p>
+downloaded from its publisher, which is a licence requirement rather than a preference.</p>
+<p>Full instructions, including which download goes where and the figures to check your run
+against:
+<a href="https://github.com/mitrovif/idq-map/blob/main/docs/reproduce.md">docs/reproduce.md</a>.
+The short version, once the downloads are in place:</p>
+<pre>python3 -m pip install -r prototype-python/requirements.txt
+IDQ_ROOT=$(pwd) python3 prototype-python/run_all.py</pre>
+<p>Fifteen steps, about three minutes. Each prints what it read and wrote, and a step whose
+input is missing says so and is skipped rather than failing the run.</p>
 <div class="note">These pages are a working prototype for the task team, not a
 publication. Figures are current as of the source files listed in the repository, and the
 crosswalk behind them is a documented judgement that is open to challenge.</div>

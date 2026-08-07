@@ -112,7 +112,7 @@ caseload gave economic reasons, which is not a cause of forced displacement unde
 all — a difference in who is in the population, before any question about why.
 
 **Two populations in one country need one showcard.** Uganda's IDPs are 88% disaster-displaced;
-its 1.92m hosted refugees are 30% armed conflict. Bangladesh has 5.5m disaster IDPs and 1.18m
+among the 1.97m refugees it hosts, disaster accounts for 29%. Bangladesh has 5.5m disaster IDPs and 1.18m
 Rohingya refugees. A single instrument has to work for both, which is the strongest argument
 for localising the *support material* rather than the questions.
 
@@ -196,7 +196,7 @@ R/06_visuals.R            calls the Python layer
 config/crosswalk.yaml     the crosswalk and every decision taken, as reviewable config
 prototype-python/         the interactive maps and explorers
   build_events.py         event counts by cause, country and admin1
-docs/                     data acquisition, UCDP and IDMC access requests, qualitative research
+docs/                     data acquisition, how to reproduce, access requests, qualitative research
 outputs/                  generated
 ```
 
