@@ -74,25 +74,38 @@ def main():
                               note=_n(r.note)) for r in crows.itertuples()],
         )
 
-    # Source -> option flow diagram: one link per (source, code) pair actually
-    # present, volume summed across every category that source contributes to
-    # that option. Only sources that appear in this data make it into the
-    # fixed order used client-side.
+    # Two separate small charts below the tabs, kept deliberately apart so
+    # magnitude and structure never get conflated in one picture:
+    #
+    # 1. MAGNITUDE - how much recorded volume each source carries, full stop.
+    #    No options here at all. IOM DTM and UNHCR are flagged rather than
+    #    drawn at zero width - their crosswalk rows aren't volume-comparable
+    #    displacement counts, so a zero-length bar would misreport "found
+    #    nothing" when the truth is "doesn't measure this the same way".
+    # 2. STRUCTURE - which options each source's categories were mapped to,
+    #    sized by how many distinct categories map there (a count, not a
+    #    volume) - so this reads as connectivity, not population size.
     present = [s for s in SOURCE_ORDER if s in set(cw.source)]
-    flow_rows = (cw[cw.code.notna() & (cw.code > 0)]
-                 .groupby(["source", "code"])["volume"].sum().reset_index())
-    flows = [dict(source=r.source, code=int(r.code), volume=_n(r.volume) or 0)
-             for r in flow_rows.itertuples()]
+    coded = cw[cw.code.notna() & (cw.code > 0)]
+
+    mag_totals = coded.groupby("source")["volume"].sum()
+    magnitude = [dict(source=s, volume=_n(mag_totals.get(s, 0)) or 0,
+                      comparable=bool(mag_totals.get(s, 0) > 0)) for s in present]
+
+    struct_rows = coded.groupby(["source", "code"]).size().reset_index(name="n")
+    structure = [dict(source=r.source, code=int(r.code), n=int(r.n))
+                 for r in struct_rows.itertuples()]
 
     n_mech = sum(len(v["mechanisms"]) for v in payload.values())
     n_cat = sum(len(v["categories"]) for v in payload.values())
     html = (PAGE.replace("__DATA__", json.dumps(payload, separators=(",", ":")))
-                .replace("__FLOWS__", json.dumps(flows, separators=(",", ":")))
+                .replace("__MAG__", json.dumps(magnitude, separators=(",", ":")))
+                .replace("__STRUCT__", json.dumps(structure, separators=(",", ":")))
                 .replace("__SOURCES__", json.dumps(present, separators=(",", ":"))))
     open(f"{OUT}/idq_crosswalk_mechanisms.html", "w").write(html)
     print(f"wrote idq_crosswalk_mechanisms.html "
           f"({n_mech} mechanisms, {n_cat} source categories, "
-          f"{len(flows)} source-to-option flows, 8 options)")
+          f"{len(magnitude)} sources sized, {len(structure)} source-to-option links, 8 options)")
 
 
 PAGE = r"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
@@ -148,19 +161,37 @@ a{color:var(--a)}
 .src-tag{font-size:11px;color:var(--m);border:1px solid var(--g);border-radius:5px;
  padding:1px 7px;margin-right:6px}
 .empty{color:var(--m);font-size:13.5px;padding:14px 2px}
-/* source -> option flow diagram */
-.flow{margin-top:46px;padding-top:32px;border-top:1px solid var(--g)}
-.flow h2{font-size:19px;margin:0 0 6px;letter-spacing:-.01em;font-weight:650}
-.flow .lede{margin-bottom:16px}
-.flow-legend{display:flex;flex-wrap:wrap;gap:9px 16px;margin-bottom:14px;font-size:12.5px;color:var(--i2)}
-.flow-legend span{display:inline-flex;align-items:center;gap:6px}
-.flow-legend i{width:10px;height:10px;border-radius:2px;display:inline-block;flex:0 0 auto}
-.flow-toggle{font:inherit;font-size:12.5px;padding:5px 11px;border-radius:7px;
+/* two small charts below the tabs: magnitude (bar) and structure (ribbon) -
+   kept visually and functionally separate so size-of-source and
+   shape-of-mapping are never read as the same picture */
+.sec{margin-top:46px;padding-top:32px;border-top:1px solid var(--g)}
+.sec h2{font-size:19px;margin:0 0 6px;letter-spacing:-.01em;font-weight:650}
+.sec .lede{margin-bottom:16px}
+.sec-legend{display:flex;flex-wrap:wrap;gap:9px 16px;margin-bottom:14px;font-size:12.5px;color:var(--i2)}
+.sec-legend span{display:inline-flex;align-items:center;gap:6px}
+.sec-legend i{width:10px;height:10px;border-radius:2px;display:inline-block;flex:0 0 auto}
+.sec-toggle{font:inherit;font-size:12.5px;padding:5px 11px;border-radius:7px;
  border:1px solid var(--g);background:var(--s);color:var(--i2);cursor:pointer;margin-bottom:12px}
-.flow-toggle:hover{border-color:var(--m)}
-.flow-wrap{position:relative}
-.flow-wrap[hidden]{display:none}
-.flow-wrap svg{width:100%;height:auto;display:block}
+.sec-toggle:hover{border-color:var(--m)}
+.sec-table{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:4px}
+.sec-table[hidden]{display:none}
+.sec-table th,.sec-table td{text-align:left;padding:6px 10px;border-bottom:1px solid var(--g)}
+.sec-table th{color:var(--m);font-weight:650;font-size:11px;text-transform:uppercase;letter-spacing:.04em}
+/* magnitude: plain HTML bars, one row per source */
+.magrows[hidden]{display:none}
+.magrow{display:flex;align-items:center;gap:10px;padding:5px 0}
+.magname{flex:0 0 132px;font-size:12.5px;color:var(--i2);display:flex;align-items:center;gap:7px}
+.magname i{width:10px;height:10px;border-radius:2px;display:inline-block;flex:0 0 auto}
+.magtrack{flex:1;height:20px;background:var(--g);border-radius:4px;position:relative;overflow:hidden}
+.magbar{height:100%;border-radius:4px}
+.magflag{position:absolute;inset:0;display:flex;align-items:center;padding-left:9px;font-size:11px;
+ color:var(--m);font-style:italic;
+ background:repeating-linear-gradient(45deg,var(--g),var(--g) 5px,transparent 5px,transparent 10px)}
+.magval{flex:0 0 62px;text-align:right;font-size:12.5px;color:var(--i2);font-variant-numeric:tabular-nums}
+/* structure: ribbon diagram, same mechanics as before but sized by count */
+.diag-wrap{position:relative}
+.diag-wrap[hidden]{display:none}
+.diag-wrap svg{width:100%;height:auto;display:block}
 .fribbon{cursor:pointer;transition:opacity .15s ease}
 .fribbon.dim{opacity:.07!important}
 .flabel{font-size:11px;fill:var(--i2);font-family:inherit}
@@ -169,10 +200,6 @@ a{color:var(--a)}
  border-radius:8px;padding:7px 11px;font-size:12.5px;box-shadow:0 6px 20px rgba(0,0,0,.14);
  max-width:230px;opacity:0;transition:opacity .1s ease;z-index:5}
 .ftip b{display:block;font-size:12.5px;margin-bottom:2px}
-.flow-table{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:4px}
-.flow-table[hidden]{display:none}
-.flow-table th,.flow-table td{text-align:left;padding:6px 10px;border-bottom:1px solid var(--g)}
-.flow-table th{color:var(--m);font-weight:650;font-size:11px;text-transform:uppercase;letter-spacing:.04em}
 </style></head><body><div class="w">
 <h1>What sits under each option</h1>
 <p class="lede">Two ways of answering the same question, side by side.
@@ -189,21 +216,32 @@ so they're easy to compare, not because each pair has been checked against the o
  <button class="view" data-v="categories">Source categories</button>
 </div>
 <div class="cards" id="cards"></div>
-<div class="flow">
- <h2>How sources flow into each option</h2>
- <p class="lede">Every row in the crosswalk, added up: which source database
- contributed how much recorded volume to each response option. IOM DTM and
- UNHCR show as thin slivers on purpose &mdash; their crosswalk rows aren't
- volume-comparable displacement counts, so this keeps them visibly present
- rather than making them vanish at zero. Hover a ribbon for the number.</p>
- <div class="flow-legend" id="flowLegend"></div>
- <button class="flow-toggle" id="flowToggle" type="button">View as table</button>
- <div class="flow-wrap" id="flowWrap">
-  <svg id="flowSvg" viewBox="0 0 900 520" preserveAspectRatio="xMidYMid meet" role="img"
-   aria-label="Diagram of recorded volume flowing from each source database to each response option"></svg>
-  <div class="ftip" id="ftip"></div>
+
+<div class="sec">
+ <h2>How much recorded volume each source carries</h2>
+ <p class="lede">Total volume across every crosswalk row for that source &mdash;
+ no options here, just size. IOM DTM and UNHCR are flagged rather than drawn
+ at zero: their crosswalk rows aren't volume-comparable displacement counts,
+ so a zero-length bar would misreport &ldquo;found nothing&rdquo; when the
+ truth is &ldquo;doesn't measure it the same way.&rdquo;</p>
+ <div class="magrows" id="magRows"></div>
+</div>
+
+<div class="sec">
+ <h2>Which options each source's categories map to</h2>
+ <p class="lede">Structure, not size: ribbon width here is the <i>count</i> of
+ distinct source categories mapped to each option, not recorded volume &mdash;
+ IDMC GIDD dominating the chart above would swamp this picture too, so this
+ one deliberately answers a different question: how many ways does each
+ source connect to each option. Hover a ribbon for the count.</p>
+ <div class="sec-legend" id="structLegend"></div>
+ <button class="sec-toggle" id="structToggle" type="button">View as table</button>
+ <div class="diag-wrap" id="structWrap">
+  <svg id="structSvg" viewBox="0 0 900 520" preserveAspectRatio="xMidYMid meet" role="img"
+   aria-label="Diagram of how many source categories from each database map to each response option"></svg>
+  <div class="ftip" id="structTip"></div>
  </div>
- <table class="flow-table" id="flowTable" hidden></table>
+ <table class="sec-table" id="structTable" hidden></table>
 </div>
 </div>
 <script>
@@ -262,29 +300,51 @@ document.querySelectorAll('.view').forEach(b=>b.addEventListener('click',()=>{
 
 buildOpts(); render();
 
-// --- source -> option flow diagram (below the tabs, not tied to the option picker) ---
-const FLOWS=__FLOWS__, SOURCES=__SOURCES__;
+// --- two separate small charts below the tabs, not tied to the option picker ---
+const MAG=__MAG__, STRUCT=__STRUCT__, SOURCES=__SOURCES__;
 const SRC_VAR={"UCDP one-sided":"--src1","ACLED":"--src2","IDMC GIDD":"--src3",
  "IOM DTM":"--src4","UNHCR":"--src5","V-Dem":"--src6"};
 const CODE_ORDER=Object.keys(D).map(Number).sort((a,b)=>a-b);
+const cs0=getComputedStyle(document.documentElement);
+const colorOf=s=>(cs0.getPropertyValue(SRC_VAR[s]||'').trim())||'#898781';
 
-function buildFlow(){
- if(!FLOWS.length)return;
- const svg=document.getElementById('flowSvg'), legend=document.getElementById('flowLegend'),
-  tip=document.getElementById('ftip'), wrap=document.getElementById('flowWrap'),
-  table=document.getElementById('flowTable'), toggle=document.getElementById('flowToggle');
- const cs=getComputedStyle(document.documentElement);
- const colorOf=s=>(cs.getPropertyValue(SRC_VAR[s]||'').trim())||'#898781';
+// chart 1: magnitude - plain HTML bars, sorted by size, flagged sources last
+function buildMag(){
+ const rowsEl=document.getElementById('magRows');
+ if(!MAG.length){rowsEl.innerHTML='<div class="empty">No volume data.</div>';return;}
+ const comparable=MAG.filter(m=>m.comparable).sort((a,b)=>b.volume-a.volume);
+ const flagged=MAG.filter(m=>!m.comparable);
+ const max=Math.max(1,...comparable.map(m=>m.volume));
+ rowsEl.innerHTML=comparable.map(m=>{
+  const pct=Math.max(1,100*m.volume/max);
+  return `<div class="magrow"><div class="magname"><i style="background:${colorOf(m.source)}"></i>`+
+   `${esc(m.source)}</div><div class="magtrack"><div class="magbar" `+
+   `style="width:${pct}%;background:${colorOf(m.source)}"></div></div>`+
+   `<div class="magval">${fmtN(m.volume)}</div></div>`;
+ }).join("")+flagged.map(m=>
+  `<div class="magrow"><div class="magname"><i style="background:${colorOf(m.source)}"></i>`+
+  `${esc(m.source)}</div><div class="magtrack"><div class="magflag">not volume-comparable</div>`+
+  `</div><div class="magval">&mdash;</div></div>`).join("");
+}
+buildMag();
+
+// chart 2: structure - same ribbon mechanics as before, but width = count of
+// mapped categories (STRUCT[i].n), never volume
+function buildStruct(){
+ if(!STRUCT.length)return;
+ const svg=document.getElementById('structSvg'), legend=document.getElementById('structLegend'),
+  tip=document.getElementById('structTip'), wrap=document.getElementById('structWrap'),
+  table=document.getElementById('structTable'), toggle=document.getElementById('structToggle');
 
  legend.innerHTML=SOURCES.map(s=>
   `<span><i style="background:${colorOf(s)}"></i>${esc(s)}</span>`).join("")+
   `<span><i style="background:var(--m);opacity:.55"></i>response option</span>`;
 
- const EPS=1000,W=900,H=520,TOP=22,BOT=22,GAPS=11,GAPO=7,NODE_W=14,XS=118,XO=W-90-NODE_W;
+ const W=900,H=520,TOP=22,BOT=22,GAPS=11,GAPO=7,NODE_W=14,XS=118,XO=W-90-NODE_W;
  const AVAIL=H-TOP-BOT;
 
- const flowMap={}; FLOWS.forEach(f=>{flowMap[f.source+"|"+f.code]=f;});
- let total=0; FLOWS.forEach(f=>{f._m=Math.sqrt(f.volume+EPS); total+=f._m;});
+ const structMap={}; STRUCT.forEach(f=>{structMap[f.source+"|"+f.code]=f;});
+ let total=0; STRUCT.forEach(f=>{f._m=Math.sqrt(f.n); total+=f._m;});
  const kSrc=(AVAIL-GAPS*Math.max(0,SOURCES.length-1))/total;
  const kOpt=(AVAIL-GAPO*Math.max(0,CODE_ORDER.length-1))/total;
  const k=Math.min(kSrc,kOpt);
@@ -293,10 +353,10 @@ function buildFlow(){
  SOURCES.forEach(s=>cursorSrc[s]=0); CODE_ORDER.forEach(c=>cursorOpt[c]=0);
  const ribbons=[];
  SOURCES.forEach(src=>{CODE_ORDER.forEach(code=>{
-  const f=flowMap[src+"|"+code]; if(!f)return;
+  const f=structMap[src+"|"+code]; if(!f)return;
   const h=k*f._m, y1=cursorSrc[src], y2=cursorOpt[code];
   cursorSrc[src]+=h; cursorOpt[code]+=h;
-  ribbons.push({src,code,y1,y2,h,volume:f.volume});
+  ribbons.push({src,code,y1,y2,h,n:f.n});
  });});
 
  const srcTotalH=SOURCES.reduce((a,s)=>a+cursorSrc[s],0)+GAPS*Math.max(0,SOURCES.length-1);
@@ -316,7 +376,7 @@ function buildFlow(){
    `L${x2},${y2b}C${xm},${y2b} ${xm},${y1b} ${x1},${y1b}Z`;
   out+=`<path class="fribbon" data-i="${i}" d="${d}" fill="${colorOf(r.src)}" `+
    `fill-opacity="0.42"><title>${esc(r.src)} → Option ${r.code}: `+
-   `${fmtN(r.volume)} recorded</title></path>`;
+   `${r.n} categor${r.n===1?'y':'ies'}</title></path>`;
  });
  SOURCES.forEach(s=>{
   const h=Math.max(cursorSrc[s],0.6), yy=srcY0[s];
@@ -342,7 +402,8 @@ function buildFlow(){
    tip.style.opacity=1;
    tip.style.left=Math.max(0,Math.min(box.width-236,ev.clientX-box.left+14))+'px';
    tip.style.top=Math.max(0,ev.clientY-box.top-12)+'px';
-   tip.innerHTML=`<b>${esc(r.src)} &rarr; Option ${r.code}</b>${fmtN(r.volume)} recorded`;
+   tip.innerHTML=`<b>${esc(r.src)} &rarr; Option ${r.code}</b>${r.n} `+
+    `mapped categor${r.n===1?'y':'ies'}`;
   });
   el.addEventListener('mouseleave',()=>{
    svg.querySelectorAll('.fribbon').forEach(o=>o.classList.remove('dim'));
@@ -350,10 +411,10 @@ function buildFlow(){
   });
  });
 
- const rows=ribbons.slice().sort((a,b)=>b.volume-a.volume);
- table.innerHTML='<thead><tr><th>Source</th><th>Option</th><th>Recorded</th></tr></thead><tbody>'+
+ const rows=ribbons.slice().sort((a,b)=>b.n-a.n);
+ table.innerHTML='<thead><tr><th>Source</th><th>Option</th><th>Categories mapped</th></tr></thead><tbody>'+
   rows.map(r=>`<tr><td>${esc(r.src)}</td><td>Option ${r.code} &mdash; `+
-  `${esc((D[r.code]||{}).label||"")}</td><td>${fmtN(r.volume)}</td></tr>`).join("")+
+  `${esc((D[r.code]||{}).label||"")}</td><td>${r.n}</td></tr>`).join("")+
   '</tbody>';
 
  toggle.addEventListener('click',()=>{
@@ -363,7 +424,7 @@ function buildFlow(){
   toggle.textContent=showingTable?'View as diagram':'View as table';
  });
 }
-buildFlow();
+buildStruct();
 </script></body></html>
 """
 
