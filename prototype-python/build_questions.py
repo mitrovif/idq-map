@@ -512,7 +512,7 @@ def main():
     # examples (also already computed, in `out[origin_iso3]`) - not the host
     # country's. A Nigerian refugee interviewed in Mali is not well served by
     # Mali's own examples, and vice versa.
-    MAX_ORIGINS = 4        # named individually; the rest collapse into "other"
+    MAX_ORIGINS = 5        # named individually; the rest collapse into "other"
     MIN_OTHER_N = 100      # below this, a long tail isn't worth a line
     n_pop_previews = 0
     for iso, v in out.items():
