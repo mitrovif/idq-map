@@ -48,6 +48,14 @@ def _n(v):
     return None if (v is None or (isinstance(v, float) and math.isnan(v))) else v
 
 
+# Fixed display order for the flow diagram - a categorical set needs a fixed
+# order, never re-sorted by value, or hue-to-entity identity breaks on every
+# reload. Six sources actually appear in the crosswalk (V-Dem, UNHCR and IOM
+# DTM's contributions here aren't volume-comparable displacement counts, so
+# most of their rows carry volume 0 - they still get a node, just a thin one).
+SOURCE_ORDER = ["UCDP one-sided", "ACLED", "IDMC GIDD", "IOM DTM", "UNHCR", "V-Dem"]
+
+
 def main():
     cw = pd.read_csv(f"{OUT}/crosswalk_categories.csv")
     mech = pd.read_csv(f"{OUT}/subreason_taxonomy.csv")
@@ -66,12 +74,25 @@ def main():
                               note=_n(r.note)) for r in crows.itertuples()],
         )
 
+    # Source -> option flow diagram: one link per (source, code) pair actually
+    # present, volume summed across every category that source contributes to
+    # that option. Only sources that appear in this data make it into the
+    # fixed order used client-side.
+    present = [s for s in SOURCE_ORDER if s in set(cw.source)]
+    flow_rows = (cw[cw.code.notna() & (cw.code > 0)]
+                 .groupby(["source", "code"])["volume"].sum().reset_index())
+    flows = [dict(source=r.source, code=int(r.code), volume=_n(r.volume) or 0)
+             for r in flow_rows.itertuples()]
+
     n_mech = sum(len(v["mechanisms"]) for v in payload.values())
     n_cat = sum(len(v["categories"]) for v in payload.values())
-    html = PAGE.replace("__DATA__", json.dumps(payload, separators=(",", ":")))
+    html = (PAGE.replace("__DATA__", json.dumps(payload, separators=(",", ":")))
+                .replace("__FLOWS__", json.dumps(flows, separators=(",", ":")))
+                .replace("__SOURCES__", json.dumps(present, separators=(",", ":"))))
     open(f"{OUT}/idq_crosswalk_mechanisms.html", "w").write(html)
     print(f"wrote idq_crosswalk_mechanisms.html "
-          f"({n_mech} mechanisms, {n_cat} source categories, 8 options)")
+          f"({n_mech} mechanisms, {n_cat} source categories, "
+          f"{len(flows)} source-to-option flows, 8 options)")
 
 
 PAGE = r"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
@@ -79,9 +100,11 @@ PAGE = r"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <title>What sits under each option</title>
 <style>
 :root{color-scheme:light dark;--s:#fcfcfb;--p:#f9f9f7;--i:#0b0b0b;--i2:#52514e;
- --m:#898781;--g:#e1e0d9;--a:#2a78d6;--good:#0ca30c;--warn:#c98a12;--bad:#d03b3b}
+ --m:#898781;--g:#e1e0d9;--a:#2a78d6;--good:#0ca30c;--warn:#c98a12;--bad:#d03b3b;
+ --src1:#2a78d6;--src2:#eb6834;--src3:#1baf7a;--src4:#eda100;--src5:#e87ba4;--src6:#008300}
 @media(prefers-color-scheme:dark){:root{--s:#1a1a19;--p:#0d0d0d;--i:#fff;
- --i2:#c3c2b7;--g:#2c2c2a;--a:#3987e5;--good:#3fbf3f;--warn:#e0a83a;--bad:#e35d5d}}
+ --i2:#c3c2b7;--g:#2c2c2a;--a:#3987e5;--good:#3fbf3f;--warn:#e0a83a;--bad:#e35d5d;
+ --src1:#3987e5;--src2:#d95926;--src3:#199e70;--src4:#c98500;--src5:#d55181;--src6:#008300}}
 *{box-sizing:border-box}
 body{margin:0;background:var(--p);color:var(--i);font:16px/1.6 ui-sans-serif,
  -apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
@@ -125,6 +148,31 @@ a{color:var(--a)}
 .src-tag{font-size:11px;color:var(--m);border:1px solid var(--g);border-radius:5px;
  padding:1px 7px;margin-right:6px}
 .empty{color:var(--m);font-size:13.5px;padding:14px 2px}
+/* source -> option flow diagram */
+.flow{margin-top:46px;padding-top:32px;border-top:1px solid var(--g)}
+.flow h2{font-size:19px;margin:0 0 6px;letter-spacing:-.01em;font-weight:650}
+.flow .lede{margin-bottom:16px}
+.flow-legend{display:flex;flex-wrap:wrap;gap:9px 16px;margin-bottom:14px;font-size:12.5px;color:var(--i2)}
+.flow-legend span{display:inline-flex;align-items:center;gap:6px}
+.flow-legend i{width:10px;height:10px;border-radius:2px;display:inline-block;flex:0 0 auto}
+.flow-toggle{font:inherit;font-size:12.5px;padding:5px 11px;border-radius:7px;
+ border:1px solid var(--g);background:var(--s);color:var(--i2);cursor:pointer;margin-bottom:12px}
+.flow-toggle:hover{border-color:var(--m)}
+.flow-wrap{position:relative}
+.flow-wrap[hidden]{display:none}
+.flow-wrap svg{width:100%;height:auto;display:block}
+.fribbon{cursor:pointer;transition:opacity .15s ease}
+.fribbon.dim{opacity:.07!important}
+.flabel{font-size:11px;fill:var(--i2);font-family:inherit}
+.flabel.strong{fill:var(--i);font-weight:650}
+.ftip{position:absolute;pointer-events:none;background:var(--s);border:1px solid var(--g);
+ border-radius:8px;padding:7px 11px;font-size:12.5px;box-shadow:0 6px 20px rgba(0,0,0,.14);
+ max-width:230px;opacity:0;transition:opacity .1s ease;z-index:5}
+.ftip b{display:block;font-size:12.5px;margin-bottom:2px}
+.flow-table{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:4px}
+.flow-table[hidden]{display:none}
+.flow-table th,.flow-table td{text-align:left;padding:6px 10px;border-bottom:1px solid var(--g)}
+.flow-table th{color:var(--m);font-weight:650;font-size:11px;text-transform:uppercase;letter-spacing:.04em}
 </style></head><body><div class="w">
 <h1>What sits under each option</h1>
 <p class="lede">Two ways of answering the same question, side by side.
@@ -141,6 +189,22 @@ so they're easy to compare, not because each pair has been checked against the o
  <button class="view" data-v="categories">Source categories</button>
 </div>
 <div class="cards" id="cards"></div>
+<div class="flow">
+ <h2>How sources flow into each option</h2>
+ <p class="lede">Every row in the crosswalk, added up: which source database
+ contributed how much recorded volume to each response option. IOM DTM and
+ UNHCR show as thin slivers on purpose &mdash; their crosswalk rows aren't
+ volume-comparable displacement counts, so this keeps them visibly present
+ rather than making them vanish at zero. Hover a ribbon for the number.</p>
+ <div class="flow-legend" id="flowLegend"></div>
+ <button class="flow-toggle" id="flowToggle" type="button">View as table</button>
+ <div class="flow-wrap" id="flowWrap">
+  <svg id="flowSvg" viewBox="0 0 900 520" preserveAspectRatio="xMidYMid meet" role="img"
+   aria-label="Diagram of recorded volume flowing from each source database to each response option"></svg>
+  <div class="ftip" id="ftip"></div>
+ </div>
+ <table class="flow-table" id="flowTable" hidden></table>
+</div>
 </div>
 <script>
 const D=__DATA__;
@@ -197,6 +261,109 @@ document.querySelectorAll('.view').forEach(b=>b.addEventListener('click',()=>{
  VIEW=b.dataset.v; render();}));
 
 buildOpts(); render();
+
+// --- source -> option flow diagram (below the tabs, not tied to the option picker) ---
+const FLOWS=__FLOWS__, SOURCES=__SOURCES__;
+const SRC_VAR={"UCDP one-sided":"--src1","ACLED":"--src2","IDMC GIDD":"--src3",
+ "IOM DTM":"--src4","UNHCR":"--src5","V-Dem":"--src6"};
+const CODE_ORDER=Object.keys(D).map(Number).sort((a,b)=>a-b);
+
+function buildFlow(){
+ if(!FLOWS.length)return;
+ const svg=document.getElementById('flowSvg'), legend=document.getElementById('flowLegend'),
+  tip=document.getElementById('ftip'), wrap=document.getElementById('flowWrap'),
+  table=document.getElementById('flowTable'), toggle=document.getElementById('flowToggle');
+ const cs=getComputedStyle(document.documentElement);
+ const colorOf=s=>(cs.getPropertyValue(SRC_VAR[s]||'').trim())||'#898781';
+
+ legend.innerHTML=SOURCES.map(s=>
+  `<span><i style="background:${colorOf(s)}"></i>${esc(s)}</span>`).join("")+
+  `<span><i style="background:var(--m);opacity:.55"></i>response option</span>`;
+
+ const EPS=1000,W=900,H=520,TOP=22,BOT=22,GAPS=11,GAPO=7,NODE_W=14,XS=118,XO=W-90-NODE_W;
+ const AVAIL=H-TOP-BOT;
+
+ const flowMap={}; FLOWS.forEach(f=>{flowMap[f.source+"|"+f.code]=f;});
+ let total=0; FLOWS.forEach(f=>{f._m=Math.sqrt(f.volume+EPS); total+=f._m;});
+ const kSrc=(AVAIL-GAPS*Math.max(0,SOURCES.length-1))/total;
+ const kOpt=(AVAIL-GAPO*Math.max(0,CODE_ORDER.length-1))/total;
+ const k=Math.min(kSrc,kOpt);
+
+ const cursorSrc={}, cursorOpt={};
+ SOURCES.forEach(s=>cursorSrc[s]=0); CODE_ORDER.forEach(c=>cursorOpt[c]=0);
+ const ribbons=[];
+ SOURCES.forEach(src=>{CODE_ORDER.forEach(code=>{
+  const f=flowMap[src+"|"+code]; if(!f)return;
+  const h=k*f._m, y1=cursorSrc[src], y2=cursorOpt[code];
+  cursorSrc[src]+=h; cursorOpt[code]+=h;
+  ribbons.push({src,code,y1,y2,h,volume:f.volume});
+ });});
+
+ const srcTotalH=SOURCES.reduce((a,s)=>a+cursorSrc[s],0)+GAPS*Math.max(0,SOURCES.length-1);
+ const optTotalH=CODE_ORDER.reduce((a,c)=>a+cursorOpt[c],0)+GAPO*Math.max(0,CODE_ORDER.length-1);
+ const srcStartY=TOP+(AVAIL-srcTotalH)/2, optStartY=TOP+(AVAIL-optTotalH)/2;
+
+ const srcY0={}; let y=srcStartY;
+ SOURCES.forEach(s=>{srcY0[s]=y; y+=cursorSrc[s]+GAPS;});
+ const optY0={}; y=optStartY;
+ CODE_ORDER.forEach(c=>{optY0[c]=y; y+=cursorOpt[c]+GAPO;});
+
+ let out="";
+ ribbons.forEach((r,i)=>{
+  const x1=XS+NODE_W, x2=XO, xm=(x1+x2)/2;
+  const y1t=srcY0[r.src]+r.y1, y1b=y1t+r.h, y2t=optY0[r.code]+r.y2, y2b=y2t+r.h;
+  const d=`M${x1},${y1t}C${xm},${y1t} ${xm},${y2t} ${x2},${y2t}`+
+   `L${x2},${y2b}C${xm},${y2b} ${xm},${y1b} ${x1},${y1b}Z`;
+  out+=`<path class="fribbon" data-i="${i}" d="${d}" fill="${colorOf(r.src)}" `+
+   `fill-opacity="0.42"><title>${esc(r.src)} → Option ${r.code}: `+
+   `${fmtN(r.volume)} recorded</title></path>`;
+ });
+ SOURCES.forEach(s=>{
+  const h=Math.max(cursorSrc[s],0.6), yy=srcY0[s];
+  out+=`<rect class="fnode" x="${XS}" y="${yy}" width="${NODE_W}" height="${h}" `+
+   `fill="${colorOf(s)}"></rect>`+
+   `<text class="flabel strong" x="${XS-8}" y="${yy+h/2}" text-anchor="end" `+
+   `dominant-baseline="middle">${esc(s)}</text>`;
+ });
+ CODE_ORDER.forEach(c=>{
+  const h=Math.max(cursorOpt[c],0.6), yy=optY0[c];
+  out+=`<rect class="fnode" x="${XO}" y="${yy}" width="${NODE_W}" height="${h}" `+
+   `fill="var(--m)" fill-opacity="0.55"></rect>`+
+   `<text class="flabel strong" x="${XO+NODE_W+8}" y="${yy+h/2}" `+
+   `dominant-baseline="middle">Option ${c}</text>`;
+ });
+ svg.innerHTML=out;
+
+ svg.querySelectorAll('.fribbon').forEach(el=>{
+  const r=ribbons[+el.dataset.i];
+  el.addEventListener('mousemove',ev=>{
+   svg.querySelectorAll('.fribbon').forEach(o=>o.classList.toggle('dim',o!==el));
+   const box=wrap.getBoundingClientRect();
+   tip.style.opacity=1;
+   tip.style.left=Math.max(0,Math.min(box.width-236,ev.clientX-box.left+14))+'px';
+   tip.style.top=Math.max(0,ev.clientY-box.top-12)+'px';
+   tip.innerHTML=`<b>${esc(r.src)} &rarr; Option ${r.code}</b>${fmtN(r.volume)} recorded`;
+  });
+  el.addEventListener('mouseleave',()=>{
+   svg.querySelectorAll('.fribbon').forEach(o=>o.classList.remove('dim'));
+   tip.style.opacity=0;
+  });
+ });
+
+ const rows=ribbons.slice().sort((a,b)=>b.volume-a.volume);
+ table.innerHTML='<thead><tr><th>Source</th><th>Option</th><th>Recorded</th></tr></thead><tbody>'+
+  rows.map(r=>`<tr><td>${esc(r.src)}</td><td>Option ${r.code} &mdash; `+
+  `${esc((D[r.code]||{}).label||"")}</td><td>${fmtN(r.volume)}</td></tr>`).join("")+
+  '</tbody>';
+
+ toggle.addEventListener('click',()=>{
+  const showingTable=table.hasAttribute('hidden');
+  if(showingTable){table.removeAttribute('hidden'); wrap.setAttribute('hidden','');}
+  else{table.setAttribute('hidden',''); wrap.removeAttribute('hidden');}
+  toggle.textContent=showingTable?'View as diagram':'View as table';
+ });
+}
+buildFlow();
 </script></body></html>
 """
 
