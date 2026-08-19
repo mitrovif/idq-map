@@ -589,6 +589,16 @@ select{min-width:250px}
  font-family:ui-serif,Georgia,"Times New Roman",serif;font-size:15.5px;line-height:1.62}
 .form[dir="rtl"]{direction:rtl;text-align:right;
  font-family:ui-serif,"Times New Roman",serif}
+/* when a population is picked, the SAME card flips to show that population's
+   own examples in place of the host country's - tinted so it's obviously not
+   the default view, with a banner explaining what's being substituted */
+.form.custom{border-color:color-mix(in srgb,var(--a) 35%,var(--g));
+ background:color-mix(in srgb,var(--a) 4%,var(--paper))}
+.custombanner{font-family:ui-sans-serif,-apple-system,sans-serif;font-size:11.5px;
+ font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--a);
+ background:color-mix(in srgb,var(--a) 10%,transparent);
+ border:1px solid color-mix(in srgb,var(--a) 30%,var(--g));border-radius:5px;
+ padding:7px 11px;margin:-6px 0 16px}
 .fhead{display:flex;align-items:baseline;gap:12px;border-bottom:2px solid var(--i);
  padding-bottom:7px;margin-bottom:15px;font-family:ui-sans-serif,-apple-system,sans-serif}
 .fitem{font-weight:700;font-size:13px;letter-spacing:.06em}
@@ -639,19 +649,6 @@ h2{font-size:15px;margin:28px 0 2px;font-weight:640}
 .pop.on{background:var(--a);color:#fff;border-color:var(--a)}
 .pop.nodata{border-style:dashed}
 .pophint{font-size:12px;color:var(--m);margin:9px 0 0;max-width:640px}
-/* the preview itself: tinted and boxed distinctly from the plain white form
-   above it, with its own label, so the two are never mistaken for one form */
-.popwrap{margin-top:28px}
-.poplabel{font-family:ui-sans-serif,-apple-system,sans-serif;font-size:11px;font-weight:700;
- text-transform:uppercase;letter-spacing:.05em;color:var(--a);margin:0 0 8px}
-.popblock{background:color-mix(in srgb,var(--a) 5%,var(--paper));
- border:1px solid color-mix(in srgb,var(--a) 32%,var(--g));border-radius:8px;
- padding:20px 26px 16px;box-shadow:0 1px 3px rgba(0,0,0,.07);
- font-family:ui-serif,Georgia,"Times New Roman",serif;font-size:14.5px;line-height:1.58}
-.popblock h3{margin:0 0 10px;font-size:13px;font-weight:700;
- font-family:ui-sans-serif,-apple-system,sans-serif;color:var(--a);
- text-transform:uppercase;letter-spacing:.03em}
-.popblock .gen{font-family:ui-sans-serif,-apple-system,sans-serif}
 @media print{body{background:#fff}.bar,select,h1,p.lede,h2,table,.warn{display:none}
  .form{box-shadow:none;border:0;padding:0}}
 @media(max-width:700px){.form{padding:22px 18px}select{min-width:0;width:100%}}
@@ -685,7 +682,6 @@ respondents depend on.</p>
 </div>
 
 <div class="form" id="form"></div>
-<div id="popforms"></div>
 <div class="warn" id="warn"></div>
 
 <h2>Where each example comes from</h2>
@@ -795,10 +791,10 @@ function optsListHTML(data, lang, t, lim, region){
 
 // Population radio buttons — national/IDP + each major refugee-origin population
 // hosted here, as computed in build_questions.py's "hosted populations" block.
-// Single choice: picking a refugee-origin population shows ONE preview card,
-// swapping out whichever was shown before, not stacking. Picking "National" (or
-// re-clicking the active button) just clears the preview, since the main form
-// above already IS the national/IDP view.
+// Single choice: picking a population FLIPS the main form itself (see render())
+// to show that population's own examples — no separate card. Picking "National"
+// (or re-clicking the active button) flips back, since the main form's default
+// state already IS the national/IDP view.
 function buildPops(v){
  const sect=document.getElementById('popsection'), wrap=document.getElementById('pops');
  const pops=v.populations||[];
@@ -814,60 +810,58 @@ function buildPops(v){
  wrap.querySelectorAll('.pop').forEach(b=>b.addEventListener('click',()=>{
   const i=+b.dataset.i;
   POP=(b.dataset.kind==="national"||POP===i)?null:i;
+  if(POP!=null){ADM=-1;lvl.value="-1";}   // a region of the HOST doesn't apply to another population's own form
   buildPops(v); render();}));}
-
-// The single customised-preview card, built from THAT population's own origin-
-// country examples (Q[p.iso3]) rather than the host country's — this is the
-// point of the whole feature: a refugee from Nigeria and one from South Sudan,
-// both interviewed in the same host country, don't share a displacement history.
-function renderPops(v, t, dir, lim){
- const box=document.getElementById('popforms');
- const pops=v.populations||[];
- if(POP==null){box.innerHTML="";return;}
- const p=pops[POP];
- if(!p){box.innerHTML="";return;}
- const heading=p.kind==="refugee"?`Refugees from ${esc(p.name)}, hosted in ${esc(v.name)}`:
-   `${esc(p.name)}, hosted in ${esc(v.name)}`;
- let body;
- if(p.has_data&&p.iso3&&Q[p.iso3]){
-  body=optsListHTML(Q[p.iso3], LANG, t, lim, null);
- }else{
-  body=`<p style="color:var(--m);font-family:ui-sans-serif,-apple-system,sans-serif;`+
-   `font-size:13px">No country-specific examples are available for ${esc(p.name)} yet `+
-   `&mdash; this population would see the questionnaire's generic wording only.</p>`;}
- box.innerHTML=`<div class="popwrap"><p class="poplabel">Customised preview `+
-  `&mdash; ${esc(p.name)}&rsquo;s own examples, not ${esc(v.name)}&rsquo;s</p>`+
-  `<div class="popblock" dir="${dir}"><h3>${heading} <span class="gen" `+
-  `style="font-weight:400;text-transform:none;color:var(--m)">&mdash; ${fmtN(p.n)} `+
-  `people</span></h3>${body}</div></div>`;}
 
 function render(){
  const iso=sel.value, v=Q[iso], t=T[LANG]||T.en, dir=(LANGS[LANG]||["","ltr"])[1];
  const lim=LEN==="read_out"?3:8;
- const region=ADM>=0?(v.adm1||[])[ADM]:null;
+
+ // POP picks which population's own data flips into the SAME form/warn/provenance
+ // area below — the host's own view (region-aware) when POP is null, or that
+ // population's own origin-country data (Q[pop.iso3]) when it's set. No source
+ // means the generic wording only, rendered honestly rather than falling back to
+ // the host's examples.
+ const pop=(POP!=null)?(v.populations||[])[POP]:null;
+ const usingPop=!!(pop&&pop.kind!=="national");
+ const dataIso=usingPop&&pop.has_data&&pop.iso3&&Q[pop.iso3]?pop.iso3:null;
+ const data=usingPop?(dataIso?Q[dataIso]:{form:[],localised:[]}):v;
+ const region=(!usingPop&&ADM>=0)?(v.adm1||[])[ADM]:null;
+ lvl.disabled=usingPop||!(v.adm1&&v.adm1.length);
+
  const f=document.getElementById('form');
  f.setAttribute('dir',dir);
- let h=`<div class="fhead"><span class="fitem">${t.item}</span>`+
+ f.classList.toggle('custom',usingPop);
+ const banner=!usingPop?``:dataIso
+  ?`<div class="custombanner">Customised preview &mdash; showing ${esc(pop.name)}&rsquo;s `+
+   `own examples in place of ${esc(v.name)}&rsquo;s</div>`
+  :`<div class="custombanner">No country-specific examples are available for `+
+   `${esc(pop.name)} yet &mdash; showing the questionnaire&rsquo;s generic wording only.</div>`;
+ let h=banner+`<div class="fhead"><span class="fitem">${t.item}</span>`+
    `<span class="fask">${esc(t.ask)}</span>`+
-   `<span class="fcountry">${esc(v.name)}${region?" · "+esc(region.name):""}</span></div>`+
+   `<span class="fcountry">${esc(v.name)}${region?" · "+esc(region.name):""}`+
+   `${usingPop?" · "+esc(pop.name):""}</span></div>`+
    `<p class="stem">${t.stem1}</p><p class="stem">${t.stem2}</p>`+
    `<p class="lead">${esc(t.lead)}</p>`+
    `<div class="instr">${esc(t.instr)}</div>`;
- h+=optsListHTML(v, LANG, t, lim, region);
+ h+=optsListHTML(data, LANG, t, lim, region);
  f.innerHTML=h;
- renderPops(v, t, dir, lim);
 
- const rows=P.filter(r=>r.iso3===iso);
+ const provIso=usingPop?dataIso:iso;
+ const rows=P.filter(r=>r.iso3===provIso);
  const miss=rows.filter(r=>r.kind==="generic"||r.kind==="none").length;
- document.getElementById('warn').innerHTML=
-  `<b>${v.n_localised} of 7 options carry country-specific examples, `+
-  `${v.n_available} in total.</b> ${miss} still use the questionnaire's generic `+
+ document.getElementById('warn').innerHTML=(usingPop&&!dataIso)?
+  `<b>No source data exists yet for ${esc(pop.name)} in this pipeline.</b> `+
+  `All 8 options show the questionnaire's generic wording, the same as any `+
+  `country this project hasn't reached.`:
+  `<b>${data.n_localised} of 7 options carry country-specific examples, `+
+  `${data.n_available} in total.</b> ${miss} still use the questionnaire's generic `+
   `wording or none at all. `+
-  (v.n_beyond_read_out?`<b>${v.n_beyond_read_out} more examples are recorded</b> `+
+  (data.n_beyond_read_out?`<b>${data.n_beyond_read_out} more examples are recorded</b> `+
     `than belong in a read-aloud list — the showcard length includes them. `:``)+
-  ((v.adm1&&v.adm1.length)?`<b>${v.adm1.length} subnational sets</b> differ from the `+
+  (!usingPop?((v.adm1&&v.adm1.length)?`<b>${v.adm1.length} subnational sets</b> differ from the `+
     `national one and are in the Level menu. `:`No subnational set differs enough from `+
-    `the national one to be worth showing. `)+
+    `the national one to be worth showing. `):``)+
   (LANG!=="en"?`<b>The ${LANGS[LANG][0]} text is an unreviewed draft translation.</b>`:``);
  document.querySelector('#prov tbody').innerHTML=rows.map(r=>
   `<tr><td>${LBL[r.code_id]||r.code_id}</td><td>${esc(r.example||"—")}</td>`+
