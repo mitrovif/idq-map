@@ -134,12 +134,19 @@ a{color:var(--a)}
 .opt b{display:block;font-size:11px;color:var(--m);font-weight:700}
 .opt.on{background:var(--a);color:#fff;border-color:var(--a)}
 .opt.on b{color:rgba(255,255,255,.75)}
-/* view switcher: Mechanisms / Source categories, under the current option */
-.views{display:flex;gap:4px;border-bottom:2px solid var(--g);margin-bottom:18px}
-.view{font:inherit;font-size:13.5px;font-weight:650;padding:9px 16px;border:0;
- background:none;color:var(--m);cursor:pointer;border-bottom:2px solid transparent;
- margin-bottom:-2px}
-.view.on{color:var(--a);border-bottom-color:var(--a)}
+/* mechanisms live here now: a de-emphasised, collapsed-by-default footnote
+   under the option picker, not an equal-weight tab next to the real record */
+.gloss{margin-bottom:18px;border:1px solid var(--g);border-radius:10px;
+ padding:2px 14px;background:var(--s)}
+.gloss summary{cursor:pointer;font-size:13px;font-weight:650;color:var(--i2);
+ padding:11px 0;list-style:none}
+.gloss summary::-webkit-details-marker{display:none}
+.gloss summary::before{content:'▸ ';color:var(--m)}
+.gloss[open] summary::before{content:'▾ '}
+.gloss-note{font-size:12px;color:var(--m);margin:0 0 10px;max-width:560px}
+.gloss-item{font-size:13px;padding:7px 0;border-top:1px solid var(--g)}
+.gloss-item b{font-weight:650}
+.gloss-item span{color:var(--i2);font-style:italic}
 .cards{display:grid;gap:10px}
 .card{background:var(--s);border:1px solid var(--g);border-radius:10px;padding:15px 18px}
 .card .top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
@@ -202,19 +209,20 @@ a{color:var(--a)}
 .ftip b{display:block;font-size:12.5px;margin-bottom:2px}
 </style></head><body><div class="w">
 <h1>What sits under each option</h1>
-<p class="lede">Two ways of answering the same question, side by side.
-<b>Mechanisms</b> is the real-world way it happens, in words a respondent might use.
-<b>Source categories</b> is the database label it was mapped from, and how good that
-fit actually is.</p>
-<p class="note">These two views are not cross-linked row-for-row &mdash; a mechanism's
-source note (e.g. &ldquo;ACLED Armed clash&rdquo;) is descriptive text, not a verified
-match to a specific category row below. Both are grouped under the same eight options
-so they're easy to compare, not because each pair has been checked against the other.</p>
+<p class="lede">The database category each source actually recorded for this
+option, and a verdict on how good that fit really is. This is the verifiable
+record &mdash; every card below traces to a real logged category in a real
+source database.</p>
+<p class="note">&ldquo;In plain words&rdquo; below is supporting context, not
+part of that record &mdash; a separately written description of how this
+reason plays out in practice, filed under the same option because it belongs
+to the same idea, not because it's been matched to a specific category.</p>
 <div class="opts" id="opts"></div>
-<div class="views">
- <button class="view on" data-v="mechanisms">Mechanisms</button>
- <button class="view" data-v="categories">Source categories</button>
-</div>
+<details class="gloss" id="gloss">
+ <summary>In plain words <span id="glossCount"></span></summary>
+ <p class="gloss-note">Not matched row-for-row to the categories below.</p>
+ <div id="glossList"></div>
+</details>
 <div class="cards" id="cards"></div>
 
 <div class="sec">
@@ -246,7 +254,7 @@ so they're easy to compare, not because each pair has been checked against the o
 </div>
 <script>
 const D=__DATA__;
-let CODE="1", VIEW="mechanisms";
+let CODE="1";
 const optsEl=document.getElementById('opts'), cardsEl=document.getElementById('cards');
 
 function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;");}
@@ -263,16 +271,14 @@ function buildOpts(){
  optsEl.querySelectorAll('.opt').forEach(b=>b.addEventListener('click',()=>{
   CODE=b.dataset.c; buildOpts(); render();}));}
 
-function renderMechanisms(items){
- if(!items.length){cardsEl.innerHTML='<div class="empty">No mechanisms recorded for this option.</div>';return;}
- cardsEl.innerHTML=items.map(m=>{
-  const cls=m.counted==="yes"?"b-yes":m.counted==="partial"?"b-partial":"b-no";
+function buildGloss(items){
+ const countEl=document.getElementById('glossCount'), listEl=document.getElementById('glossList');
+ countEl.textContent=`(${items.length})`;
+ if(!items.length){listEl.innerHTML='<p class="gloss-note">No mechanisms recorded for this option.</p>';return;}
+ listEl.innerHTML=items.map(m=>{
   const label=m.counted==="yes"?"counted":m.counted==="partial"?"partly counted":"not counted";
-  return `<div class="card"><div class="top"><b class="name">${esc(m.name)}</b>`+
-   `<span class="badge ${cls}">${label}</span></div>`+
-   `<p class="desc">${esc(m.desc)}</p>`+
-   (m.phrase?`<p class="phrase">&ldquo;${esc(m.phrase)}&rdquo;</p>`:``)+
-   (m.sources?`<p class="foot">Sources: ${esc(m.sources)}</p>`:``)+
+  return `<div class="gloss-item"><b>${esc(m.name)}</b> &mdash; ${label}.`+
+   (m.phrase?` <span>&ldquo;${esc(m.phrase)}&rdquo;</span>`:``)+
    `</div>`;}).join("");}
 
 function renderCategories(items){
@@ -290,13 +296,8 @@ function renderCategories(items){
 
 function render(){
  const v=D[CODE]||{mechanisms:[],categories:[]};
- document.querySelectorAll('.view').forEach(b=>b.classList.toggle('on',b.dataset.v===VIEW));
- document.querySelector('.view[data-v="mechanisms"]').textContent=`Mechanisms (${v.mechanisms.length})`;
- document.querySelector('.view[data-v="categories"]').textContent=`Source categories (${v.categories.length})`;
- if(VIEW==="mechanisms")renderMechanisms(v.mechanisms);else renderCategories(v.categories);}
-
-document.querySelectorAll('.view').forEach(b=>b.addEventListener('click',()=>{
- VIEW=b.dataset.v; render();}));
+ renderCategories(v.categories);
+ buildGloss(v.mechanisms);}
 
 buildOpts(); render();
 
