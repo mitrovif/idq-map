@@ -628,17 +628,26 @@ h2{font-size:15px;margin:28px 0 2px;font-weight:640}
 .k-generic{background:transparent;color:var(--m);border:1px solid var(--g)}
 .k-none{background:transparent;color:var(--m);border:1px dashed var(--g)}
 .ro{font-size:10px;color:var(--m)}
-/* ---- population cards + customised preview ---- */
+/* ---- population picker (single choice) + customised preview -------------
+   A section of its own, set off from the Length/Language controls above by a
+   rule and its own title, so it doesn't read as just another toolbar row. */
+.popsection{margin-top:22px;padding-top:18px;border-top:2px solid var(--g)}
+.popsection .sectitle{font-family:ui-sans-serif,-apple-system,sans-serif;font-size:11px;
+ font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--m);margin:0 0 9px}
 .pop{font:inherit;font-size:13px;padding:7px 11px;border-radius:20px;
  border:1px solid var(--g);background:var(--s);color:var(--i2);cursor:pointer}
 .pop.on{background:var(--a);color:#fff;border-color:var(--a)}
 .pop.nodata{border-style:dashed}
-.pophint{font-size:12px;color:var(--m);margin:2px 0 0}
-#popforms{margin-top:16px}
-.popblock{background:var(--paper);border:1px solid var(--g);border-left:4px solid var(--a);
- border-radius:4px;padding:20px 26px 16px;margin-top:12px;
+.pophint{font-size:12px;color:var(--m);margin:9px 0 0;max-width:640px}
+/* the preview itself: tinted and boxed distinctly from the plain white form
+   above it, with its own label, so the two are never mistaken for one form */
+.popwrap{margin-top:28px}
+.poplabel{font-family:ui-sans-serif,-apple-system,sans-serif;font-size:11px;font-weight:700;
+ text-transform:uppercase;letter-spacing:.05em;color:var(--a);margin:0 0 8px}
+.popblock{background:color-mix(in srgb,var(--a) 5%,var(--paper));
+ border:1px solid color-mix(in srgb,var(--a) 32%,var(--g));border-radius:8px;
+ padding:20px 26px 16px;box-shadow:0 1px 3px rgba(0,0,0,.07);
  font-family:ui-serif,Georgia,"Times New Roman",serif;font-size:14.5px;line-height:1.58}
-.popblock[dir="rtl"]{border-left:1px solid var(--g);border-right:4px solid var(--a)}
 .popblock h3{margin:0 0 10px;font-size:13px;font-weight:700;
  font-family:ui-sans-serif,-apple-system,sans-serif;color:var(--a);
  text-transform:uppercase;letter-spacing:.03em}
@@ -667,13 +676,13 @@ respondents depend on.</p>
   <span id="langs"></span>
 </div>
 
-<div class="bar" id="popbar" style="display:none">
-  <span class="lbl">Population</span>
+<div class="popsection" id="popsection" style="display:none">
+  <p class="sectitle">Customise for a specific population</p>
   <span id="pops"></span>
+  <p class="pophint">Pick one population to preview the form with THEIR own
+  examples in place of the examples below — a refugee from a different origin
+  isn't well served by this country's own examples.</p>
 </div>
-<p class="pophint" id="pophint" style="display:none">Select one or more populations
-to see the same form with THEIR examples substituted in — a refugee from a
-different origin isn't well served by this country's own examples.</p>
 
 <div class="form" id="form"></div>
 <div id="popforms"></div>
@@ -728,7 +737,7 @@ const CODES=[1,2,3,4,5,6,7,8];
 const LBL={1:"1. Armed conflict",2:"2. Widespread violence",3:"3. Persecution",
  4:"4. HR violations",5:"5. Other violence",6:"6. Natural disasters",
  7:"7. Man-made events",8:"8. A different threat"};
-let LEN="read_out", LANG=null, ADM=-1, POPS=new Set();
+let LEN="read_out", LANG=null, ADM=-1, POP=null;   // POP: index into v.populations, or null (= national/default)
 const sel=document.getElementById('pick'), lvl=document.getElementById('lvl');
 function fmtN(n){
  n=+n||0;
@@ -784,51 +793,53 @@ function optsListHTML(data, lang, t, lim, region){
     `</span></li></ol>`;
  return h;}
 
-// Population toggle buttons — national/IDP + each major refugee-origin population
+// Population radio buttons — national/IDP + each major refugee-origin population
 // hosted here, as computed in build_questions.py's "hosted populations" block.
+// Single choice: picking a refugee-origin population shows ONE preview card,
+// swapping out whichever was shown before, not stacking. Picking "National" (or
+// re-clicking the active button) just clears the preview, since the main form
+// above already IS the national/IDP view.
 function buildPops(v){
- const bar=document.getElementById('popbar'), hint=document.getElementById('pophint'),
-       wrap=document.getElementById('pops');
+ const sect=document.getElementById('popsection'), wrap=document.getElementById('pops');
  const pops=v.populations||[];
- if(!pops.length){bar.style.display="none";hint.style.display="none";wrap.innerHTML="";return;}
- bar.style.display="";hint.style.display="";
+ if(!pops.length){sect.style.display="none";wrap.innerHTML="";return;}
+ sect.style.display="";
  wrap.innerHTML=pops.map((p,i)=>{
   const label=p.kind==="national"?`National / IDPs — ${esc(p.name)}`:
               p.kind==="refugee"?`Refugees from ${esc(p.name)}`:esc(p.name);
-  return `<button class="pop${POPS.has(i)?' on':''}${p.has_data?'':' nodata'}" data-i="${i}" `+
+  return `<button class="pop${POP===i?' on':''}${p.has_data?'':' nodata'}" `+
+   `data-i="${i}" data-kind="${p.kind}" `+
    `title="${p.has_data?'':'no country-specific examples available — '}${fmtN(p.n)} people">`+
    `${label} <span style="opacity:.7">(${fmtN(p.n)})</span></button>`;}).join(" ");
  wrap.querySelectorAll('.pop').forEach(b=>b.addEventListener('click',()=>{
   const i=+b.dataset.i;
-  if(POPS.has(i))POPS.delete(i);else POPS.add(i);
+  POP=(b.dataset.kind==="national"||POP===i)?null:i;
   buildPops(v); render();}));}
 
-// One .popblock per selected population, each rendered with THAT population's own
-// origin-country examples (Q[p.iso3]) rather than the host country's — this is the
-// point of the whole feature: a refugee from Nigeria and one from South Sudan, both
-// interviewed in the same host country, don't share a displacement history.
+// The single customised-preview card, built from THAT population's own origin-
+// country examples (Q[p.iso3]) rather than the host country's — this is the
+// point of the whole feature: a refugee from Nigeria and one from South Sudan,
+// both interviewed in the same host country, don't share a displacement history.
 function renderPops(v, t, dir, lim){
  const box=document.getElementById('popforms');
  const pops=v.populations||[];
- if(!POPS.size){box.innerHTML="";return;}
- box.innerHTML=[...POPS].sort((a,b)=>a-b).map(i=>{
-  const p=pops[i];
-  if(!p)return "";
-  const heading=p.kind==="national"?`National / IDPs in ${esc(v.name)}`:
-   p.kind==="refugee"?`Refugees from ${esc(p.name)}, hosted in ${esc(v.name)}`:
+ if(POP==null){box.innerHTML="";return;}
+ const p=pops[POP];
+ if(!p){box.innerHTML="";return;}
+ const heading=p.kind==="refugee"?`Refugees from ${esc(p.name)}, hosted in ${esc(v.name)}`:
    `${esc(p.name)}, hosted in ${esc(v.name)}`;
-  let body;
-  if(p.kind==="national"){
-   body=optsListHTML(v, LANG, t, lim, null);
-  }else if(p.has_data && Q[p.iso3]){
-   body=optsListHTML(Q[p.iso3], LANG, t, lim, null);
-  }else{
-   body=`<p style="color:var(--m);font-family:ui-sans-serif,-apple-system,sans-serif;`+
-    `font-size:13px">No country-specific examples are available for ${esc(p.name)} yet `+
-    `&mdash; this population would see the questionnaire's generic wording only.</p>`;}
-  return `<div class="popblock" dir="${dir}"><h3>${heading} <span class="gen" `+
-   `style="font-weight:400;text-transform:none;color:var(--m)">&mdash; ${fmtN(p.n)} `+
-   `people</span></h3>${body}</div>`;}).join("");}
+ let body;
+ if(p.has_data&&p.iso3&&Q[p.iso3]){
+  body=optsListHTML(Q[p.iso3], LANG, t, lim, null);
+ }else{
+  body=`<p style="color:var(--m);font-family:ui-sans-serif,-apple-system,sans-serif;`+
+   `font-size:13px">No country-specific examples are available for ${esc(p.name)} yet `+
+   `&mdash; this population would see the questionnaire's generic wording only.</p>`;}
+ box.innerHTML=`<div class="popwrap"><p class="poplabel">Customised preview `+
+  `&mdash; ${esc(p.name)}&rsquo;s own examples, not ${esc(v.name)}&rsquo;s</p>`+
+  `<div class="popblock" dir="${dir}"><h3>${heading} <span class="gen" `+
+  `style="font-weight:400;text-transform:none;color:var(--m)">&mdash; ${fmtN(p.n)} `+
+  `people</span></h3>${body}</div></div>`;}
 
 function render(){
  const iso=sel.value, v=Q[iso], t=T[LANG]||T.en, dir=(LANGS[LANG]||["","ltr"])[1];
@@ -865,7 +876,7 @@ function render(){
   (r.in_read_out===false?`<div class="ro">showcard only</div>`:``)+`</td></tr>`).join("");}
 
 function pickCountry(){
- const v=Q[sel.value]; LANG=v.lang||"en"; ADM=-1; POPS=new Set();
+ const v=Q[sel.value]; LANG=v.lang||"en"; ADM=-1; POP=null;
  buildLangs(); buildLevels(v); buildPops(v); render();}
 sel.addEventListener('change',pickCountry);
 lvl.addEventListener('change',()=>{ADM=+lvl.value;render();});
