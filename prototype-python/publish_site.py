@@ -52,9 +52,6 @@ ICON_QUESTIONS = ('<svg viewBox="0 0 24 24"><rect x="5" y="4" width="14" height=
                    '<path d="M9 11h6M9 15h4"/></svg>')
 ICON_CROSSWALK = ('<svg viewBox="0 0 24 24"><path d="M4 8h13M17 8l-3-3M17 8l-3 3"/>'
                    '<path d="M20 16H7M7 16l3-3M7 16l3 3"/></svg>')
-ICON_MECHANISMS = ('<svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="2.4"/>'
-                    '<circle cx="6" cy="18" r="2.4"/><circle cx="18" cy="12" r="2.4"/>'
-                    '<path d="M8.2 7.1 15.8 11M8.2 16.9 15.8 13"/></svg>')
 ICON_SCALE = ('<svg viewBox="0 0 24 24"><path d="M12 3v18M5 7l-3 6a3.2 3.2 0 0 0 6 0Z"/>'
               '<path d="M19 7l-3 6a3.2 3.2 0 0 0 6 0Z"/><path d="M5 7h14"/></svg>')
 
@@ -73,15 +70,11 @@ PAGES = [
      "Version 3 of the forced-to-flee item, with the text after each “e.g.” "
      "drafted from what was actually recorded in that country. The response options "
      "do not change; only the examples.", ICON_QUESTIONS),
-    ("idq_crosswalk_explorer.html", "crosswalk.html",
-     "The crosswalk",
-     "All 68 categories the source databases use, and which of the eight response "
-     "options each one was mapped to — including the ones that fit badly.", ICON_CROSSWALK),
-    ("idq_subreasons.html", "mechanisms.html",
-     "Mechanisms beneath the options",
-     "66 distinct ways people are displaced, grouped under the eight options, with "
-     "how a respondent might phrase each one and whether any database counts it.",
-     ICON_MECHANISMS),
+    ("idq_crosswalk_mechanisms.html", "crosswalk.html",
+     "What sits under each option",
+     "For each of the eight options: 66 real-world mechanisms in words a "
+     "respondent might use, and the 68 source-database categories they were "
+     "mapped from — including the ones that fit badly.", ICON_CROSSWALK),
     ("idq_evidence_map.html", "counted-vs-documented.html",
      "Counted versus documented",
      "Where human rights research documents displacement that no statistical "
@@ -158,10 +151,16 @@ support putting in front of respondents in each country, and what local examples
 enumerator support materials give for each one?</p>
 <p class="meta">EGRISS methodological paper on identification questions for refugees and
 IDPs &middot; supported by a UNHCR Data Innovation Grant</p>
-<p class="src-line">Built from six sources &mdash; <b>UCDP, ACLED, IDMC, UNHCR, IOM DTM and
-V-Dem</b> &mdash; cross-referenced country by country. What each one contributes and how
-it was pulled in is below; the response options themselves never change, only which of
-them the evidence supports showing, and what local example illustrates each.</p>
+<p class="src-line">Built from six sources &mdash;
+<a href="https://ucdp.uu.se/" target="_blank" rel="noopener">UCDP</a>,
+<a href="https://acleddata.com/" target="_blank" rel="noopener">ACLED</a>,
+<a href="https://www.internal-displacement.org/database/displacement-data" target="_blank" rel="noopener">IDMC</a>,
+<a href="https://www.unhcr.org/refugee-statistics/" target="_blank" rel="noopener">UNHCR</a>,
+<a href="https://dtm.iom.int/" target="_blank" rel="noopener">IOM DTM</a> and
+<a href="https://v-dem.net/" target="_blank" rel="noopener">V-Dem</a>
+&mdash; cross-referenced country by country. What each one contributes and how it was
+pulled in is below; the response options themselves never change, only which of them
+the evidence supports showing, and what local example illustrates each.</p>
 __CARDS__
 <details>
 <summary>About this project, the sources, and how to reproduce it</summary>

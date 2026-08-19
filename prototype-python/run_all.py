@@ -20,6 +20,8 @@ STEPS = [
     ("build_questions",          "localised e.g. examples for the forced-to-flee item"),
     ("build_crosswalk_explorer", "crosswalk explorer"),
     ("build_subreason_explorer", "sub-reason taxonomy"),
+    ("build_crosswalk_mechanisms", "crosswalk + mechanisms, merged one-page view "
+                                    "(reads the two CSVs above; must run after them)"),
     ("build_allcauses",          "all-causes map"),
     ("build_evidence_map",       "counted vs documented map"),
     ("build_population_map",     "main population map"),
