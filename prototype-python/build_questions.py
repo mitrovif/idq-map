@@ -261,6 +261,16 @@ def main():
         dtm = pd.read_parquet(f"{TIDY}/dtm_reported.parquet")
     except FileNotFoundError:
         dtm = pd.DataFrame(columns=["iso3", "code_id", "people"])
+    # profile_countries.py's payload - idps_total, refugees_hosted and, per host
+    # country, its top origin countries with how many each sends. That last part
+    # is what makes population-specific previews possible: a refugee from Nigeria
+    # and one from South Sudan, both interviewed in Mali, carry different
+    # displacement histories, and Mali's own examples fit neither. See the
+    # "hosted populations" block below.
+    try:
+        profiles = json.load(open(f"{OUT}/profiles.json"))
+    except FileNotFoundError:
+        profiles = {}
 
     latest_year = max((c["last"] for v in conflicts.values() for c in v),
                       default=2025)
@@ -495,6 +505,42 @@ def main():
     print(f"  admin1 variants that differ from the national set: {n_adm} "
           f"across {sum(1 for v in out.values() if v.get('adm1'))} countries")
 
+    # ---- hosted populations, by origin -------------------------------------
+    # The form is read to more than one population in a given country. The
+    # national/IDP population's own examples are already `out[iso]`. Each hosted
+    # refugee population gets a preview built from ITS OWN origin country's
+    # examples (also already computed, in `out[origin_iso3]`) - not the host
+    # country's. A Nigerian refugee interviewed in Mali is not well served by
+    # Mali's own examples, and vice versa.
+    MAX_ORIGINS = 4        # named individually; the rest collapse into "other"
+    MIN_OTHER_N = 100      # below this, a long tail isn't worth a line
+    n_pop_previews = 0
+    for iso, v in out.items():
+        p = profiles.get(iso, {})
+        idps = int(p.get("idps", 0) or 0)
+        pops = [dict(kind="national", iso3=iso, name=v["name"], n=idps,
+                     has_data=True)]
+        origins = sorted(p.get("origins", []) or [], key=lambda o: -o.get("n", 0))
+        shown = origins[:MAX_ORIGINS]
+        for o in shown:
+            has = o.get("iso3") in out
+            pops.append(dict(kind="refugee", iso3=o.get("iso3"),
+                             name=o.get("name", o.get("iso3", "?")),
+                             n=int(o.get("n", 0) or 0), has_data=has))
+            n_pop_previews += 1 if has else 0
+        rest = origins[MAX_ORIGINS:]
+        rest_n = sum(int(o.get("n", 0) or 0) for o in rest)
+        if rest_n >= MIN_OTHER_N:
+            pops.append(dict(kind="other", iso3=None,
+                             name=f"{len(rest)} other origin countries",
+                             n=rest_n, has_data=False))
+        if len(pops) > 1 or idps:
+            out[iso]["populations"] = pops
+    print(f"  hosted-population previews: {n_pop_previews} refugee-origin "
+          f"populations with their own examples, offered across "
+          f"{sum(1 for v in out.values() if v.get('populations'))} host-country pages "
+          f"({'profiles.json found' if profiles else 'profiles.json NOT FOUND - run profile_countries.py first for this feature'})")
+
     # ---- language ---------------------------------------------------------
     for iso, v in out.items():
         v["lang"] = lang_for(iso)
@@ -582,6 +628,21 @@ h2{font-size:15px;margin:28px 0 2px;font-weight:640}
 .k-generic{background:transparent;color:var(--m);border:1px solid var(--g)}
 .k-none{background:transparent;color:var(--m);border:1px dashed var(--g)}
 .ro{font-size:10px;color:var(--m)}
+/* ---- population cards + customised preview ---- */
+.pop{font:inherit;font-size:13px;padding:7px 11px;border-radius:20px;
+ border:1px solid var(--g);background:var(--s);color:var(--i2);cursor:pointer}
+.pop.on{background:var(--a);color:#fff;border-color:var(--a)}
+.pop.nodata{border-style:dashed}
+.pophint{font-size:12px;color:var(--m);margin:2px 0 0}
+#popforms{margin-top:16px}
+.popblock{background:var(--paper);border:1px solid var(--g);border-left:4px solid var(--a);
+ border-radius:4px;padding:20px 26px 16px;margin-top:12px;
+ font-family:ui-serif,Georgia,"Times New Roman",serif;font-size:14.5px;line-height:1.58}
+.popblock[dir="rtl"]{border-left:1px solid var(--g);border-right:4px solid var(--a)}
+.popblock h3{margin:0 0 10px;font-size:13px;font-weight:700;
+ font-family:ui-sans-serif,-apple-system,sans-serif;color:var(--a);
+ text-transform:uppercase;letter-spacing:.03em}
+.popblock .gen{font-family:ui-sans-serif,-apple-system,sans-serif}
 @media print{body{background:#fff}.bar,select,h1,p.lede,h2,table,.warn{display:none}
  .form{box-shadow:none;border:0;padding:0}}
 @media(max-width:700px){.form{padding:22px 18px}select{min-width:0;width:100%}}
@@ -606,7 +667,16 @@ respondents depend on.</p>
   <span id="langs"></span>
 </div>
 
+<div class="bar" id="popbar" style="display:none">
+  <span class="lbl">Population</span>
+  <span id="pops"></span>
+</div>
+<p class="pophint" id="pophint" style="display:none">Select one or more populations
+to see the same form with THEIR examples substituted in — a refugee from a
+different origin isn't well served by this country's own examples.</p>
+
 <div class="form" id="form"></div>
+<div id="popforms"></div>
 <div class="warn" id="warn"></div>
 
 <h2>Where each example comes from</h2>
@@ -658,8 +728,13 @@ const CODES=[1,2,3,4,5,6,7,8];
 const LBL={1:"1. Armed conflict",2:"2. Widespread violence",3:"3. Persecution",
  4:"4. HR violations",5:"5. Other violence",6:"6. Natural disasters",
  7:"7. Man-made events",8:"8. A different threat"};
-let LEN="read_out", LANG=null, ADM=-1;
+let LEN="read_out", LANG=null, ADM=-1, POPS=new Set();
 const sel=document.getElementById('pick'), lvl=document.getElementById('lvl');
+function fmtN(n){
+ n=+n||0;
+ if(n>=1000000)return (n/1000000).toFixed(1).replace(/\.0$/,"")+"M";
+ if(n>=1000)return (n/1000).toFixed(1).replace(/\.0$/,"")+"k";
+ return String(n);}
 Object.entries(Q).sort((a,b)=>a[1].name.localeCompare(b[1].name))
  .forEach(([k,v])=>{const o=document.createElement('option');
   o.value=k;o.textContent=`${v.name} — ${v.n_localised}/7 options localised`;
@@ -680,27 +755,21 @@ function buildLevels(v){
  if(ADM>=(v.adm1||[]).length)ADM=-1;
  lvl.value=String(ADM);}
 
-function render(){
- const iso=sel.value, v=Q[iso], t=T[LANG]||T.en, dir=(LANGS[LANG]||["","ltr"])[1];
- const lim=LEN==="read_out"?3:8;
- const region=ADM>=0?(v.adm1||[])[ADM]:null;
- const f=document.getElementById('form');
- f.setAttribute('dir',dir);
- let h=`<div class="fhead"><span class="fitem">${t.item}</span>`+
-   `<span class="fask">${esc(t.ask)}</span>`+
-   `<span class="fcountry">${esc(v.name)}${region?" · "+esc(region.name):""}</span></div>`+
-   `<p class="stem">${t.stem1}</p><p class="stem">${t.stem2}</p>`+
-   `<p class="lead">${esc(t.lead)}</p>`+
-   `<div class="instr">${esc(t.instr)}</div><ol class="opts">`;
+// Builds the "<ol class=opts>" list for any population's own form/localised data —
+// shared by the main form (region-aware) and the per-population preview blocks
+// below (national form, no region — see the design note on why previews don't
+// cross with the selected admin1 level).
+function optsListHTML(data, lang, t, lim, region){
+ let h=`<ol class="opts">`;
  CODES.forEach(c=>{
   // region examples override the national ones for the codes they cover
   let items=null, generic=false;
   if(region&&region.ex[String(c)]){
    items=region.ex[String(c)].map(e=>e.text);
   }else{
-   const row=(v.form||[]).find(x=>x.code===c);
-   if(row&&row.n){items=(LANG==="en"?row.eg:row.eg_t);
-     generic=!v.localised.includes(c);}
+   const row=(data.form||[]).find(x=>x.code===c);
+   if(row&&row.n){items=(lang==="en"?row.eg:row.eg_t);
+     generic=!(data.localised||[]).includes(c);}
   }
   let eg="";
   if(items&&items.length){
@@ -713,7 +782,69 @@ function render(){
  h+=`<li><span class="box"></span><span class="num">99</span>`+
     `<span class="otext">${esc(t.none)} <span class="excl">${esc(t.excl)}</span>`+
     `</span></li></ol>`;
+ return h;}
+
+// Population toggle buttons — national/IDP + each major refugee-origin population
+// hosted here, as computed in build_questions.py's "hosted populations" block.
+function buildPops(v){
+ const bar=document.getElementById('popbar'), hint=document.getElementById('pophint'),
+       wrap=document.getElementById('pops');
+ const pops=v.populations||[];
+ if(!pops.length){bar.style.display="none";hint.style.display="none";wrap.innerHTML="";return;}
+ bar.style.display="";hint.style.display="";
+ wrap.innerHTML=pops.map((p,i)=>{
+  const label=p.kind==="national"?`National / IDPs — ${esc(p.name)}`:
+              p.kind==="refugee"?`Refugees from ${esc(p.name)}`:esc(p.name);
+  return `<button class="pop${POPS.has(i)?' on':''}${p.has_data?'':' nodata'}" data-i="${i}" `+
+   `title="${p.has_data?'':'no country-specific examples available — '}${fmtN(p.n)} people">`+
+   `${label} <span style="opacity:.7">(${fmtN(p.n)})</span></button>`;}).join(" ");
+ wrap.querySelectorAll('.pop').forEach(b=>b.addEventListener('click',()=>{
+  const i=+b.dataset.i;
+  if(POPS.has(i))POPS.delete(i);else POPS.add(i);
+  buildPops(v); render();}));}
+
+// One .popblock per selected population, each rendered with THAT population's own
+// origin-country examples (Q[p.iso3]) rather than the host country's — this is the
+// point of the whole feature: a refugee from Nigeria and one from South Sudan, both
+// interviewed in the same host country, don't share a displacement history.
+function renderPops(v, t, dir, lim){
+ const box=document.getElementById('popforms');
+ const pops=v.populations||[];
+ if(!POPS.size){box.innerHTML="";return;}
+ box.innerHTML=[...POPS].sort((a,b)=>a-b).map(i=>{
+  const p=pops[i];
+  if(!p)return "";
+  const heading=p.kind==="national"?`National / IDPs in ${esc(v.name)}`:
+   p.kind==="refugee"?`Refugees from ${esc(p.name)}, hosted in ${esc(v.name)}`:
+   `${esc(p.name)}, hosted in ${esc(v.name)}`;
+  let body;
+  if(p.kind==="national"){
+   body=optsListHTML(v, LANG, t, lim, null);
+  }else if(p.has_data && Q[p.iso3]){
+   body=optsListHTML(Q[p.iso3], LANG, t, lim, null);
+  }else{
+   body=`<p style="color:var(--m);font-family:ui-sans-serif,-apple-system,sans-serif;`+
+    `font-size:13px">No country-specific examples are available for ${esc(p.name)} yet `+
+    `&mdash; this population would see the questionnaire's generic wording only.</p>`;}
+  return `<div class="popblock" dir="${dir}"><h3>${heading} <span class="gen" `+
+   `style="font-weight:400;text-transform:none;color:var(--m)">&mdash; ${fmtN(p.n)} `+
+   `people</span></h3>${body}</div>`;}).join("");}
+
+function render(){
+ const iso=sel.value, v=Q[iso], t=T[LANG]||T.en, dir=(LANGS[LANG]||["","ltr"])[1];
+ const lim=LEN==="read_out"?3:8;
+ const region=ADM>=0?(v.adm1||[])[ADM]:null;
+ const f=document.getElementById('form');
+ f.setAttribute('dir',dir);
+ let h=`<div class="fhead"><span class="fitem">${t.item}</span>`+
+   `<span class="fask">${esc(t.ask)}</span>`+
+   `<span class="fcountry">${esc(v.name)}${region?" · "+esc(region.name):""}</span></div>`+
+   `<p class="stem">${t.stem1}</p><p class="stem">${t.stem2}</p>`+
+   `<p class="lead">${esc(t.lead)}</p>`+
+   `<div class="instr">${esc(t.instr)}</div>`;
+ h+=optsListHTML(v, LANG, t, lim, region);
  f.innerHTML=h;
+ renderPops(v, t, dir, lim);
 
  const rows=P.filter(r=>r.iso3===iso);
  const miss=rows.filter(r=>r.kind==="generic"||r.kind==="none").length;
@@ -734,8 +865,8 @@ function render(){
   (r.in_read_out===false?`<div class="ro">showcard only</div>`:``)+`</td></tr>`).join("");}
 
 function pickCountry(){
- const v=Q[sel.value]; LANG=v.lang||"en"; ADM=-1;
- buildLangs(); buildLevels(v); render();}
+ const v=Q[sel.value]; LANG=v.lang||"en"; ADM=-1; POPS=new Set();
+ buildLangs(); buildLevels(v); buildPops(v); render();}
 sel.addEventListener('change',pickCountry);
 lvl.addEventListener('change',()=>{ADM=+lvl.value;render();});
 document.querySelectorAll('.len').forEach(b=>b.addEventListener('click',()=>{
