@@ -242,10 +242,11 @@ def main():
     print(f"  {len(flows)} refugee movements over 25,000 people")
 
     vdem = json.load(open(f"{TIDY}/vdem_severity.json"))
-    try:
-        from question_i18n import T as QT, LANGS as QLANGS
-    except Exception:
-        QT, QLANGS = {}, {}
+    # question_i18n's per-language form text (T/LANGS) used to be embedded here
+    # for the map's own inline question-form renderer. That renderer now just
+    # links out to questions.html (see build_population_map's showProfile JS),
+    # which already carries this translation data itself -- no need to embed
+    # it twice, so it's no longer read or passed into this page's template.
     try:
         lq = json.load(open(f"{TIDY}/localised_questions.json"))
         print(f"  localised questions: {len(lq)} countries")
@@ -338,7 +339,7 @@ def main():
         ev = {}
         print("  events layer: events.json missing - run build_events.py")
     payload = dict(data=data, geo=feats, causes=CAUSES, labels=LABEL, flows=flows,
-                   coverage=cov, ev=ev, sc=sc, dtm=dtm, lq=lq, qt=QT, qlangs=QLANGS,
+                   coverage=cov, ev=ev, sc=sc, dtm=dtm, lq=lq,
                    public=PUBLIC,
                    vdem=vdem, ucdp=ucdp, dis=disasters, gedc=gedc, geda1=geda1, pts=points,
                    year=latest, period=period, multiyear=len(yrs) > 1,
@@ -460,35 +461,15 @@ button.on em{color:var(--surface-1);opacity:.72}
 .gdl{margin:8px 0 0;font-size:13px}
 .gdl dt{font-weight:640;margin-top:9px}
 .gdl dd{margin:2px 0 0;color:var(--ink-2);max-width:88ch}
-.qform{background:var(--surface-1);border:1px solid var(--grid);border-radius:4px;
- padding:20px 24px 16px;margin-top:2px;font-family:ui-serif,Georgia,"Times New Roman",serif;
- font-size:14px;line-height:1.6;box-shadow:0 1px 2px rgba(0,0,0,.05)}
-.qform[dir="rtl"]{direction:rtl;text-align:right}
-.qform .fhead{display:flex;align-items:baseline;gap:11px;border-bottom:2px solid var(--ink);
- padding-bottom:6px;margin-bottom:12px;font-family:ui-sans-serif,-apple-system,sans-serif}
-.qform .fitem{font-weight:700;font-size:12px;letter-spacing:.06em}
-.qform .fask{font-size:11px;color:var(--ink-2);font-style:italic}
-.qform .fcountry{margin-inline-start:auto;font-size:11px;color:var(--muted);
- text-transform:uppercase;letter-spacing:.06em;font-weight:650}
-.qform .stem{margin:0 0 7px}
-.qform .lead{margin:11px 0 4px;font-weight:600}
-.qform .finstr{font-family:ui-sans-serif,-apple-system,sans-serif;font-size:10px;
- letter-spacing:.05em;color:var(--ink-2);border:1px solid var(--grid);padding:4px 8px;
- border-radius:3px;display:inline-block;margin-bottom:9px}
-.qform ol.fopts{list-style:none;margin:0;padding:0}
-.qform ol.fopts li{display:flex;gap:10px;align-items:flex-start;padding:5px 0;
- border-bottom:1px dotted var(--grid)}
-.qform ol.fopts li:last-child{border-bottom:0}
-.qform .fbox{flex:0 0 auto;width:12px;height:12px;border:1.5px solid var(--ink);
- margin-top:4px;border-radius:2px}
-.qform .fnum{flex:0 0 auto;width:17px;color:var(--muted);font-size:11.5px;margin-top:2px;
- font-family:ui-sans-serif,sans-serif}
-.qform .feg{color:var(--c1)}
-.qform .feg i{color:var(--ink-2)}
-.qform .fgen{color:var(--muted);font-style:italic}
-.qform .fmore{font-size:10.5px;color:var(--muted);font-family:ui-sans-serif,sans-serif}
-select.qadm{font:inherit;font-size:12.5px;padding:6px 9px;border-radius:7px;
- border:1px solid var(--grid);background:var(--surface-1);color:var(--ink)}
+/* The drafted question form itself renders only on questions.html now -- this
+   panel used to build the whole form inline too (see the old .qform rules,
+   removed here), which duplicated that page's exact fields and, being the
+   older of the two copies, did it without the provenance table or translation
+   caveats questions.html carries. This panel links out to it instead. */
+a.viewform{font:inherit;font-size:13px;padding:8px 13px;border-radius:8px;
+ border:1px solid var(--c1);background:var(--c1);color:#fff;text-decoration:none;
+ display:inline-block;font-weight:600;margin-top:8px}
+a.viewform:hover{opacity:.88}
 .warn{margin-top:8px;padding:8px 11px;border-radius:7px;font-size:12.5px;
  background:color-mix(in srgb,#fab219 14%,transparent);
  border:1px solid color-mix(in srgb,#fab219 38%,transparent)}
@@ -833,8 +814,7 @@ let MODE="both", SHAPE="pie", CAUSE="all", EVID=false, ATTR=false, PIN=null,
     Z=1,TX=0,TY=0, notes={};
 // The events layer. VIEW is the top-level switch; the two views share the map,
 // the zoom and the cause filter, and share nothing else.
-let VIEW="pop", ELEVEL="country", ESRC="ucdp", QLEN="read_out",
-    QLANG=null, QADM=-1;
+let VIEW="pop", ELEVEL="country", ESRC="ucdp";
 const EC=[1,2,4,5,6,7];               // codes any event source actually carries
 // Only three hues clear colour-vision deficiency against each other in both
 // light and dark, and codes 1/2/6 already hold them. 4 and 5 get texture and
@@ -1445,10 +1425,8 @@ function drawEvidenceCause(cc){
  document.getElementById('tbl').innerHTML="";
 }
 
-let QISO=null;
 function showProfile(iso){
  const d=D.data[iso]; if(!d)return;
- if(iso!==QISO){QISO=iso;QLANG=null;QADM=-1;}
  const el=document.getElementById('profile');
  const g=D.gedc[iso]||[], a1=D.geda1[iso]||[], dis=D.dis[iso], q=D.qual[iso];
  const idp=d.stock||{}, ref=d.refugees||{};
@@ -1478,65 +1456,21 @@ function showProfile(iso){
             RESIDUAL:["st-res","Always keep"],
             UNEVIDENCED:["st-un","Keep — no data"],
             LOW_SALIENCE:["st-low","Low salience"]};
-  // The drafted question itself, above the per-option table. This is what
-  // somebody actually came for: the wording, for this country, with the
-  // examples filled in from what happened there.
+  // A summary, not the form itself -- the drafted question, with per-country
+  // examples, read-aloud/showcard length, language and subnational level, all
+  // now lives ONLY on questions.html (see the note by .viewform above). This
+  // panel just tells you what's there and links straight to this country.
   const q=D.lq&&D.lq[iso];
   if(q){
-   const tt=(D.qt&&D.qt[QLANG||q.lang])||(D.qt&&D.qt.en)||null;
-   const dir=((D.qlangs||{})[QLANG||q.lang]||["","ltr"])[1];
-   const lim=QLEN==="read_out"?3:8;
-   const reg=QADM>=0?((q.adm1||[])[QADM]):null;
-   const L=QLANG||q.lang;
-   let fh="";
-   if(tt){
-    fh=`<div class="qform" dir="${dir}">`+
-      `<div class="fhead"><span class="fitem">${tt.item}</span>`+
-      `<span class="fask">${tt.ask}</span>`+
-      `<span class="fcountry">${d.name}${reg?" \u00b7 "+reg.name:""}</span></div>`+
-      `<p class="stem">${tt.stem1}</p><p class="stem">${tt.stem2}</p>`+
-      `<p class="lead">${tt.lead}</p><div class="finstr">${tt.instr}</div><ol class="fopts">`;
-    [1,2,3,4,5,6,7,8].forEach(c=>{
-     let items=null, generic=false;
-     if(reg&&reg.ex[String(c)]){items=reg.ex[String(c)].map(e=>e.text);}
-     else{const row=(q.form||[]).find(x=>x.code===c);
-       if(row&&row.n){items=(L==="en"?row.eg:row.eg_t);
-         generic=q.localised.indexOf(c)<0;}}
-     let eg="";
-     if(items&&items.length){
-      const use=items.slice(0,lim), more=items.length-use.length;
-      eg=` <span class="feg${generic?" fgen":""}"><i>${tt.eg}</i> ${use.join(", ")}</span>`+
-         (more?` <span class="fmore">${tt.more.replace("{n}",more)}</span>`:``);}
-     fh+=`<li><span class="fbox"></span><span class="fnum">${c}</span>`+
-         `<span>${tt.opts[c]}${c===8?" "+tt.specify:""}${eg}</span></li>`;});
-    fh+=`<li><span class="fbox"></span><span class="fnum">99</span><span>${tt.none} `+
-        `<span class="fmore">${tt.excl}</span></span></li></ol></div>`;}
-   h+=`<div class="psec"><h3>Draft wording for this country</h3>`+fh+
-    `<div class="ctl" style="margin:9px 0 0">`+
-    `<button class="qlen${QLEN==="read_out"?" on":""}" data-l="read_out">Read aloud</button>`+
-    `<button class="qlen${QLEN==="showcard"?" on":""}" data-l="showcard">Showcard</button>`+
+   h+=`<div class="psec"><h3>Drafted wording for this country</h3>`+
+    `<div class="ev">${q.n_localised} of 7 options carry country-specific `+
+    `examples, ${q.n_available} in total`+
     ((q.adm1&&q.adm1.length)
-      ? `<select class="qadm"><option value="-1">Whole country</option>`+
-        q.adm1.map((r,i)=>`<option value="${i}"${i===QADM?" selected":""}>`+
-          `${r.name} \u2014 ${r.events.toLocaleString()} events</option>`).join("")+
-        `</select>` : ``)+
-    Object.keys(D.qlangs||{}).map(k=>`<button class="qlang${k===(QLANG||q.lang)?" on":""}" `+
-      `data-k="${k}">${D.qlangs[k][0]}</button>`).join("")+
-    `</div>`+
-    `<div class="ev" style="margin-top:7px">${q.n_localised} of 7 options carry `+
-    `country-specific examples, ${q.n_available} in total. `+
-    (q.n_beyond_read_out
-      ? `<b>${q.n_beyond_read_out} more are recorded</b> than belong in a list read `+
-        `aloud \u2014 the showcard length has them. ` : ``)+
-    ((q.adm1&&q.adm1.length)
-      ? `<b>${q.adm1.length} subnational sets</b> differ from the national one. ` : ``)+
-    (((QLANG||q.lang)!=="en")
-      ? `<b>The ${(D.qlangs[QLANG||q.lang]||[""])[0]} text is an unreviewed draft `+
-        `translation</b> \u2014 an instrument needs professional translation before `+
-        `testing. \u201CFlee\u201D is rendered as leaving under duress, not fleeing `+
-        `in panic, which is what the item defines it as. ` : ``)+
-    `<b>Draft for review, not enumerator text</b> \u2014 actor names come from UCDP `+
-    `and need checking against what people locally call them.</div></div>`;}
+      ? ` \u2014 <b>${q.adm1.length} subnational set${q.adm1.length===1?"":"s"}</b> `+
+        `differ from the national one` : ``)+
+    `.</div>`+
+    `<a class="viewform" href="questions.html?c=${iso}" target="_blank" `+
+    `rel="noopener">View the full drafted question for ${d.name} \u2192</a></div>`;}
   h+=`<div class="psec"><h3>What to put on the showcard here</h3>`+
     `<div style="font-size:12.5px;color:var(--ink-2);margin:-2px 0 9px">`+
     `All eight options stay on the questionnaire everywhere — that is what makes the `+
@@ -1667,12 +1601,6 @@ function showProfile(iso){
  el.innerHTML=h; el.hidden=false;
  document.getElementById('pclose').addEventListener('click',ev=>{
    ev.stopPropagation(); el.hidden=true;});
- el.querySelectorAll('.qlen').forEach(b=>b.addEventListener('click',ev=>{
-   ev.stopPropagation(); QLEN=b.dataset.l; showProfile(iso);}));
- el.querySelectorAll('.qlang').forEach(b=>b.addEventListener('click',ev=>{
-   ev.stopPropagation(); QLANG=b.dataset.k; showProfile(iso);}));
- el.querySelectorAll('.qadm').forEach(b=>b.addEventListener('change',ev=>{
-   ev.stopPropagation(); QADM=+b.value; showProfile(iso);}));
  el.scrollIntoView({behavior:"smooth",block:"nearest"});
 }
 
