@@ -313,6 +313,11 @@ lvl.addEventListener('change',()=>{ADM=+lvl.value;render();});
 document.querySelectorAll('.len').forEach(b=>b.addEventListener('click',()=>{
  document.querySelectorAll('.len').forEach(x=>x.classList.remove('on'));
  b.classList.add('on');LEN=b.dataset.l;render();}));
-sel.value = Q["NGA"] ? "NGA" : Object.keys(Q)[0];
+// Deep link from map.html's country panel ("View the full drafted question
+// for X" -> questions.html?c=ISO3) -- preselects that country in place of the
+// NGA/first-country default, so the two pages actually connect instead of
+// each just restating what the other already showed.
+const deepC=(new URLSearchParams(location.search).get('c')||"").toUpperCase();
+sel.value = (deepC && Q[deepC]) ? deepC : (Q["NGA"] ? "NGA" : Object.keys(Q)[0]);
 pickCountry();
 </script></body></html>
