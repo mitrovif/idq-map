@@ -71,6 +71,20 @@ rsync -a --delete \
 
 echo
 echo "== 5/5  committing =="
+# Safety net: gh-pages should only ever contain top-level html pages plus
+# .gitignore/.nojekyll. If a branch switch ever leaves source code or raw
+# data sitting here as untracked clutter, refuse to commit rather than risk
+# publishing it. Any top-level *.html add/change/delete is allowed (pages
+# come and go as PAGES in publish_site.py changes); anything with a slash
+# (a subdirectory) or a non-html top-level file is not. (porcelain format
+# is 2 status chars + space + path.)
+UNEXPECTED="$(git status --porcelain | grep -vE '^.. ([^/]+\.html|\.gitignore|\.nojekyll)$' || true)"
+if [ -n "$UNEXPECTED" ]; then
+  echo "error: gh-pages has unexpected changes beyond the published pages:" >&2
+  echo "$UNEXPECTED" >&2
+  echo "Not committing - check what these are before proceeding." >&2
+  exit 1
+fi
 git add -A
 if git diff --cached --quiet; then
   echo "nothing changed - site is already up to date on gh-pages"
