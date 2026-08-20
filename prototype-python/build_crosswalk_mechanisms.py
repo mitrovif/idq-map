@@ -74,6 +74,14 @@ def main():
                               note=_n(r.note)) for r in crows.itertuples()],
         )
 
+    # Categories that were looked at and deliberately recoded to NOTHING - a
+    # real decision (e.g. ACLED's "Peaceful protest" doesn't displace anyone),
+    # not an oversight. code is null for these, so they never surface under
+    # any option tab above; shown here instead, once, as their own record.
+    excluded = [dict(source=r.source, category=r.category, volume=_n(r.volume),
+                      note=_n(r.note))
+                for r in cw[cw.fit == "none"].itertuples()]
+
     # Two separate small charts below the tabs, kept deliberately apart so
     # magnitude and structure never get conflated in one picture:
     #
@@ -101,10 +109,12 @@ def main():
     html = (PAGE.replace("__DATA__", json.dumps(payload, separators=(",", ":")))
                 .replace("__MAG__", json.dumps(magnitude, separators=(",", ":")))
                 .replace("__STRUCT__", json.dumps(structure, separators=(",", ":")))
-                .replace("__SOURCES__", json.dumps(present, separators=(",", ":"))))
+                .replace("__SOURCES__", json.dumps(present, separators=(",", ":")))
+                .replace("__EXCLUDED__", json.dumps(excluded, separators=(",", ":"))))
     open(f"{OUT}/idq_crosswalk_mechanisms.html", "w").write(html)
     print(f"wrote idq_crosswalk_mechanisms.html "
           f"({n_mech} mechanisms, {n_cat} source categories, "
+          f"{len(excluded)} deliberately excluded, "
           f"{len(magnitude)} sources sized, {len(structure)} source-to-option links, 8 options)")
 
 
@@ -156,6 +166,14 @@ a{color:var(--a)}
  font-style:italic;color:var(--i);margin:8px 0 6px;padding-left:11px;
  border-left:3px solid var(--g)}
 .card .foot{font-size:12px;color:var(--m);margin-top:6px}
+/* the recode itself: raw category -> option, made explicit on every card,
+   with the reasoning promoted to full-weight body text right underneath it
+   instead of buried below a stat line */
+.card .recode{font-size:12.5px;color:var(--m);margin:2px 0 8px}
+.card .recode b{color:var(--i2);font-weight:650}
+.card .why{color:var(--i);font-size:14px;line-height:1.5;margin:2px 0 8px}
+.card.excluded{border-style:dashed}
+.card.excluded .top{margin-bottom:2px}
 .badge{font-size:10px;text-transform:uppercase;letter-spacing:.05em;font-weight:700;
  padding:2px 8px;border-radius:10px;white-space:nowrap;flex:0 0 auto}
 .b-yes{background:color-mix(in srgb,var(--good) 18%,transparent);color:var(--good)}
@@ -226,6 +244,16 @@ to the same idea, not because it's been matched to a specific category.</p>
 <div class="cards" id="cards"></div>
 
 <div class="sec">
+ <h2>Categories looked at and recoded to nothing</h2>
+ <p class="lede">Not every raw category earns a response option &mdash; some
+ were considered and deliberately excluded, which is itself part of the
+ record. ACLED's &ldquo;Peaceful protest&rdquo; is the biggest example: 386,822
+ events, correctly mapped to no option, because peaceful protest doesn't
+ displace anyone. These don't appear under any option above for that reason.</p>
+ <div class="cards" id="excludedCards"></div>
+</div>
+
+<div class="sec">
  <h2>How much recorded volume each source carries</h2>
  <p class="lede">Total volume across every crosswalk row for that source &mdash;
  no options here, just size. IOM DTM and UNHCR are flagged rather than drawn
@@ -283,23 +311,39 @@ function buildGloss(items){
 
 function renderCategories(items){
  if(!items.length){cardsEl.innerHTML='<div class="empty">No source categories mapped to this option.</div>';return;}
+ const v=D[CODE]||{};
  cardsEl.innerHTML=items.map(c=>{
   const cls="b-"+(c.fit||"none");
   return `<div class="card"><div class="top">`+
    `<div><span class="src-tag">${esc(c.source)}</span>`+
    `<b class="name">${esc(c.category)}</b></div>`+
    `<span class="badge ${cls}">${esc(c.fit||"unmatched")}</span></div>`+
+   `<p class="recode">recoded to <b>Option ${esc(CODE)}: ${esc(v.label||"")}</b></p>`+
+   (c.note?`<p class="why">${esc(c.note)}</p>`:``)+
    (c.volume!=null?`<p class="foot">${fmtN(c.volume)} recorded</p>`:``)+
-   (c.note?`<p class="desc">${esc(c.note)}</p>`:``)+
-   (c.alt!=null?`<p class="foot">Arguable alternative: option ${esc(c.alt)}</p>`:``)+
+   (c.alt!=null?`<p class="foot">Alternative considered: option ${esc(c.alt)}</p>`:``)+
    `</div>`;}).join("");}
+
+function buildExcluded(){
+ const el=document.getElementById('excludedCards');
+ if(!EXCLUDED.length){el.innerHTML='<div class="empty">Nothing excluded on record.</div>';return;}
+ el.innerHTML=EXCLUDED.map(c=>
+  `<div class="card excluded"><div class="top">`+
+   `<div><span class="src-tag">${esc(c.source)}</span>`+
+   `<b class="name">${esc(c.category)}</b></div>`+
+   `<span class="badge b-none">excluded</span></div>`+
+   `<p class="recode">recoded to <b>no option</b></p>`+
+   (c.note?`<p class="why">${esc(c.note)}</p>`:``)+
+   (c.volume!=null?`<p class="foot">${fmtN(c.volume)} recorded</p>`:``)+
+   `</div>`).join("");}
 
 function render(){
  const v=D[CODE]||{mechanisms:[],categories:[]};
  renderCategories(v.categories);
  buildGloss(v.mechanisms);}
 
-buildOpts(); render();
+const EXCLUDED=__EXCLUDED__;
+buildOpts(); render(); buildExcluded();
 
 // --- two separate small charts below the tabs, not tied to the option picker ---
 const MAG=__MAG__, STRUCT=__STRUCT__, SOURCES=__SOURCES__;
