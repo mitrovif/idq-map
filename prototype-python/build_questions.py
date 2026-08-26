@@ -40,6 +40,7 @@ THREE THINGS THAT MAKE THIS A DRAFT AND NOT A DELIVERABLE
 """
 from paths import TIDY_S, OUT_S
 from question_i18n import (LANGS, T, lang_for, translate_example)
+import protection
 import json
 import re
 
@@ -638,6 +639,34 @@ h2{font-size:15px;margin:28px 0 2px;font-weight:640}
 .k-generic{background:transparent;color:var(--m);border:1px solid var(--g)}
 .k-none{background:transparent;color:var(--m);border:1px dashed var(--g)}
 .ro{font-size:10px;color:var(--m)}
+/* ---- question switcher -------------------------------------------------
+   Two items share this page now. The switcher is the first control, above the
+   country picker, because which QUESTION is being drafted governs whether the
+   controls below it even apply - Length and the population picker are
+   meaningless for the protection item, so they are hidden rather than left
+   inert. */
+.qbar{border-bottom:2px solid var(--g);padding-bottom:12px;margin-bottom:4px}
+button.q{font:inherit;font-size:13.5px;padding:8px 14px;border-radius:8px;
+ border:1px solid var(--g);background:var(--s);color:var(--i2);cursor:pointer}
+button.q.on{background:var(--i);color:var(--p);border-color:var(--i);font-weight:640}
+/* ---- protection form ---- */
+.pver{margin:16px 0 0}
+.pver+.pver{border-top:1px dotted var(--g);padding-top:14px;margin-top:16px}
+.pname{color:var(--a);font-weight:640}
+.pmiss{color:var(--m);font-style:italic}
+.psub{font-family:ui-sans-serif,-apple-system,sans-serif;font-size:12.5px;
+ color:var(--i2);margin:6px 0 0}
+.psub em{color:var(--m);font-style:normal;font-size:10.5px;text-transform:uppercase;
+ letter-spacing:.06em;font-weight:700;margin-inline-end:6px}
+.pchip{display:inline-flex;align-items:center;gap:6px;padding:3px 9px 3px 4px;
+ border:1px solid var(--g);border-radius:4px;font-family:ui-sans-serif,sans-serif;
+ font-size:12px;margin:6px 6px 0 0;color:var(--i2)}
+.pchip i{width:20px;height:13px;border-radius:2px;border:1px solid rgba(0,0,0,.28);display:block}
+.pflag{font-family:ui-sans-serif,-apple-system,sans-serif;font-size:12.5px;
+ background:color-mix(in srgb,var(--w) 13%,transparent);
+ border:1px solid color-mix(in srgb,var(--w) 42%,transparent);
+ border-radius:6px;padding:9px 12px;margin-top:12px;color:var(--i2)}
+.pflag b{display:block;margin-bottom:2px}
 /* ---- population picker (single choice) + customised preview -------------
    A section of its own, set off from the Length/Language controls above by a
    rule and its own title, so it doesn't read as just another toolbar row. */
@@ -660,12 +689,18 @@ country. <b>The response options never change</b> &mdash; only the examples, whi
 the question variants document permits localising and which the desk review found
 respondents depend on.</p>
 
+<div class="bar qbar">
+  <span class="lbl">Question</span>
+  <button class="q on" data-q="flee">Forced to flee</button>
+  <button class="q" data-q="protection">International protection</button>
+</div>
+
 <div class="bar">
   <select id="pick"></select>
   <span class="lbl">Level</span>
   <select id="lvl"></select>
 </div>
-<div class="bar">
+<div class="bar" id="fleebar">
   <span class="lbl">Length</span>
   <button class="len on" data-l="read_out">Read aloud</button>
   <button class="len" data-l="showcard">Showcard</button>
@@ -684,7 +719,7 @@ respondents depend on.</p>
 <div class="form" id="form"></div>
 <div class="warn" id="warn"></div>
 
-<h2>Where each example comes from</h2>
+<h2 id="provhead">Where each example comes from</h2>
 <table id="prov"><thead><tr><th>Option</th><th>Example</th><th>Type</th>
 <th>Source</th><th>Evidence</th></tr></thead><tbody></tbody></table>
 
@@ -813,7 +848,71 @@ function buildPops(v){
   if(POP!=null){ADM=-1;lvl.value="-1";}   // a region of the HOST doesn't apply to another population's own form
   buildPops(v); render();}));}
 
+const PROT=__PROT__;
+let QUESTION="flee";
+
+// The protection item is the same localisation job as the flee item: the stem is
+// fixed and only the NAME inside the example varies. It renders into the same
+// paper form so the two read as one instrument rather than as two tools.
+function renderProtection(){
+ const iso=sel.value, r=PROT[iso];
+ const f=document.getElementById('form');
+ f.setAttribute('dir','ltr'); f.classList.remove('custom');
+ if(!r){f.innerHTML='<p class="pmiss">No protection record for this country.</p>';
+  document.getElementById('warn').innerHTML='';return;}
+ const chips=(r.cols||[]).map(c=>`<span class="pchip"><i style="background:${c[0]}"></i>`+
+   `${esc(c[1])} <span style="color:var(--m)">&middot; ${esc(c[2])}</span></span>`).join("");
+ const v1=r.org?`&hellip;did you go to an office like <span class="pname">${esc(r.org)}</span> to register?`
+   :`&hellip;did you go to an office like <span class="pmiss">no organization can be named</span> to register?`;
+ const dn=r.da||r.dr;
+ const v2=dn?`&hellip;did you apply for a document like <span class="pname">${esc(dn)}</span>?`
+   :`&hellip;did you apply for a document like <span class="pmiss">no document can be named</span>?`;
+ const sub=(lab,t1,t2,t3)=>t1?`<p class="psub"><em>${lab}</em>${esc(t1)}`+
+   (t2&&t2!==t1?` &middot; <i>${esc(t2)}</i>`:``)+(t3?` &middot; &ldquo;${esc(t3)}&rdquo;`:``)+`</p>`:``;
+ let flag="";
+ if(r.reg==="NONE") flag=`<div class="pflag"><b>Cannot be asked here</b>${esc(r.how||"No registrar exists in this country.")}</div>`;
+ else if(r.mis)     flag=`<div class="pflag"><b>Rewrite version 1 before fielding</b>${esc(r.how)}</div>`;
+ f.innerHTML=`<div class="fhead"><span class="fitem">ITEM 7</span>`+
+  `<span class="fask">ASK ALL</span>`+
+  `<span class="fcountry">${esc(r.c)} &middot; ${r.cf} confidence</span></div>`+
+  `<p class="stem">The next question is about whether you have ever applied for `+
+  `international protection in this country.</p>`+
+  `<div class="pver"><p class="lead">Version 1 &mdash; the office</p>`+
+  `<div class="instr">READ OUT</div><p class="stem">${v1}</p>`+
+  sub("Locally", r.orgL, null, null)+
+  ((r.alt&&r.alt.length)?`<p class="psub"><em>Or</em>${r.alt.map(esc).join(" &middot; ")}</p>`:``)+
+  flag+`</div>`+
+  `<div class="pver"><p class="lead">Version 2 &mdash; the document</p>`+
+  `<div class="instr">READ OUT</div><p class="stem">${v2}</p>`+
+  sub("While pending", r.da, r.daL, r.daC)+
+  sub("On recognition", r.dr, r.drL, r.drC)+chips+
+  (dn?``:`<div class="pflag"><b>No document to name</b>The source names no document `+
+    `issued on registration, so this version has nothing to anchor on.</div>`)+
+  `</div>`;
+ const who={GOVERNMENT:"the government",UNHCR:"UNHCR",BOTH:"both government and UNHCR",NONE:"nobody"}[r.reg];
+ document.getElementById('warn').innerHTML=
+  `<b>${r.org?"Version 1 nameable":"Version 1 has no nameable organization"}, `+
+  `${dn?"version 2 nameable":"version 2 has no nameable document"}.</b> `+
+  `Registered by ${who}. `+
+  (r.ow?`<br><br><b>Why this organization.</b> ${esc(r.ow)}`:``)+
+  (r.dw?`<br><br><b>Why these documents.</b> ${esc(r.dw)}`:``)+
+  (r.cav?`<br><br><b>Caveat.</b> ${esc(r.cav)}`:``)+
+  `<br><br>Confidence ${r.cf}. The source describes the procedure as it stands `+
+  `today, while the item asks about a respondent's lifetime.`;
+ document.querySelector('#prov tbody').innerHTML="";}
+
+// Everything below the switcher belongs to the flee item only.
+function applyQuestion(){
+ const prot=QUESTION==="protection";
+ ["fleebar","provhead","prov"].forEach(id=>{
+  const e=document.getElementById(id); if(e) e.style.display=prot?"none":"";});
+ const ps=document.getElementById('popsection');
+ if(ps) ps.style.display=prot?"none":
+  ((Q[sel.value]&&(Q[sel.value].populations||[]).length)?"":"none");
+ render();}
+
 function render(){
+ if(QUESTION==="protection"){renderProtection();return;}
  const iso=sel.value, v=Q[iso], t=T[LANG]||T.en, dir=(LANGS[LANG]||["","ltr"])[1];
  const lim=LEN==="read_out"?3:8;
 
@@ -874,6 +973,9 @@ function pickCountry(){
  buildLangs(); buildLevels(v); buildPops(v); render();}
 sel.addEventListener('change',pickCountry);
 lvl.addEventListener('change',()=>{ADM=+lvl.value;render();});
+document.querySelectorAll('.q').forEach(b=>b.addEventListener('click',()=>{
+ document.querySelectorAll('.q').forEach(x=>x.classList.remove('on'));
+ b.classList.add('on');QUESTION=b.dataset.q;applyQuestion();}));
 document.querySelectorAll('.len').forEach(b=>b.addEventListener('click',()=>{
  document.querySelectorAll('.len').forEach(x=>x.classList.remove('on'));
  b.classList.add('on');LEN=b.dataset.l;render();}));
@@ -888,7 +990,9 @@ pickCountry();
 
 
 def write_page(out, rows):
-    html = (PAGE.replace("__DATA__", json.dumps(out, separators=(",", ":")))
+    html = (PAGE.replace("__PROT__", json.dumps(protection.question_payload(),
+                                                separators=(",", ":")))
+                .replace("__DATA__", json.dumps(out, separators=(",", ":")))
                 .replace("__PROV__", json.dumps(rows, separators=(",", ":")))
                 .replace("__T__", json.dumps(T, separators=(",", ":")))
                 .replace("__LANGS__", json.dumps(LANGS, separators=(",", ":"))))

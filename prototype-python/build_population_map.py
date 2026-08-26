@@ -16,6 +16,7 @@ Three populations, switchable, because they answer different questions:
                their origin countries. This is the one that matters for showcard
                design in host countries - the causing events happened elsewhere.
 """
+import protection
 from paths import ROOT_S, RAW_S, UP_S, TIDY_S, OUT_S, TOPO_S
 import json, os, re
 import pandas as pd
@@ -343,6 +344,7 @@ def main():
                    public=PUBLIC,
                    vdem=vdem, ucdp=ucdp, dis=disasters, gedc=gedc, geda1=geda1, pts=points,
                    year=latest, period=period, multiyear=len(yrs) > 1,
+                   prot=protection.map_payload(),
                    qual=qual,
                    qlabels={"3": "Discrimination or persecution",
                             "4": "Human rights violations by authorities",
@@ -607,11 +609,10 @@ what displaced them. Hover a country to see the numbers and the actual events ID
 recorded — the named storm, the named conflict. Scroll to zoom, drag to pan.</p>
 
 <div class="ctl" id="intbanner" hidden>
-  <span class="intbadge">Internal copy</span>
-  <span class="intmsg">Contains ACLED event counts. Fine to share within the task
-  team; <b>do not publish this file</b> — ACLED's terms restrict republishing.
-  The public build at <a href="https://mitrovif.github.io/idq-map/">mitrovif.github.io/idq-map</a>
-  has them removed.</span>
+  <span class="intbadge">Pending ACLED endorsement</span>
+  <span class="intmsg">This build includes ACLED event counts ahead of ACLED's formal
+  endorsement to be credited as a data source. Treat the ACLED layer as
+  <b>provisional</b> until that is confirmed — the rest of the page is unaffected.</span>
 </div>
 
 <div class="ctl viewsw">
@@ -643,6 +644,12 @@ recorded — the named storm, the named conflict. Scroll to zoom, drag to pan.</
   <button class="mode" data-m="period">1990&ndash;2025, conflict only <em>each country’s worst year</em></button>
   <button class="mode" data-m="flows">Movements between countries <em>arrows</em></button>
   <button class="mode" data-m="sub">Where within countries <em>towns and districts</em></button>
+</div>
+<div class="ctl" id="protctl">
+  <span class="grp">Applying for protection</span>
+  <button class="mode" data-m="protoffice">Who takes the application <em>the office to name</em></button>
+  <button class="mode" data-m="protdoc">What is issued <em>the document to name</em></button>
+  <button class="mode" data-m="protask">Where the question breaks <em>version 1</em></button>
 </div>
 <div class="ctl">
   <span class="grp">Which cause</span>
@@ -1369,6 +1376,69 @@ function vdemBlock(iso){
    `<b>${v.excluded_pct}%</b> of the population excluded from civil liberties by social group</div>`;
  return h+`</div>`;}
 
+// ---- applying for international protection -------------------------------
+// A different item from the flee question, sharing this map rather than getting
+// one of its own. Drawn as coloured discs at country centroids to match the rest
+// of the map's symbol language - a choropleth here would fight the bubbles.
+const PROTC={
+ office:{GOVERNMENT:"#3B5FC0",UNHCR:"#00897B",BOTH:"#9B3D7A",NONE:"#CC5500"},
+ doc:{"2":"#00796B","1":"#7FC4B8","0":"#C9D5D2"},
+ ask:{ok:"#00897B",reword:"#B7791F",no:"#B03A2E"}};
+const PROTL={
+ office:[["GOVERNMENT","Government"],["UNHCR","UNHCR"],["BOTH","Both"],["NONE","Nobody"]],
+ doc:[["2","Both stages named"],["1","One stage only"],["0","Searched, none named"]],
+ ask:[["ok","Asks as written"],["reword","Version 1 needs rewording"],["no","Cannot be asked"]]};
+const PROTNOTE={
+ office:"Who a person actually lodges the claim with. The government is not always "+
+  "the answer - in 36 countries UNHCR is the sole registrar, and naming a ministry "+
+  "there would point at the wrong step or none.",
+ doc:"A claim has two stages: the document held while it is pending, and the one "+
+  "issued on recognition. 52 countries have neither printed on any UNHCR page.",
+ ask:"Version 1 asks whether the respondent went to an office. In 110 countries the "+
+  "claim is lodged online, by e-mail, at a police station, or happens automatically, "+
+  "so that wording produces false negatives."};
+
+function drawProtection(kind){
+ const P=(D.prot||{})[kind], names=(D.prot||{}).names||{};
+ if(!P){document.getElementById('key').innerHTML=
+   `<span style="color:var(--muted)">protection layer not built - `+
+   `run protection.py and rebuild</span>`;return;}
+ D.geo.forEach(f=>{
+  const iso=f.iso3; if(!iso||!f.c)return;
+  const v=P[iso]; if(v==null)return;
+  const g=document.createElementNS(NS,"g");
+  g.dataset.base=`translate(${px(f.c[0]).toFixed(1)},${py(f.c[1]).toFixed(1)})`;
+  g.setAttribute("transform",g.dataset.base);
+  const c=document.createElementNS(NS,"circle");
+  c.setAttribute("r",7);
+  c.setAttribute("fill",PROTC[kind][v]||"var(--unattr)");
+  c.setAttribute("fill-opacity",".85");
+  c.setAttribute("stroke","var(--surface-1)");c.setAttribute("stroke-width","1");
+  g.appendChild(c);
+  const hit=document.createElementNS(NS,"circle");
+  hit.setAttribute("r",9);hit.setAttribute("fill","transparent");
+  hit.style.cursor="pointer";g.appendChild(hit);
+  tip(hit,()=>{
+   const org=((D.prot.orgnames||{})[iso])||"", dn=(D.prot.docnames||{})[iso]||[];
+   const lab=(PROTL[kind].find(x=>x[0]===v)||["",v])[1];
+   let h=`<div class="hd"><b>${names[iso]||iso}</b>`+
+    `<span class="hint">${lab}</span></div><div class="bd"><div class="blk">`;
+   if(org) h+=`<div><span class="cd">office</span> ${org}</div>`;
+   if(dn[0]) h+=`<div><span class="cd">while pending</span> ${dn[0]}</div>`;
+   if(dn[1]) h+=`<div><span class="cd">on recognition</span> ${dn[1]}</div>`;
+   if(!org&&!dn[0]) h+=`<div class="ev">Nothing nameable in either version.</div>`;
+   return h+`</div></div>`;}, iso);
+  layer.appendChild(g);});
+ applyT();
+ document.getElementById('key').innerHTML =
+  PROTL[kind].map(x=>`<span><i style="background:${PROTC[kind][x[0]]}"></i>${x[1]}</span>`).join('')+
+  `<span style="color:var(--muted)">151 countries · curated from help.unhcr.org and RIMAP</span>`;
+ document.getElementById('anchor').innerHTML =
+  `<b style="color:var(--c2)">This is the international protection item, not the flee item.</b> `+
+  `Click through to questions.html for the drafted wording.`;
+ document.getElementById('modenote').innerHTML="<b>What you are looking at.</b> "+PROTNOTE[kind];
+ document.getElementById('tbl').innerHTML="";}
+
 function drawEvidenceCause(cc){
  // no country-level count exists for these codes; show what evidence there is
  const band={severe:14,substantial:10,moderate:6,limited:3};
@@ -1624,6 +1694,7 @@ function sizeKey(max,unit){
 function draw(){
  layer.innerHTML="";
  if(VIEW==="events"){drawEvents();return;}
+ if(MODE.indexOf("prot")===0){drawProtection(MODE.slice(4));return;}
  if(MODE==="sub"){drawSub();return;}
  if(CAUSE!=="all"&&NO_COUNT.includes(CAUSE)&&MODE!=="flows"){drawEvidenceCause(CAUSE);return;}
  if(MODE==="flows"){

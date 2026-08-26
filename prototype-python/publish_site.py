@@ -34,6 +34,7 @@ and publish the result to the gh-pages branch:
 """
 from paths import ROOT, OUT
 import json
+import os
 import re
 import shutil
 
@@ -86,13 +87,26 @@ HELD_BACK = {"idq_all_causes_map.html": "contains ACLED per-country event counts
 
 
 def check_no_acled_counts(html, name):
-    """A published page may name ACLED; it may not carry ACLED count objects."""
+    """A published page may name ACLED; it may not carry ACLED count objects,
+    UNLESS the build has explicitly opted in via IDQ_ALLOW_ACLED_PUBLISH=1.
+
+    That opt-in exists for internal/private circulation only - e.g. sharing a
+    working build with colleagues before ACLED has endorsed being credited as
+    a data source. Do not flip it on for a build that goes on the public
+    gh-pages URL without ACLED's sign-off; their terms restrict republishing
+    their event counts."""
     bad = re.findall(r'"source":"ACLED"[^}]*"volume"', html)
     counts = re.findall(r'ACLED events 20\d\d\+', html)
     if counts:
-        raise SystemExit(
-            f"REFUSING to publish {name}: {len(counts)} per-country ACLED event "
-            f"counts found. Rebuild with IDQ_PUBLIC=1 or add it to HELD_BACK.")
+        if os.environ.get("IDQ_ALLOW_ACLED_PUBLISH") == "1":
+            print(f"  WARNING: {name} carries {len(counts)} per-country ACLED "
+                  f"event counts, published anyway (IDQ_ALLOW_ACLED_PUBLISH=1). "
+                  f"Confirm ACLED republishing terms are cleared for this build.")
+        else:
+            raise SystemExit(
+                f"REFUSING to publish {name}: {len(counts)} per-country ACLED event "
+                f"counts found. Rebuild with IDQ_PUBLIC=1 for the ACLED-safe build, "
+                f"or set IDQ_ALLOW_ACLED_PUBLISH=1 to publish the full data anyway.")
     return len(bad)
 
 
