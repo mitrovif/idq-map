@@ -433,6 +433,9 @@ button.on em{color:var(--surface-1);opacity:.72}
 .intmsg{font-size:12.5px;color:var(--ink-2);line-height:1.5}
 @media(max-width:760px){#intbanner{flex-wrap:wrap}}
 .viewsw{margin-bottom:2px;padding-bottom:12px;border-bottom:1px solid var(--grid)}
+/* Marks "Registration wording" as a different item from the population/events
+   pair before anyone clicks it, rather than reading as a third peer. */
+.viewsep{width:1px;align-self:stretch;background:var(--grid);margin:2px 2px}
 .viewsw button{font-size:14px;padding:8px 15px;font-weight:560}
 .findwrap{position:relative;margin-left:auto}
 #find{font:inherit;font-size:13.5px;padding:8px 13px;border-radius:8px;
@@ -743,7 +746,8 @@ recorded — the named storm, the named conflict. Scroll to zoom, drag to pan.</
   <span class="grp">What the map shows</span>
   <button class="view on" data-v="pop">People displaced</button>
   <button class="view" data-v="events">Events that happened</button>
-  <button class="view" data-v="prot">Registration wording</button>
+  <span class="viewsep" aria-hidden="true"></span>
+  <button class="view" data-v="prot">Registration wording<em>a different question</em></button>
   <span class="findwrap">
     <input id="find" type="search" autocomplete="off" spellcheck="false"
            placeholder="Find a country &mdash; e.g. Chad" aria-label="Find a country">
@@ -773,7 +777,7 @@ recorded — the named storm, the named conflict. Scroll to zoom, drag to pan.</
   <button class="mode" data-m="stock">IDPs only <em>snapshot</em></button>
   <button class="mode" data-m="refugees">Refugees only <em>snapshot</em></button>
   <button class="mode" data-m="flow" id="flowbtn">Displacements recorded <em>running total &mdash; repeats counted</em></button>
-  <button class="mode" data-m="period">1990&ndash;2025, conflict only <em>each country’s worst year</em></button>
+  <button class="mode" data-m="period">Worst year on record <em>conflict only, 1990&ndash;2025</em></button>
   <button class="mode" data-m="flows">Movements between countries <em>arrows</em></button>
   <button class="mode" data-m="sub">Where within countries <em>towns and districts</em></button>
 </div>
@@ -864,7 +868,7 @@ recorded — the named storm, the named conflict. Scroll to zoom, drag to pan.</
   <td>A <b>flow</b> &mdash; movements recorded during the period. Somebody displaced three
       times counts three times.</td><td>Country where the displacement happened</td>
   <td id="hp1">&mdash;</td></tr>
- <tr><td><b>Whole period, conflict only</b></td>
+ <tr><td><b>Worst year on record</b></td>
   <td>Each country's <b>peak</b> displaced population in any single year, with the whole
       trajectory in the tooltip. Conflict only &mdash; no disaster split exists for this series.</td>
   <td>Country where the displacement happened</td><td>1990&ndash;2025</td></tr>
@@ -1606,7 +1610,7 @@ function showProfile(iso){
       ? ` \u2014 <b>${q.adm1.length} subnational set${q.adm1.length===1?"":"s"}</b> `+
         `differ from the national one` : ``)+
     ((D.prot||[]).includes(iso)
-      ? ` \u2014 that page also carries the registration item (where an `+
+      ? ` \u2014 that page also carries the registration wording (where an `+
         `international protection claim is lodged, and what document it produces).`
       : ``)+
     `.</div>`+

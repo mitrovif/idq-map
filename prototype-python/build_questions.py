@@ -678,6 +678,13 @@ h2{font-size:15px;margin:28px 0 2px;font-weight:640}
 .cav{background:color-mix(in srgb,var(--a) 6%,transparent);
  border:1px solid color-mix(in srgb,var(--a) 20%,var(--g));border-radius:9px;
  padding:12px 15px;margin-top:12px;font-size:13px;color:var(--i2)}
+/* collapsed-by-default notes, so a long explanation doesn't sit fully open in
+   the reading path — same "tuck it behind a button" pattern as map.html's
+   help panels and crosswalk.html's "in plain words" toggle. */
+button.help{font:inherit;font-size:12.5px;padding:6px 11px;border-radius:8px;
+ border:1px dashed var(--g);background:var(--s);color:var(--i2);cursor:pointer;
+ margin:2px 0 4px}
+button.help.on{border-style:solid}
 /* ---- population picker (single choice) + customised preview -------------
    A section of its own, set off from the Length/Language controls above by a
    rule and its own title, so it doesn't read as just another toolbar row. */
@@ -741,17 +748,34 @@ respondents depend on.</p>
 <div class="warn" id="warn"></div>
 
 <div class="regcard" id="regcard">
-<h2>International protection &mdash; the registration item</h2>
-<p class="sub">A separate item in the same instrument: whether someone ever applied
-for international protection. Drafted the same way as the item above &mdash; a
-country-specific example of <b>where the claim is lodged</b> (v1) and <b>what
-document it produces</b> (v2); the question wording itself doesn't change.</p>
+<h2>Registration wording</h2>
+<p class="sub">A separate item in the same instrument &mdash; international
+protection status &mdash; drafted the same way as the item above: a
+country-specific example of <b>where the claim is lodged</b> and <b>what
+document it produces</b>; the question wording itself doesn't change.</p>
 <span class="badges" id="regbadges"></span>
 <div class="regform" id="regform"></div>
 <div class="warn" id="regwarn" style="display:none"></div>
 <div class="cav" id="regcav" style="display:none"></div>
 <p class="pmiss" id="regmiss" style="display:none">No drafted registration example for
 this country yet.</p>
+<button class="help" id="regnotesbtn">Read this before using it</button>
+<div class="warn" id="regnotespanel" hidden>
+<b>These are drafts for review, not enumerator text.</b> The naming rule
+throughout: name where the claim is <b>lodged</b>, never who adjudicates it
+&mdash; eligibility panels, appeals boards and hotlines are excluded even where
+they are well known, because a respondent never went near them.<br><br>
+<b>The office doesn't travel everywhere.</b> In many countries the claim is
+lodged online, by post, at a police station, or happens automatically with no
+office a respondent would visit &mdash; those are flagged above with the actual
+channel, so the wording can be adapted rather than asked as written.<br><br>
+<b>Confidence is HIGH/MEDIUM/LOW per country.</b> LOW rows are almost entirely
+small Pacific and Caribbean states; check MEDIUM and LOW against a country
+source before fielding.<br><br>
+<b>Internal displacement is deliberately absent.</b> Of the major contexts
+checked, only a handful have a verifiable IDP status document; most have none at
+all, which is a finding about the instruments, not a gap in the search.
+</div>
 </div>
 
 <h2>Where each example comes from</h2>
@@ -759,7 +783,11 @@ this country yet.</p>
 <th>Source</th><th>Evidence</th></tr></thead><tbody></tbody></table>
 
 <h2>Read this before using any of it</h2>
-<div class="warn">
+<p class="sub" style="margin:-2px 0 8px">These are drafts for review, not
+enumerator text &mdash; translations are unreviewed, actor names are
+UCDP&rsquo;s not a respondent&rsquo;s, and identity groups are never named.</p>
+<button class="help" id="notesbtn">Show the full notes</button>
+<div class="warn" id="notespanel" hidden>
 <b>These are drafts for review, not enumerator text.</b><br><br>
 <b>The translations are unreviewed.</b> Translating an instrument is a specialist
 job &mdash; TRAPD, or forward-and-back translation with reconciliation &mdash;
@@ -959,12 +987,12 @@ function renderReg(iso){
   const bits=[local?`<i>${esc(local)}</i> in local language`:null,
               colloq?`commonly called &ldquo;${esc(colloq)}&rdquo;`:null].filter(Boolean);
   return bits.length?`<div class="gloss">${bits.join(" &middot; ")}</div>`:"";};
- let h=`<div class="probe"><div class="ptag">v1 &middot; the office</div>`;
+ let h=`<div class="probe"><div class="ptag">Where to register</div>`;
  h+= v.v1 ? `<div class="ptext">${esc(v.v1)}</div>${glossLine(v.orgL,null)}`+
             (v.alt?`<div class="why">Also seen: ${esc(v.alt)}</div>`:"")+
             (v.ow?`<div class="why">${esc(v.ow)}</div>`:"")
           : `<div class="pmiss">&mdash; no office can be named for this country.</div>`;
- h+=`</div><div class="probe"><div class="ptag">v2 &middot; the document</div>`;
+ h+=`</div><div class="probe"><div class="ptag">What document it produces</div>`;
  const docLocal=v.da?v.daL:v.drL, docColloq=v.da?v.daC:v.drC;
  h+= v.v2 ? `<div class="ptext">${esc(v.v2)}</div>${glossLine(docLocal,docColloq)}`+
             (v.da&&v.dr&&v.dr!==v.da?`<div class="why">On recognition, this becomes: `+
@@ -992,6 +1020,15 @@ lvl.addEventListener('change',()=>{ADM=+lvl.value;render();});
 document.querySelectorAll('.len').forEach(b=>b.addEventListener('click',()=>{
  document.querySelectorAll('.len').forEach(x=>x.classList.remove('on'));
  b.classList.add('on');LEN=b.dataset.l;render();}));
+// Same collapsed-panel pattern as map.html's "How to read this" etc.
+function panelToggle(btnId,panelId,openTxt,shutTxt){
+ document.getElementById(btnId).addEventListener('click',e=>{
+  e.stopPropagation(); const h=document.getElementById(panelId);
+  h.hidden=!h.hidden; e.target.classList.toggle('on',!h.hidden);
+  e.target.textContent=h.hidden?openTxt:shutTxt;
+  if(!h.hidden)h.scrollIntoView({behavior:"smooth",block:"nearest"});});}
+panelToggle('notesbtn','notespanel',"Show the full notes","Hide");
+panelToggle('regnotesbtn','regnotespanel',"Read this before using it","Hide");
 // Deep link from map.html's country panel ("View the full drafted question
 // for X" -> questions.html?c=ISO3) -- preselects that country in place of the
 // NGA/first-country default, so the two pages actually connect instead of
