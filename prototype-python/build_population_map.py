@@ -16,7 +16,6 @@ Three populations, switchable, because they answer different questions:
                their origin countries. This is the one that matters for showcard
                design in host countries - the causing events happened elsewhere.
 """
-import protection
 from paths import ROOT_S, RAW_S, UP_S, TIDY_S, OUT_S, TOPO_S
 import json, os, re
 import pandas as pd
@@ -253,6 +252,19 @@ def main():
         print(f"  localised questions: {len(lq)} countries")
     except FileNotFoundError:
         lq = {}
+    # International protection question: just the list of ISO3s with a drafted
+    # office/document example, so the country panel can link out to
+    # protection.html the same way it links to questions.html above - see
+    # protection.py for the actual curated data. A bare ISO3 list, not the
+    # payload itself, so this stays a KB-scale addition rather than a second
+    # copy of protection_context.json inside the map.
+    try:
+        from protection import load as _load_protection
+        prot = sorted(_load_protection().keys())
+        print(f"  protection question: {len(prot)} countries")
+    except Exception as e:
+        prot = []
+        print(f"  protection question: unavailable ({e})")
     # IOM DTM: the only evidence here that comes from displaced people rather
     # than from an analyst reading an event. Kept in its own key and never
     # merged with the attributed causes - it is a check on them, not a part.
@@ -340,11 +352,10 @@ def main():
         ev = {}
         print("  events layer: events.json missing - run build_events.py")
     payload = dict(data=data, geo=feats, causes=CAUSES, labels=LABEL, flows=flows,
-                   coverage=cov, ev=ev, sc=sc, dtm=dtm, lq=lq,
+                   coverage=cov, ev=ev, sc=sc, dtm=dtm, lq=lq, prot=prot,
                    public=PUBLIC,
                    vdem=vdem, ucdp=ucdp, dis=disasters, gedc=gedc, geda1=geda1, pts=points,
                    year=latest, period=period, multiyear=len(yrs) > 1,
-                   prot=protection.map_payload(),
                    qual=qual,
                    qlabels={"3": "Discrimination or persecution",
                             "4": "Human rights violations by authorities",
@@ -363,14 +374,19 @@ TPL = r"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <style>
 :root{color-scheme:light;--surface-1:#fcfcfb;--plane:#f9f9f7;--ink:#0b0b0b;
  --ink-2:#52514e;--muted:#898781;--grid:#e1e0d9;
- --c1:#2a78d6;--c2:#eb6834;--c6:#1baf7a;--unattr:#c9c7bf;--unknown:#e6e4dc;
- --land:#eceae4;}
+ --c1:#2a78d6;--c2:#e0a93b;--c6:#1baf7a;--unattr:#c9c7bf;--unknown:#e6e4dc;
+ --land:#eceae4;
+ /* codes-3/4 "documented evidence" indicator circles used to hardcode var(--c2),
+    which silently recoloured them every time code 2's colour changed. Decoupled
+    onto its own token. Validated (validate_palette.js, --pairs all) against
+    --c1/--c2/--c6 and against --unattr, the only colour it is ever shown beside. */
+ --evidence:#4a3aa7;}
 :root[data-theme="dark"]{color-scheme:dark;--surface-1:#1a1a19;--plane:#0d0d0d;
- --ink:#fff;--ink-2:#c3c2b7;--grid:#2c2c2a;--c1:#3987e5;--c2:#d95926;--c6:#199e70;
- --unattr:#5a5954;--land:#2a2a28;}
+ --ink:#fff;--ink-2:#c3c2b7;--grid:#2c2c2a;--c1:#3987e5;--c2:#c98500;--c6:#199e70;
+ --unattr:#5a5954;--land:#2a2a28;--evidence:#8b6fe0;}
 @media(prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;
  --surface-1:#1a1a19;--plane:#0d0d0d;--ink:#fff;--ink-2:#c3c2b7;--grid:#2c2c2a;
- --c1:#3987e5;--c2:#d95926;--c6:#199e70;--unattr:#5a5954;--unknown:#3a3a37;
+ --c1:#3987e5;--c2:#c98500;--c6:#199e70;--unattr:#5a5954;--unknown:#3a3a37;--evidence:#8b6fe0;
  --land:#2a2a28;}}
 *{box-sizing:border-box}
 body{margin:0;background:var(--plane);color:var(--ink);
@@ -601,6 +617,78 @@ td{font-variant-numeric:tabular-nums}
 #tt .src a,.profile .src a{color:var(--c1);text-decoration:none}
 #tt .src a:hover,.profile .src a:hover{text-decoration:underline}
 circle.ring{fill:none;stroke:var(--ink-2);stroke-width:1.3;stroke-dasharray:2.5 2.5}
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ---------------------------------------------------- EGRISS visual identity
+   Additive on top of the rules above rather than rewritten in place, so this
+   page's own colour logic (COL/SWATCH/ECOL/ESWATCH, --evidence) stays the
+   single source of truth and this block only ever touches chrome: type,
+   surfaces, and the four button families. */
+:root{--egriss-navy:#14234c;--egriss-blue:#3b71b9;--egriss-teal:#4cc3c9;
+ --egriss-tint:#eef3fa;--egriss-tint-2:#dde8f5;--egriss-line:#d9e2ef;}
+body{background:#f7fafd}
+.wrap{font-family:'IBM Plex Sans',system-ui,sans-serif}
+h1{font-family:'Figtree',system-ui,sans-serif;color:var(--egriss-navy);font-weight:700}
+.card{background:#fff;border-color:var(--egriss-line)}
+#map{background:var(--egriss-tint);border-radius:14px}
+path.land{fill:var(--egriss-tint-2) !important;stroke:#fff !important;stroke-width:.7 !important}
+circle.ring{stroke:#5a6884 !important}
+#find{border-color:var(--egriss-line)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]) body{background:var(--plane)}
+ :root:not([data-theme="light"]) h1{color:#fff}
+ :root:not([data-theme="light"]) .card{background:var(--surface-1);border-color:var(--grid)}
+ :root:not([data-theme="light"]) #map{background:var(--plane)}
+ :root:not([data-theme="light"]) path.land{fill:var(--land) !important;stroke:var(--surface-1) !important}}
+:root[data-theme="dark"] body{background:var(--plane)}
+:root[data-theme="dark"] h1{color:#fff}
+:root[data-theme="dark"] .card{background:var(--surface-1);border-color:var(--grid)}
+:root[data-theme="dark"] #map{background:var(--plane)}
+:root[data-theme="dark"] path.land{fill:var(--land) !important;stroke:var(--surface-1) !important}
+
+/* 1. PRIMARY -- the People displaced / Events switch. Everything else on the
+   panel depends on this choice, so it gets the heaviest weight: solid navy
+   pill, filled track. */
+.viewsw button.view{border-radius:999px;font-weight:600}
+.viewsw button.view.on{background:var(--egriss-navy) !important;
+ border-color:var(--egriss-navy) !important;color:#fff !important}
+.viewsw button.view:not(.on):hover{background:var(--egriss-tint-2);color:var(--egriss-navy)}
+
+/* 2. SECONDARY -- mode / level / source. Refines the primary view, so it reads
+   lighter: outlined track, teal tint (not a solid fill) marks the active
+   choice. Disabled options (the ACLED layer in the public build) stay visibly
+   inert rather than looking like just another unselected button. */
+#popctl button.mode,#evctl button.lvl,#evctl button.esrc{
+ background:#fff;border-color:var(--egriss-line)}
+#popctl button.mode.on,#evctl button.lvl.on,#evctl button.esrc.on{
+ background:color-mix(in srgb,var(--egriss-teal) 18%,transparent) !important;
+ border-color:var(--egriss-teal) !important;color:var(--egriss-navy) !important;
+ font-weight:600}
+#popctl button.mode:not(.on):hover,#evctl button.lvl:not(.on):hover,
+#evctl button.esrc:not(.on):hover{background:var(--egriss-tint)}
+#evctl button.esrc[disabled]{opacity:.45;cursor:not-allowed}
+
+/* 3. FILTER CHIPS -- which cause. A different interaction (choosing a
+   category, not switching a mode), so it gets a different shape: rounded
+   outline chips. Teal fill marks an active single cause; navy fill is
+   reserved for "All causes" as the reset action. */
+button.cz{border-radius:999px;background:#fff;border-color:var(--egriss-line)}
+button.cz.on{background:var(--egriss-teal) !important;
+ border-color:var(--egriss-teal) !important;color:var(--egriss-navy) !important;
+ font-weight:600}
+button.cz[data-c="all"].on{background:var(--egriss-navy) !important;
+ border-color:var(--egriss-navy) !important;color:#fff !important}
+button.cz:not(.on):hover{border-color:var(--egriss-blue);color:var(--egriss-blue)}
+
+/* 4. GHOST / META links -- "how to read this" and similar. Not data controls,
+   so they shouldn't compete visually with the three families above: no box,
+   a hairline top rule, teal underline on hover only. */
+.viewctl button,button.help{background:none;border:0;border-radius:0;
+ padding:2px 0 2px 10px;border-left:1px solid var(--grid)}
+.viewctl button:first-child,button.help:first-child{border-left:0;padding-left:0}
+.viewctl button:hover,button.help:hover{color:var(--egriss-navy)}
 </style></head><body><div class="wrap">
 
 <h1 id="title">Displaced population by cause</h1>
@@ -644,12 +732,6 @@ recorded — the named storm, the named conflict. Scroll to zoom, drag to pan.</
   <button class="mode" data-m="period">1990&ndash;2025, conflict only <em>each country’s worst year</em></button>
   <button class="mode" data-m="flows">Movements between countries <em>arrows</em></button>
   <button class="mode" data-m="sub">Where within countries <em>towns and districts</em></button>
-</div>
-<div class="ctl" id="protctl">
-  <span class="grp">Applying for protection</span>
-  <button class="mode" data-m="protoffice">Who takes the application <em>the office to name</em></button>
-  <button class="mode" data-m="protdoc">What is issued <em>the document to name</em></button>
-  <button class="mode" data-m="protask">Where the question breaks <em>version 1</em></button>
 </div>
 <div class="ctl">
   <span class="grp">Which cause</span>
@@ -1376,69 +1458,6 @@ function vdemBlock(iso){
    `<b>${v.excluded_pct}%</b> of the population excluded from civil liberties by social group</div>`;
  return h+`</div>`;}
 
-// ---- applying for international protection -------------------------------
-// A different item from the flee question, sharing this map rather than getting
-// one of its own. Drawn as coloured discs at country centroids to match the rest
-// of the map's symbol language - a choropleth here would fight the bubbles.
-const PROTC={
- office:{GOVERNMENT:"#3B5FC0",UNHCR:"#00897B",BOTH:"#9B3D7A",NONE:"#CC5500"},
- doc:{"2":"#00796B","1":"#7FC4B8","0":"#C9D5D2"},
- ask:{ok:"#00897B",reword:"#B7791F",no:"#B03A2E"}};
-const PROTL={
- office:[["GOVERNMENT","Government"],["UNHCR","UNHCR"],["BOTH","Both"],["NONE","Nobody"]],
- doc:[["2","Both stages named"],["1","One stage only"],["0","Searched, none named"]],
- ask:[["ok","Asks as written"],["reword","Version 1 needs rewording"],["no","Cannot be asked"]]};
-const PROTNOTE={
- office:"Who a person actually lodges the claim with. The government is not always "+
-  "the answer - in 36 countries UNHCR is the sole registrar, and naming a ministry "+
-  "there would point at the wrong step or none.",
- doc:"A claim has two stages: the document held while it is pending, and the one "+
-  "issued on recognition. 52 countries have neither printed on any UNHCR page.",
- ask:"Version 1 asks whether the respondent went to an office. In 110 countries the "+
-  "claim is lodged online, by e-mail, at a police station, or happens automatically, "+
-  "so that wording produces false negatives."};
-
-function drawProtection(kind){
- const P=(D.prot||{})[kind], names=(D.prot||{}).names||{};
- if(!P){document.getElementById('key').innerHTML=
-   `<span style="color:var(--muted)">protection layer not built - `+
-   `run protection.py and rebuild</span>`;return;}
- D.geo.forEach(f=>{
-  const iso=f.iso3; if(!iso||!f.c)return;
-  const v=P[iso]; if(v==null)return;
-  const g=document.createElementNS(NS,"g");
-  g.dataset.base=`translate(${px(f.c[0]).toFixed(1)},${py(f.c[1]).toFixed(1)})`;
-  g.setAttribute("transform",g.dataset.base);
-  const c=document.createElementNS(NS,"circle");
-  c.setAttribute("r",7);
-  c.setAttribute("fill",PROTC[kind][v]||"var(--unattr)");
-  c.setAttribute("fill-opacity",".85");
-  c.setAttribute("stroke","var(--surface-1)");c.setAttribute("stroke-width","1");
-  g.appendChild(c);
-  const hit=document.createElementNS(NS,"circle");
-  hit.setAttribute("r",9);hit.setAttribute("fill","transparent");
-  hit.style.cursor="pointer";g.appendChild(hit);
-  tip(hit,()=>{
-   const org=((D.prot.orgnames||{})[iso])||"", dn=(D.prot.docnames||{})[iso]||[];
-   const lab=(PROTL[kind].find(x=>x[0]===v)||["",v])[1];
-   let h=`<div class="hd"><b>${names[iso]||iso}</b>`+
-    `<span class="hint">${lab}</span></div><div class="bd"><div class="blk">`;
-   if(org) h+=`<div><span class="cd">office</span> ${org}</div>`;
-   if(dn[0]) h+=`<div><span class="cd">while pending</span> ${dn[0]}</div>`;
-   if(dn[1]) h+=`<div><span class="cd">on recognition</span> ${dn[1]}</div>`;
-   if(!org&&!dn[0]) h+=`<div class="ev">Nothing nameable in either version.</div>`;
-   return h+`</div></div>`;}, iso);
-  layer.appendChild(g);});
- applyT();
- document.getElementById('key').innerHTML =
-  PROTL[kind].map(x=>`<span><i style="background:${PROTC[kind][x[0]]}"></i>${x[1]}</span>`).join('')+
-  `<span style="color:var(--muted)">151 countries · curated from help.unhcr.org and RIMAP</span>`;
- document.getElementById('anchor').innerHTML =
-  `<b style="color:var(--c2)">This is the international protection item, not the flee item.</b> `+
-  `Click through to questions.html for the drafted wording.`;
- document.getElementById('modenote').innerHTML="<b>What you are looking at.</b> "+PROTNOTE[kind];
- document.getElementById('tbl').innerHTML="";}
-
 function drawEvidenceCause(cc){
  // no country-level count exists for these codes; show what evidence there is
  const band={severe:14,substantial:10,moderate:6,limited:3};
@@ -1453,7 +1472,7 @@ function drawEvidenceCause(cc){
   g.setAttribute("transform",g.dataset.base);
   const c=document.createElementNS(NS,"circle");
   c.setAttribute("r",r);
-  c.setAttribute("fill", documented?"var(--c2)":"var(--unattr)");
+  c.setAttribute("fill", documented?"var(--evidence)":"var(--unattr)");
   c.setAttribute("fill-opacity", documented?".85":".6");
   c.setAttribute("stroke","var(--surface-1)");c.setAttribute("stroke-width","1");
   if(!documented){c.setAttribute("stroke","var(--ink-2)");
@@ -1479,12 +1498,12 @@ function drawEvidenceCause(cc){
   layer.appendChild(g);});
  applyT();
  document.getElementById('key').innerHTML =
-  `<span><i style="background:var(--c2)"></i>Documented displacement from this cause</span>`+
+  `<span><i style="background:var(--evidence)"></i>Documented displacement from this cause</span>`+
   `<span><i style="background:var(--unattr);border:1.3px dashed var(--ink-2)"></i>`+
   `V-Dem conditions only — size = severity</span>`+
   `<span style="color:var(--muted)">no displacement count exists for this code anywhere</span>`;
  document.getElementById('anchor').innerHTML =
-  `<b style="color:var(--c2)">No database counts people displaced by this cause.</b> `+
+  `<b style="color:var(--evidence)">No database counts people displaced by this cause.</b> `+
   `Filled circles are the twenty countries with documented research; dashed circles are `+
   `V-Dem's reading of whether the condition exists, sized by severity.`;
  document.getElementById('modenote').innerHTML="<b>What you are looking at.</b> "+
@@ -1541,6 +1560,15 @@ function showProfile(iso){
     `.</div>`+
     `<a class="viewform" href="questions.html?c=${iso}" target="_blank" `+
     `rel="noopener">View the full drafted question for ${d.name} \u2192</a></div>`;}
+  // Same pattern, for the international protection / registration item -
+  // see protection.py. D.prot is just the covered ISO3 list (see payload
+  // note above), so the link only appears where there is something to show.
+  if((D.prot||[]).includes(iso)){
+   h+=`<div class="psec"><h3>Registration wording for this country</h3>`+
+    `<div class="ev">Drafted local example of where an international protection `+
+    `claim is lodged, and what document it produces.</div>`+
+    `<a class="viewform" href="protection.html?c=${iso}" target="_blank" `+
+    `rel="noopener">View the drafted registration question for ${d.name} \u2192</a></div>`;}
   h+=`<div class="psec"><h3>What to put on the showcard here</h3>`+
     `<div style="font-size:12.5px;color:var(--ink-2);margin:-2px 0 9px">`+
     `All eight options stay on the questionnaire everywhere — that is what makes the `+
@@ -1694,7 +1722,6 @@ function sizeKey(max,unit){
 function draw(){
  layer.innerHTML="";
  if(VIEW==="events"){drawEvents();return;}
- if(MODE.indexOf("prot")===0){drawProtection(MODE.slice(4));return;}
  if(MODE==="sub"){drawSub();return;}
  if(CAUSE!=="all"&&NO_COUNT.includes(CAUSE)&&MODE!=="flows"){drawEvidenceCause(CAUSE);return;}
  if(MODE==="flows"){
