@@ -17,7 +17,9 @@ STEPS = [
     ("subnational_points",       "geocoded displacement points"),
     ("build_events",             "event counts by cause, country and admin1"),
     ("build_dtm",                "IOM DTM reported reasons, and the reality check"),
-    ("build_questions",          "localised e.g. examples for the forced-to-flee item"),
+    ("build_questions",          "localised e.g. examples for the forced-to-flee item, "
+                                  "plus the registration item inline (imports "
+                                  "build_protection.py directly - no separate step)"),
     ("build_crosswalk_explorer", "crosswalk explorer"),
     ("build_subreason_explorer", "sub-reason taxonomy"),
     ("build_crosswalk_mechanisms", "crosswalk + mechanisms, merged one-page view "

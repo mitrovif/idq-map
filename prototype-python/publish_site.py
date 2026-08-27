@@ -43,44 +43,41 @@ import shutil
 # markdown, and 2 MB of generated HTML per rebuild does not belong in its history.
 SITE = ROOT / "site"
 
-# Small line-icon per card so the front page reads at a glance rather than as a
-# wall of blurb text - each is a plain inline SVG (no external file, no network
-# call), sized and styled from CSS below.
-ICON_MAP = ('<svg viewBox="0 0 24 24"><circle cx="12" cy="10" r="3"/>'
-            '<path d="M12 21c4-4.5 7-8.2 7-11a7 7 0 1 0-14 0c0 2.8 3 6.5 7 11Z"/></svg>')
-ICON_QUESTIONS = ('<svg viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"/>'
-                   '<path d="M9 4V3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1"/>'
-                   '<path d="M9 11h6M9 15h4"/></svg>')
-ICON_CROSSWALK = ('<svg viewBox="0 0 24 24"><path d="M4 8h13M17 8l-3-3M17 8l-3 3"/>'
-                   '<path d="M20 16H7M7 16l3-3M7 16l3 3"/></svg>')
-ICON_SCALE = ('<svg viewBox="0 0 24 24"><path d="M12 3v18M5 7l-3 6a3.2 3.2 0 0 0 6 0Z"/>'
-              '<path d="M19 7l-3 6a3.2 3.2 0 0 0 6 0Z"/><path d="M5 7h14"/></svg>')
-
-# source file -> (published name, title, blurb, icon). Order is display order on
+# source file -> (published name, title, blurb, cta). Order is display order on
 # the front page - the map and the questionnaire are the two pages the task team
 # actually uses day to day, so they lead; the reference material (crosswalk,
-# mechanisms, counted-vs-documented) follows.
+# mechanisms, counted-vs-documented) follows. cta is the link text on the
+# numbered front-page item ("Open the map ->" etc) - the EGRISS front page is a
+# plain numbered list, not icon cards, so there's no icon column any more.
 PAGES = [
     ("idq_population_by_cause.html", "index.html",
      "Causes of displacement, and the events behind them",
      "Two switchable world maps — how many people are displaced and by what, and "
      "how often each kind of event actually happens. Search a country for the "
-     "response options the evidence supports there.", ICON_MAP),
+     "response options the evidence supports there.", "Open the map"),
     ("idq_localised_questions.html", "questions.html",
      "Localised examples for the question",
      "Version 3 of the forced-to-flee item, with the text after each “e.g.” "
      "drafted from what was actually recorded in that country. The response options "
-     "do not change; only the examples.", ICON_QUESTIONS),
+     "do not change; only the examples. Also carries the registration "
+     "(international protection) item's drafted wording, country by country.",
+     "Open the questionnaire"),
     ("idq_crosswalk_mechanisms.html", "crosswalk.html",
      "What sits under each option",
      "For each of the eight options: 66 real-world mechanisms in words a "
      "respondent might use, and the 68 source-database categories they were "
-     "mapped from — including the ones that fit badly.", ICON_CROSSWALK),
+     "mapped from — including the ones that fit badly.", "Open the crosswalk"),
     ("idq_evidence_map.html", "counted-vs-documented.html",
      "Counted versus documented",
      "Where human rights research documents displacement that no statistical "
-     "agency counts — the case for options 3 and 7.", ICON_SCALE),
+     "agency counts — the case for options 3 and 7.", "Open the comparison"),
 ]
+# idq_protection_question.html / protection.html was retired: the registration
+# item now lives inline on questions.html (build_questions.py), and its map
+# layer lives on the main map (build_population_map.py's "Registration
+# wording" view) — both read protection.py directly, so nothing is lost.
+# build_protection.py itself stays as a data-prep module (build_rows() is
+# imported by build_questions.py); it just no longer builds its own page.
 
 # Carries per-country ACLED event counts throughout, with no public build.
 HELD_BACK = {"idq_all_causes_map.html": "contains ACLED per-country event counts"}
@@ -113,58 +110,77 @@ def check_no_acled_counts(html, name):
 INDEX = """<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Causing events and the identification questions</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-:root{color-scheme:light dark;--s:#fcfcfb;--p:#f9f9f7;--i:#0b0b0b;--i2:#52514e;
- --m:#898781;--g:#e1e0d9;--a:#2a78d6}
-@media(prefers-color-scheme:dark){:root{--s:#1a1a19;--p:#0d0d0d;--i:#fff;
- --i2:#c3c2b7;--g:#2c2c2a;--a:#3987e5}}
+:root{color-scheme:light;
+ --navy:#14234c;--blue:#3b71b9;--teal:#4cc3c9;--gold:#c98500;
+ --ink:#1d2940;--muted:#5a6884;--line:#e3e8f0;--tint:#f7fafd;
+ --paper:#fff;
+ --f-head:'Figtree',system-ui,sans-serif;--f-body:'IBM Plex Sans',system-ui,sans-serif;
+ --f-mono:'IBM Plex Mono',ui-monospace,monospace;
+}
 *{box-sizing:border-box}
-body{margin:0;background:var(--p);color:var(--i);font:16px/1.6 ui-sans-serif,
- -apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
-.w{max-width:820px;margin:0 auto;padding:54px 22px 80px}
-h1{font-size:30px;line-height:1.2;margin:0 0 12px;letter-spacing:-.02em;font-weight:660}
-.lede{color:var(--i2);font-size:17px;margin:0 0 8px}
-.meta{color:var(--m);font-size:13.5px;margin:0 0 34px}
-a.card{display:flex;gap:15px;align-items:flex-start;background:var(--s);
- border:1px solid var(--g);border-radius:12px;padding:17px 19px;margin-bottom:11px;
- text-decoration:none;color:inherit;transition:.12s}
-a.card:hover{border-color:var(--a);transform:translateY(-1px)}
-a.card svg{flex:0 0 auto;width:24px;height:24px;margin-top:1px;color:var(--a);
- fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
-a.card b{font-size:16.5px;display:block;margin-bottom:3px;letter-spacing:-.01em}
-a.card span{color:var(--i2);font-size:14px}
-h2{font-size:15px;margin:30px 0 10px;text-transform:uppercase;letter-spacing:.05em;
- color:var(--m);font-weight:650}
-p{color:var(--i2);font-size:14.5px}
-code{background:var(--s);border:1px solid var(--g);border-radius:4px;padding:1px 5px;
- font-size:13px}
-.note{background:var(--s);border:1px solid var(--g);border-radius:10px;padding:14px 17px;
- font-size:14px;color:var(--i2)}
-table.src{border-collapse:collapse;width:100%;font-size:13.5px;margin:6px 0 4px}
-table.src td{padding:7px 10px;border-bottom:1px solid var(--g);vertical-align:top;
- color:var(--i2)}
-table.src td:first-child{width:118px;color:var(--i);white-space:nowrap}
-pre{background:var(--s);border:1px solid var(--g);border-radius:8px;padding:11px 13px;
- font-size:12.5px;overflow-x:auto;color:var(--i)}
-a{color:var(--a)}
-/* the front page's job is the hero + the five cards; everything else - the
-   methodology caveats, the source table, how to reproduce it - is real and
-   worth keeping, but reads as a wall of text if it's all open by default. A
-   native <details> disclosure needs no JS and still prints/searches fine. */
-.src-line{font-size:14.5px;color:var(--i2);margin:0 0 26px}
-details{margin-top:8px}
-details>summary{cursor:pointer;font-size:14px;font-weight:650;color:var(--a);
- list-style:none;padding:11px 0;border-top:1px solid var(--g)}
+body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.7 var(--f-body);
+ -webkit-font-smoothing:antialiased}
+.w{max-width:720px;margin:0 auto;padding:64px 24px 90px}
+.eyebrow{font-family:var(--f-mono);font-size:11px;font-weight:500;letter-spacing:.13em;
+ text-transform:uppercase;color:var(--blue);margin:0 0 18px}
+h1{font-family:var(--f-head);font-size:29px;line-height:1.22;margin:0 0 16px;
+ letter-spacing:-.015em;font-weight:700;color:var(--navy)}
+.lede{color:var(--ink);font-size:16.5px;margin:0 0 8px;line-height:1.6;max-width:60ch}
+.meta{color:var(--muted);font-size:13px;margin:0 0 48px}
+
+.item{display:flex;gap:20px;padding:28px 0;border-top:1px solid var(--line)}
+.item:last-of-type{border-bottom:1px solid var(--line)}
+.num{font-family:var(--f-mono);font-size:13px;color:var(--gold);font-weight:500;
+ flex:0 0 auto;width:26px;padding-top:2px}
+.item .body a{text-decoration:none;color:inherit}
+.item b{font-family:var(--f-head);font-size:18px;display:block;margin-bottom:5px;
+ letter-spacing:-.01em;color:var(--navy);font-weight:650}
+.item:hover b{color:var(--blue)}
+.item p{color:var(--muted);font-size:14.5px;line-height:1.55;margin:0 0 10px;max-width:56ch}
+.item .go{font-family:var(--f-mono);font-size:11.5px;color:var(--blue);
+ text-decoration:none;letter-spacing:.02em}
+.item .go:hover{text-decoration:underline}
+
+h2.sec{font-family:var(--f-head);font-size:12px;margin:52px 0 16px;text-transform:uppercase;
+ letter-spacing:.08em;color:var(--muted);font-weight:650}
+.src-line{font-size:14.5px;color:var(--muted);line-height:1.7}
+.src-line a{color:var(--blue);text-decoration:none;border-bottom:1px solid var(--line)}
+.src-line a:hover{border-color:var(--blue)}
+
+details{margin-top:6px}
+details>summary{cursor:pointer;font-family:var(--f-body);font-size:14px;font-weight:600;
+ color:var(--blue);list-style:none;padding:16px 0;border-top:1px solid var(--line)}
 details>summary::-webkit-details-marker{display:none}
-details>summary::before{content:"+ ";color:var(--m)}
-details[open]>summary::before{content:"− "}
+details>summary::before{content:"+ ";color:var(--muted);font-weight:700}
+details[open]>summary::before{content:"\\2212 ";color:var(--muted);font-weight:700}
+details h2{font-family:var(--f-head);font-size:12px;margin:20px 0 8px;text-transform:uppercase;
+ letter-spacing:.06em;color:var(--muted);font-weight:650}
+details p{font-size:14px;color:var(--ink);line-height:1.65}
+table.src{border-collapse:collapse;width:100%;font-size:13px;margin:6px 0 16px}
+table.src td{padding:8px 0;border-bottom:1px solid var(--line);vertical-align:top;
+ color:var(--ink)}
+table.src td:first-child{width:110px;color:var(--navy);font-weight:600;white-space:nowrap}
+pre{background:var(--navy);color:#dde8f5;border-radius:8px;
+ padding:13px 15px;font-family:var(--f-mono);font-size:12.5px;overflow-x:auto}
+.note{background:var(--tint);border:1px solid var(--line);border-radius:8px;
+ padding:13px 16px;font-size:13.5px;margin:18px 0;color:var(--ink)}
+code{background:var(--tint);border:1px solid var(--line);border-radius:4px;padding:1px 5px;
+ font-family:var(--f-mono);font-size:12.5px}
+a{color:var(--blue)}
 </style></head><body><div class="w">
+<div class="eyebrow">EGRISS &middot; Identification questions</div>
 <h1>Causing events and the identification questions</h1>
 <p class="lede">Which &ldquo;reason for fleeing&rdquo; response options does the evidence
 support putting in front of respondents in each country, and what local examples should
 enumerator support materials give for each one?</p>
 <p class="meta">EGRISS methodological paper on identification questions for refugees and
 IDPs &middot; supported by a UNHCR Data Innovation Grant</p>
+__CARDS__
+<h2 class="sec">Sources</h2>
 <p class="src-line">Built from six sources &mdash;
 <a href="https://ucdp.uu.se/" target="_blank" rel="noopener">UCDP</a>,
 <a href="https://acleddata.com/" target="_blank" rel="noopener">ACLED</a>,
@@ -175,7 +191,6 @@ IDPs &middot; supported by a UNHCR Data Innovation Grant</p>
 &mdash; cross-referenced country by country. What each one contributes and how it was
 pulled in is below; the response options themselves never change, only which of them
 the evidence supports showing, and what local example illustrates each.</p>
-__CARDS__
 <details>
 <summary>About this project, the sources, and how to reproduce it</summary>
 <h2>What this does not do</h2>
@@ -238,7 +253,7 @@ def main():
     (SITE / ".nojekyll").write_text("")
 
     cards, published = [], []
-    for src, dest, title, blurb, icon in PAGES:
+    for src, dest, title, blurb, cta in PAGES:
         f = OUT / src
         if not f.exists():
             print(f"  missing, skipped: {src}")
@@ -247,8 +262,10 @@ def main():
         named = check_no_acled_counts(html, src)
         (SITE / dest).write_text(html)
         published.append((dest, f.stat().st_size))
-        cards.append(f'<a class="card" href="{dest}">{icon}'
-                     f'<div><b>{title}</b><span>{blurb}</span></div></a>')
+        num = f"{len(cards) + 1:02d}"
+        cards.append(f'<div class="item"><div class="num">{num}</div><div class="body">'
+                     f'<a href="{dest}"><b>{title}</b></a><p>{blurb}</p>'
+                     f'<a class="go" href="{dest}">{cta} →</a></div></div>')
         print(f"  {dest:<28} {f.stat().st_size/1e6:>5.2f} MB"
               + (f"  ({named} ACLED category rows, names only)" if named else ""))
 

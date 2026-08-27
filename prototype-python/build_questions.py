@@ -40,11 +40,17 @@ THREE THINGS THAT MAKE THIS A DRAFT AND NOT A DELIVERABLE
 """
 from paths import TIDY_S, OUT_S
 from question_i18n import (LANGS, T, lang_for, translate_example)
-import protection
 import json
 import re
 
 import pandas as pd
+
+try:
+    from build_protection import build_rows as _build_reg_rows
+    from protection import REGISTRAR_LABEL
+except Exception:
+    _build_reg_rows = None
+    REGISTRAR_LABEL = {}
 
 TIDY = TIDY_S
 OUT = OUT_S
@@ -557,7 +563,13 @@ def main():
     for code, label, _ in OPTIONS:
         s = by[(by.code_id == code) & (by.localised)]
         print(f"   {code}. {label[:44]:<45} {s.iso3.nunique():>3} countries")
-    write_page(out, rows)
+    # The international protection / registration item - a separate part of
+    # the instrument from the forced-to-flee item above, drafted the same way
+    # (protection.py / build_protection.py). Shown inline per country on this
+    # page rather than as its own page, so there's one place to look up a
+    # country's full localised wording instead of two.
+    reg = _build_reg_rows() if _build_reg_rows else {}
+    write_page(out, rows, reg)
     print("\nExample — Nigeria:")
     if "NGA" in out:
         print("   " + out["NGA"]["question"].replace("\n", "\n   "))
@@ -639,34 +651,33 @@ h2{font-size:15px;margin:28px 0 2px;font-weight:640}
 .k-generic{background:transparent;color:var(--m);border:1px solid var(--g)}
 .k-none{background:transparent;color:var(--m);border:1px dashed var(--g)}
 .ro{font-size:10px;color:var(--m)}
-/* ---- question switcher -------------------------------------------------
-   Two items share this page now. The switcher is the first control, above the
-   country picker, because which QUESTION is being drafted governs whether the
-   controls below it even apply - Length and the population picker are
-   meaningless for the protection item, so they are hidden rather than left
-   inert. */
-.qbar{border-bottom:2px solid var(--g);padding-bottom:12px;margin-bottom:4px}
-button.q{font:inherit;font-size:13.5px;padding:8px 14px;border-radius:8px;
- border:1px solid var(--g);background:var(--s);color:var(--i2);cursor:pointer}
-button.q.on{background:var(--i);color:var(--p);border-color:var(--i);font-weight:640}
-/* ---- protection form ---- */
-.pver{margin:16px 0 0}
-.pver+.pver{border-top:1px dotted var(--g);padding-top:14px;margin-top:16px}
-.pname{color:var(--a);font-weight:640}
-.pmiss{color:var(--m);font-style:italic}
-.psub{font-family:ui-sans-serif,-apple-system,sans-serif;font-size:12.5px;
- color:var(--i2);margin:6px 0 0}
-.psub em{color:var(--m);font-style:normal;font-size:10.5px;text-transform:uppercase;
- letter-spacing:.06em;font-weight:700;margin-inline-end:6px}
-.pchip{display:inline-flex;align-items:center;gap:6px;padding:3px 9px 3px 4px;
- border:1px solid var(--g);border-radius:4px;font-family:ui-sans-serif,sans-serif;
- font-size:12px;margin:6px 6px 0 0;color:var(--i2)}
-.pchip i{width:20px;height:13px;border-radius:2px;border:1px solid rgba(0,0,0,.28);display:block}
-.pflag{font-family:ui-sans-serif,-apple-system,sans-serif;font-size:12.5px;
- background:color-mix(in srgb,var(--w) 13%,transparent);
- border:1px solid color-mix(in srgb,var(--w) 42%,transparent);
- border-radius:6px;padding:9px 12px;margin-top:12px;color:var(--i2)}
-.pflag b{display:block;margin-bottom:2px}
+/* ---- registration (international protection) card — mirrors build_protection.py's
+   own probe-card styling, so the two items read as one family of pages ---- */
+.regcard{margin-top:26px;padding-top:4px}
+.regcard .sub{color:var(--i2);margin:0 0 12px;font-size:13.5px;max-width:76ch}
+.regform{background:var(--paper);border:1px solid var(--g);border-radius:4px;
+ padding:24px 28px 22px;font-family:ui-sans-serif,-apple-system,sans-serif}
+.badges{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 12px}
+.badge{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;
+ padding:4px 9px;border-radius:20px;font-weight:700;white-space:nowrap}
+.b-reg{background:color-mix(in srgb,var(--a) 16%,transparent);color:var(--a)}
+.b-cf-HIGH{background:color-mix(in srgb,#0ca30c 16%,transparent);color:#0ca30c}
+.b-cf-MEDIUM{background:color-mix(in srgb,var(--w) 22%,transparent);color:#8a6100}
+.b-cf-LOW{background:color-mix(in srgb,#d03b3b 14%,transparent);color:#d03b3b}
+.probe{border-bottom:1px dotted var(--g);padding-bottom:14px;margin-bottom:14px;
+ font-family:ui-sans-serif,-apple-system,sans-serif}
+.probe:last-of-type{border-bottom:0;margin-bottom:0;padding-bottom:0}
+.ptag{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;
+ color:var(--m);margin-bottom:6px}
+.ptext{font-family:ui-serif,Georgia,"Times New Roman",serif;font-size:15.5px;line-height:1.55}
+.pmiss{color:var(--m);font-style:italic;font-size:13.5px}
+.regcard>.pmiss{font-family:ui-sans-serif,-apple-system,sans-serif}
+.gloss{font-size:12.5px;color:var(--i2);margin-top:5px}
+.gloss i{font-style:italic}
+.why{font-size:11.5px;color:var(--m);margin-top:4px}
+.cav{background:color-mix(in srgb,var(--a) 6%,transparent);
+ border:1px solid color-mix(in srgb,var(--a) 20%,var(--g));border-radius:9px;
+ padding:12px 15px;margin-top:12px;font-size:13px;color:var(--i2)}
 /* ---- population picker (single choice) + customised preview -------------
    A section of its own, set off from the Length/Language controls above by a
    rule and its own title, so it doesn't read as just another toolbar row. */
@@ -681,6 +692,22 @@ button.q.on{background:var(--i);color:var(--p);border-color:var(--i);font-weight
 @media print{body{background:#fff}.bar,select,h1,p.lede,h2,table,.warn{display:none}
  .form{box-shadow:none;border:0;padding:0}}
 @media(max-width:700px){.form{padding:22px 18px}select{min-width:0;width:100%}}
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--s:#fff;--p:#fff;--i:#1d2940;--i2:#5a6884;--m:#8b93a8;--g:#e3e8f0;
+ --a:#3b71b9;--w:#e0a93b;--paper:#fff}
+body{font-family:'IBM Plex Sans',sans-serif !important;background:#fff !important}
+h1{font-family:'Figtree',sans-serif !important;color:#14234c !important;font-weight:700 !important;
+ letter-spacing:-.015em !important}
+h2{font-family:'Figtree',sans-serif !important;color:#14234c !important}
+.bar button.on{background:#14234c !important;border-color:#14234c !important}
+.pop.on{background:#3b71b9 !important;border-color:#3b71b9 !important}
+select,.bar button{border-color:var(--g) !important}
+.form{box-shadow:0 1px 3px rgba(20,35,76,.06),0 10px 28px rgba(20,35,76,.08) !important}
+.regform{box-shadow:0 1px 3px rgba(20,35,76,.06),0 10px 28px rgba(20,35,76,.08) !important}
 </style></head><body><div class="w">
 <h1>Forced to flee &mdash; localised question form</h1>
 <p class="lede">Version 3 of the item, rendered as it would appear on a form, with
@@ -689,18 +716,12 @@ country. <b>The response options never change</b> &mdash; only the examples, whi
 the question variants document permits localising and which the desk review found
 respondents depend on.</p>
 
-<div class="bar qbar">
-  <span class="lbl">Question</span>
-  <button class="q on" data-q="flee">Forced to flee</button>
-  <button class="q" data-q="protection">International protection</button>
-</div>
-
 <div class="bar">
   <select id="pick"></select>
   <span class="lbl">Level</span>
   <select id="lvl"></select>
 </div>
-<div class="bar" id="fleebar">
+<div class="bar">
   <span class="lbl">Length</span>
   <button class="len on" data-l="read_out">Read aloud</button>
   <button class="len" data-l="showcard">Showcard</button>
@@ -719,7 +740,21 @@ respondents depend on.</p>
 <div class="form" id="form"></div>
 <div class="warn" id="warn"></div>
 
-<h2 id="provhead">Where each example comes from</h2>
+<div class="regcard" id="regcard">
+<h2>International protection &mdash; the registration item</h2>
+<p class="sub">A separate item in the same instrument: whether someone ever applied
+for international protection. Drafted the same way as the item above &mdash; a
+country-specific example of <b>where the claim is lodged</b> (v1) and <b>what
+document it produces</b> (v2); the question wording itself doesn't change.</p>
+<span class="badges" id="regbadges"></span>
+<div class="regform" id="regform"></div>
+<div class="warn" id="regwarn" style="display:none"></div>
+<div class="cav" id="regcav" style="display:none"></div>
+<p class="pmiss" id="regmiss" style="display:none">No drafted registration example for
+this country yet.</p>
+</div>
+
+<h2>Where each example comes from</h2>
 <table id="prov"><thead><tr><th>Option</th><th>Example</th><th>Type</th>
 <th>Source</th><th>Evidence</th></tr></thead><tbody></tbody></table>
 
@@ -763,7 +798,7 @@ whose examples merely repeat the national list is not shown.
 conflict, IDMC for hazards. Generated by
 <code>prototype-python/build_questions.py</code>. Ctrl/Cmd-P prints the form alone.</p>
 </div><script>
-const Q=__DATA__, P=__PROV__, T=__T__, LANGS=__LANGS__;
+const Q=__DATA__, P=__PROV__, T=__T__, LANGS=__LANGS__, REG=__REG__, REGLABEL=__REGLABEL__;
 const CODES=[1,2,3,4,5,6,7,8];
 const LBL={1:"1. Armed conflict",2:"2. Widespread violence",3:"3. Persecution",
  4:"4. HR violations",5:"5. Other violence",6:"6. Natural disasters",
@@ -848,71 +883,7 @@ function buildPops(v){
   if(POP!=null){ADM=-1;lvl.value="-1";}   // a region of the HOST doesn't apply to another population's own form
   buildPops(v); render();}));}
 
-const PROT=__PROT__;
-let QUESTION="flee";
-
-// The protection item is the same localisation job as the flee item: the stem is
-// fixed and only the NAME inside the example varies. It renders into the same
-// paper form so the two read as one instrument rather than as two tools.
-function renderProtection(){
- const iso=sel.value, r=PROT[iso];
- const f=document.getElementById('form');
- f.setAttribute('dir','ltr'); f.classList.remove('custom');
- if(!r){f.innerHTML='<p class="pmiss">No protection record for this country.</p>';
-  document.getElementById('warn').innerHTML='';return;}
- const chips=(r.cols||[]).map(c=>`<span class="pchip"><i style="background:${c[0]}"></i>`+
-   `${esc(c[1])} <span style="color:var(--m)">&middot; ${esc(c[2])}</span></span>`).join("");
- const v1=r.org?`&hellip;did you go to an office like <span class="pname">${esc(r.org)}</span> to register?`
-   :`&hellip;did you go to an office like <span class="pmiss">no organization can be named</span> to register?`;
- const dn=r.da||r.dr;
- const v2=dn?`&hellip;did you apply for a document like <span class="pname">${esc(dn)}</span>?`
-   :`&hellip;did you apply for a document like <span class="pmiss">no document can be named</span>?`;
- const sub=(lab,t1,t2,t3)=>t1?`<p class="psub"><em>${lab}</em>${esc(t1)}`+
-   (t2&&t2!==t1?` &middot; <i>${esc(t2)}</i>`:``)+(t3?` &middot; &ldquo;${esc(t3)}&rdquo;`:``)+`</p>`:``;
- let flag="";
- if(r.reg==="NONE") flag=`<div class="pflag"><b>Cannot be asked here</b>${esc(r.how||"No registrar exists in this country.")}</div>`;
- else if(r.mis)     flag=`<div class="pflag"><b>Rewrite version 1 before fielding</b>${esc(r.how)}</div>`;
- f.innerHTML=`<div class="fhead"><span class="fitem">ITEM 7</span>`+
-  `<span class="fask">ASK ALL</span>`+
-  `<span class="fcountry">${esc(r.c)} &middot; ${r.cf} confidence</span></div>`+
-  `<p class="stem">The next question is about whether you have ever applied for `+
-  `international protection in this country.</p>`+
-  `<div class="pver"><p class="lead">Version 1 &mdash; the office</p>`+
-  `<div class="instr">READ OUT</div><p class="stem">${v1}</p>`+
-  sub("Locally", r.orgL, null, null)+
-  ((r.alt&&r.alt.length)?`<p class="psub"><em>Or</em>${r.alt.map(esc).join(" &middot; ")}</p>`:``)+
-  flag+`</div>`+
-  `<div class="pver"><p class="lead">Version 2 &mdash; the document</p>`+
-  `<div class="instr">READ OUT</div><p class="stem">${v2}</p>`+
-  sub("While pending", r.da, r.daL, r.daC)+
-  sub("On recognition", r.dr, r.drL, r.drC)+chips+
-  (dn?``:`<div class="pflag"><b>No document to name</b>The source names no document `+
-    `issued on registration, so this version has nothing to anchor on.</div>`)+
-  `</div>`;
- const who={GOVERNMENT:"the government",UNHCR:"UNHCR",BOTH:"both government and UNHCR",NONE:"nobody"}[r.reg];
- document.getElementById('warn').innerHTML=
-  `<b>${r.org?"Version 1 nameable":"Version 1 has no nameable organization"}, `+
-  `${dn?"version 2 nameable":"version 2 has no nameable document"}.</b> `+
-  `Registered by ${who}. `+
-  (r.ow?`<br><br><b>Why this organization.</b> ${esc(r.ow)}`:``)+
-  (r.dw?`<br><br><b>Why these documents.</b> ${esc(r.dw)}`:``)+
-  (r.cav?`<br><br><b>Caveat.</b> ${esc(r.cav)}`:``)+
-  `<br><br>Confidence ${r.cf}. The source describes the procedure as it stands `+
-  `today, while the item asks about a respondent's lifetime.`;
- document.querySelector('#prov tbody').innerHTML="";}
-
-// Everything below the switcher belongs to the flee item only.
-function applyQuestion(){
- const prot=QUESTION==="protection";
- ["fleebar","provhead","prov"].forEach(id=>{
-  const e=document.getElementById(id); if(e) e.style.display=prot?"none":"";});
- const ps=document.getElementById('popsection');
- if(ps) ps.style.display=prot?"none":
-  ((Q[sel.value]&&(Q[sel.value].populations||[]).length)?"":"none");
- render();}
-
 function render(){
- if(QUESTION==="protection"){renderProtection();return;}
  const iso=sel.value, v=Q[iso], t=T[LANG]||T.en, dir=(LANGS[LANG]||["","ltr"])[1];
  const lim=LEN==="read_out"?3:8;
 
@@ -968,14 +939,56 @@ function render(){
   `<td style="color:var(--i2)">${esc(r.evidence||"")}`+
   (r.in_read_out===false?`<div class="ro">showcard only</div>`:``)+`</td></tr>`).join("");}
 
+// Registration (international protection) card — a different question item
+// from the flee-question form above, so it doesn't move with LEN/LANG/POP/ADM;
+// only the selected country matters. Same probe-card structure as
+// build_protection.py's own per-country render(), inlined here instead of on
+// a separate page. See protection.py for what v1/v2/registrar/confidence mean.
+function renderReg(iso){
+ const v=REG[iso];
+ const badges=document.getElementById('regbadges'), form=document.getElementById('regform'),
+       warn=document.getElementById('regwarn'), cav=document.getElementById('regcav'),
+       miss=document.getElementById('regmiss');
+ if(!v){badges.innerHTML="";form.style.display="none";warn.style.display="none";
+  cav.style.display="none";miss.style.display="";return;}
+ miss.style.display="none";form.style.display="";
+ badges.innerHTML=
+  `<span class="badge b-reg">${esc(REGLABEL[v.reg]||v.reg)} registers claims</span>`+
+  `<span class="badge b-cf-${v.cf}">${v.cf} confidence</span>`;
+ const glossLine=(local,colloq)=>{
+  const bits=[local?`<i>${esc(local)}</i> in local language`:null,
+              colloq?`commonly called &ldquo;${esc(colloq)}&rdquo;`:null].filter(Boolean);
+  return bits.length?`<div class="gloss">${bits.join(" &middot; ")}</div>`:"";};
+ let h=`<div class="probe"><div class="ptag">v1 &middot; the office</div>`;
+ h+= v.v1 ? `<div class="ptext">${esc(v.v1)}</div>${glossLine(v.orgL,null)}`+
+            (v.alt?`<div class="why">Also seen: ${esc(v.alt)}</div>`:"")+
+            (v.ow?`<div class="why">${esc(v.ow)}</div>`:"")
+          : `<div class="pmiss">&mdash; no office can be named for this country.</div>`;
+ h+=`</div><div class="probe"><div class="ptag">v2 &middot; the document</div>`;
+ const docLocal=v.da?v.daL:v.drL, docColloq=v.da?v.daC:v.drC;
+ h+= v.v2 ? `<div class="ptext">${esc(v.v2)}</div>${glossLine(docLocal,docColloq)}`+
+            (v.da&&v.dr&&v.dr!==v.da?`<div class="why">On recognition, this becomes: `+
+              `${esc(v.dr)}${v.drC?` (&ldquo;${esc(v.drC)}&rdquo;)`:""}</div>`:"")+
+            (v.dw?`<div class="why">${esc(v.dw)}</div>`:"")
+          : `<div class="pmiss">&mdash; no document can be named for this country.</div>`;
+ h+=`</div>`;
+ form.innerHTML=h;
+ if(v.mis){warn.style.display="";
+  warn.innerHTML=`<b>V1 wording likely needs rewording here.</b> ${esc(v.how)}`;
+ }else{warn.style.display="none";}
+ const cols=(v.cols&&v.cols.length)?v.cols.join(", "):null;
+ if(v.cav){cav.style.display="";cav.innerHTML=`<b>Note.</b> ${esc(v.cav)}`;
+  if(cols)cav.innerHTML+=`<br><b>Colour names in use:</b> ${esc(cols)}`;
+ }else if(cols){cav.style.display="";cav.innerHTML=`<b>Colour names in use:</b> ${esc(cols)}`;
+ }else{cav.style.display="none";}
+}
+
 function pickCountry(){
  const v=Q[sel.value]; LANG=v.lang||"en"; ADM=-1; POP=null;
- buildLangs(); buildLevels(v); buildPops(v); render();}
+ buildLangs(); buildLevels(v); buildPops(v); render();
+ renderReg(sel.value);}
 sel.addEventListener('change',pickCountry);
 lvl.addEventListener('change',()=>{ADM=+lvl.value;render();});
-document.querySelectorAll('.q').forEach(b=>b.addEventListener('click',()=>{
- document.querySelectorAll('.q').forEach(x=>x.classList.remove('on'));
- b.classList.add('on');QUESTION=b.dataset.q;applyQuestion();}));
 document.querySelectorAll('.len').forEach(b=>b.addEventListener('click',()=>{
  document.querySelectorAll('.len').forEach(x=>x.classList.remove('on'));
  b.classList.add('on');LEN=b.dataset.l;render();}));
@@ -989,13 +1002,14 @@ pickCountry();
 </script></body></html>"""
 
 
-def write_page(out, rows):
-    html = (PAGE.replace("__PROT__", json.dumps(protection.question_payload(),
-                                                separators=(",", ":")))
-                .replace("__DATA__", json.dumps(out, separators=(",", ":")))
+def write_page(out, rows, reg=None):
+    reg = reg or {}
+    html = (PAGE.replace("__DATA__", json.dumps(out, separators=(",", ":")))
                 .replace("__PROV__", json.dumps(rows, separators=(",", ":")))
                 .replace("__T__", json.dumps(T, separators=(",", ":")))
-                .replace("__LANGS__", json.dumps(LANGS, separators=(",", ":"))))
+                .replace("__LANGS__", json.dumps(LANGS, separators=(",", ":")))
+                .replace("__REG__", json.dumps(reg, separators=(",", ":")))
+                .replace("__REGLABEL__", json.dumps(REGISTRAR_LABEL, separators=(",", ":"))))
     open(f"{OUT}/idq_localised_questions.html", "w").write(html)
     print(f"\nwrote idq_localised_questions.html "
           f"({len(html)/1e6:.2f} MB, {len(out)} countries)")

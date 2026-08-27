@@ -252,18 +252,20 @@ def main():
         print(f"  localised questions: {len(lq)} countries")
     except FileNotFoundError:
         lq = {}
-    # International protection question: just the list of ISO3s with a drafted
-    # office/document example, so the country panel can link out to
-    # protection.html the same way it links to questions.html above - see
-    # protection.py for the actual curated data. A bare ISO3 list, not the
-    # payload itself, so this stays a KB-scale addition rather than a second
-    # copy of protection_context.json inside the map.
+    # International protection / registration question. `prot` is just the
+    # covered ISO3 list (kept for the country panel's summary line); `protmap`
+    # is protection.py's own map_payload() - office/doc/ask per country, built
+    # specifically "for the existing world map, in the shape draw() expects"
+    # (see that function's docstring). This is what lets the map colour the
+    # land itself by registrar, document stage or wording status, as an
+    # additional view alongside population and events - not a second page.
     try:
-        from protection import load as _load_protection
+        from protection import load as _load_protection, map_payload as _protection_map_payload, REGISTRAR_LABEL as _REG_LABEL
         prot = sorted(_load_protection().keys())
-        print(f"  protection question: {len(prot)} countries")
+        protmap = _protection_map_payload()
+        print(f"  protection question: {len(prot)} countries, map layer ready")
     except Exception as e:
-        prot = []
+        prot, protmap, _REG_LABEL = [], {}, {}
         print(f"  protection question: unavailable ({e})")
     # IOM DTM: the only evidence here that comes from displaced people rather
     # than from an analyst reading an event. Kept in its own key and never
@@ -353,6 +355,7 @@ def main():
         print("  events layer: events.json missing - run build_events.py")
     payload = dict(data=data, geo=feats, causes=CAUSES, labels=LABEL, flows=flows,
                    coverage=cov, ev=ev, sc=sc, dtm=dtm, lq=lq, prot=prot,
+                   protmap=protmap, reglabel=_REG_LABEL,
                    public=PUBLIC,
                    vdem=vdem, ucdp=ucdp, dis=disasters, gedc=gedc, geda1=geda1, pts=points,
                    year=latest, period=period, multiyear=len(yrs) > 1,
@@ -380,14 +383,28 @@ TPL = r"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
     which silently recoloured them every time code 2's colour changed. Decoupled
     onto its own token. Validated (validate_palette.js, --pairs all) against
     --c1/--c2/--c6 and against --unattr, the only colour it is ever shown beside. */
- --evidence:#4a3aa7;}
+ --evidence:#4a3aa7;
+ /* Registration-wording view (protection.py's map_payload) — categorical trio
+    reused from --c1/--c2/--c6 (already validated for CVD separation on this
+    page), NONE/no-data treated as status/absence colours, not a 4th and 5th
+    categorical peer. Doc-stage is a single-hue sequential ramp; ask/wording
+    status uses the same good/warning/critical logic as everywhere else. */
+ --reg-gov:#2a78d6;--reg-unhcr:#1baf7a;--reg-both:#e0a93b;--reg-none:#c9c7bf;
+ --doc0:#e7e5dd;--doc1:#8fb3dd;--doc2:#1f4a80;
+ --ask-ok:#0ca30c;--ask-reword:#e0a93b;--ask-no:#d03b3b;--pr-nodata:#e6e4dc;}
 :root[data-theme="dark"]{color-scheme:dark;--surface-1:#1a1a19;--plane:#0d0d0d;
  --ink:#fff;--ink-2:#c3c2b7;--grid:#2c2c2a;--c1:#3987e5;--c2:#c98500;--c6:#199e70;
- --unattr:#5a5954;--land:#2a2a28;--evidence:#8b6fe0;}
+ --unattr:#5a5954;--land:#2a2a28;--evidence:#8b6fe0;
+ --reg-gov:#3987e5;--reg-unhcr:#199e70;--reg-both:#c98500;--reg-none:#5a5954;
+ --doc0:#2c2c2a;--doc1:#3d689e;--doc2:#8fbcf5;
+ --ask-ok:#2fbf2f;--ask-reword:#e0a93b;--ask-no:#e05a5a;--pr-nodata:#3a3a37;}
 @media(prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;
  --surface-1:#1a1a19;--plane:#0d0d0d;--ink:#fff;--ink-2:#c3c2b7;--grid:#2c2c2a;
  --c1:#3987e5;--c2:#c98500;--c6:#199e70;--unattr:#5a5954;--unknown:#3a3a37;--evidence:#8b6fe0;
- --land:#2a2a28;}}
+ --land:#2a2a28;
+ --reg-gov:#3987e5;--reg-unhcr:#199e70;--reg-both:#c98500;--reg-none:#5a5954;
+ --doc0:#2c2c2a;--doc1:#3d689e;--doc2:#8fbcf5;
+ --ask-ok:#2fbf2f;--ask-reword:#e0a93b;--ask-no:#e05a5a;--pr-nodata:#3a3a37;}}
 *{box-sizing:border-box}
 body{margin:0;background:var(--plane);color:var(--ink);
  font:15px/1.55 ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
@@ -648,6 +665,25 @@ circle.ring{stroke:#5a6884 !important}
 :root[data-theme="dark"] #map{background:var(--plane)}
 :root[data-theme="dark"] path.land{fill:var(--land) !important;stroke:var(--surface-1) !important}
 
+/* Registration-wording choropleth. #map gives these enough specificity to beat
+   the theme-wide path.land !important rules above in every theme state. */
+#map path.land.pr-reg-GOVERNMENT{fill:var(--reg-gov) !important}
+#map path.land.pr-reg-UNHCR{fill:var(--reg-unhcr) !important}
+#map path.land.pr-reg-BOTH{fill:var(--reg-both) !important}
+#map path.land.pr-reg-NONE{fill:var(--reg-none) !important}
+#map path.land.pr-doc-0{fill:var(--doc0) !important}
+#map path.land.pr-doc-1{fill:var(--doc1) !important}
+#map path.land.pr-doc-2{fill:var(--doc2) !important}
+#map path.land.pr-ask-ok{fill:var(--ask-ok) !important}
+#map path.land.pr-ask-reword{fill:var(--ask-reword) !important}
+#map path.land.pr-ask-no{fill:var(--ask-no) !important}
+#map path.land.pr-nodata{fill:var(--pr-nodata) !important}
+#map.pr-mode path.land{cursor:pointer}
+.ctl .players{border-radius:20px}
+.ctl .players.on{background:var(--egriss-navy) !important;
+ border-color:var(--egriss-navy) !important;color:#fff !important}
+.ctl .players:not(.on):hover{background:var(--egriss-tint-2);color:var(--egriss-navy)}
+
 /* 1. PRIMARY -- the People displaced / Events switch. Everything else on the
    panel depends on this choice, so it gets the heaviest weight: solid navy
    pill, filled track. */
@@ -707,6 +743,7 @@ recorded — the named storm, the named conflict. Scroll to zoom, drag to pan.</
   <span class="grp">What the map shows</span>
   <button class="view on" data-v="pop">People displaced</button>
   <button class="view" data-v="events">Events that happened</button>
+  <button class="view" data-v="prot">Registration wording</button>
   <span class="findwrap">
     <input id="find" type="search" autocomplete="off" spellcheck="false"
            placeholder="Find a country &mdash; e.g. Chad" aria-label="Find a country">
@@ -723,6 +760,13 @@ recorded — the named storm, the named conflict. Scroll to zoom, drag to pan.</
   <button class="esrc" data-s="acled">All violent events <em id="acledn">&mdash;</em></button>
 </div>
 
+<div class="ctl" id="protctl" hidden>
+  <span class="grp">Colour by</span>
+  <button class="players on" data-pl="reg">Who registers claims</button>
+  <button class="players" data-pl="doc">Document stages nameable</button>
+  <button class="players" data-pl="ask">Does the office wording work?</button>
+</div>
+
 <div class="ctl" id="popctl">
   <span class="grp">Which displaced population</span>
   <button class="mode on" data-m="both">Everyone displaced now <em>snapshot</em></button>
@@ -733,7 +777,7 @@ recorded — the named storm, the named conflict. Scroll to zoom, drag to pan.</
   <button class="mode" data-m="flows">Movements between countries <em>arrows</em></button>
   <button class="mode" data-m="sub">Where within countries <em>towns and districts</em></button>
 </div>
-<div class="ctl">
+<div class="ctl" id="causectl">
   <span class="grp">Which cause</span>
   <button class="cz on" data-c="all">All causes</button>
   <button class="cz" data-c="1">1. Armed conflict</button>
@@ -888,6 +932,10 @@ because no agency counts development-induced displacement.</p>
 </div><div id="tt"></div>
 <script>
 const D=__DATA__, C=D.causes, L=D.labels;
+// Registration-wording view — protection.py's map_payload(), a different
+// question item from the population/events data above. See PROT_LAYERS and
+// drawProtection() further down for how it colours the map.
+const MP=D.protmap||{}, REGLABEL=D.reglabel||{};
 const COL={1:"var(--c1)",2:"var(--c2)",6:"var(--c6)",
            7:"url(#hatch)",            // no 4th hue clears CVD separation in both
            0:"var(--unattr)",           // modes, so texture and neutral instead
@@ -903,7 +951,7 @@ let MODE="both", SHAPE="pie", CAUSE="all", EVID=false, ATTR=false, PIN=null,
     Z=1,TX=0,TY=0, notes={};
 // The events layer. VIEW is the top-level switch; the two views share the map,
 // the zoom and the cause filter, and share nothing else.
-let VIEW="pop", ELEVEL="country", ESRC="ucdp";
+let VIEW="pop", ELEVEL="country", ESRC="ucdp", PLAYER="reg";
 const EC=[1,2,4,5,6,7];               // codes any event source actually carries
 // Only three hues clear colour-vision deficiency against each other in both
 // light and dark, and codes 1/2/6 already hold them. 4 and 5 get texture and
@@ -1557,18 +1605,13 @@ function showProfile(iso){
     ((q.adm1&&q.adm1.length)
       ? ` \u2014 <b>${q.adm1.length} subnational set${q.adm1.length===1?"":"s"}</b> `+
         `differ from the national one` : ``)+
+    ((D.prot||[]).includes(iso)
+      ? ` \u2014 that page also carries the registration item (where an `+
+        `international protection claim is lodged, and what document it produces).`
+      : ``)+
     `.</div>`+
     `<a class="viewform" href="questions.html?c=${iso}" target="_blank" `+
     `rel="noopener">View the full drafted question for ${d.name} \u2192</a></div>`;}
-  // Same pattern, for the international protection / registration item -
-  // see protection.py. D.prot is just the covered ISO3 list (see payload
-  // note above), so the link only appears where there is something to show.
-  if((D.prot||[]).includes(iso)){
-   h+=`<div class="psec"><h3>Registration wording for this country</h3>`+
-    `<div class="ev">Drafted local example of where an international protection `+
-    `claim is lodged, and what document it produces.</div>`+
-    `<a class="viewform" href="protection.html?c=${iso}" target="_blank" `+
-    `rel="noopener">View the drafted registration question for ${d.name} \u2192</a></div>`;}
   h+=`<div class="psec"><h3>What to put on the showcard here</h3>`+
     `<div style="font-size:12.5px;color:var(--ink-2);margin:-2px 0 9px">`+
     `All eight options stay on the questionnaire everywhere — that is what makes the `+
@@ -1719,8 +1762,65 @@ function sizeKey(max,unit){
    `<span style="font-size:10.5px">${fmt(v)}</span></span>`).join("")+
   `<span style="font-size:12px">${unit||"people"} — circle area ∝ the number</span></span>`;}
 
+// One entry per "Colour by" button (see #protctl). Each supplies the CSS
+// class for a given country's land path, the tooltip line, and the legend —
+// the three layers protection.py's map_payload() docstring promises: who
+// registers claims (categorical), how many document stages are nameable
+// (ordinal), and whether the office wording actually works there (status).
+const PROT_LAYERS={
+ reg:{legend:[["pr-reg-GOVERNMENT","Government"],["pr-reg-UNHCR","UNHCR"],
+              ["pr-reg-BOTH","Both"],["pr-reg-NONE","Nobody registers claims"]],
+      cls:iso=>MP.office[iso]?('pr-reg-'+MP.office[iso]):null,
+      tip:iso=>`${REGLABEL[MP.office[iso]]||MP.office[iso]} registers claims`+
+        (MP.orgnames[iso]?` — ${MP.orgnames[iso]}`:"")},
+ doc:{legend:[["pr-doc-0","No document nameable"],["pr-doc-1","One stage nameable"],
+              ["pr-doc-2","Both stages nameable"]],
+      cls:iso=>(MP.doc[iso]!=null?('pr-doc-'+MP.doc[iso]):null),
+      tip:iso=>{const n=MP.doc[iso], docs=(MP.docnames[iso]||[]).filter(Boolean);
+       return n==="0"?"No document can be named":
+        n==="1"?`One document stage nameable${docs.length?': '+docs[0]:""}`:
+        `Both stages nameable${docs.length?': '+docs.join(" → "):""}`;}},
+ ask:{legend:[["pr-ask-ok","Works as written"],["pr-ask-reword","Needs rewording"],
+              ["pr-ask-no","Can't be asked this way"]],
+      cls:iso=>(MP.ask[iso]?('pr-ask-'+MP.ask[iso]):null),
+      tip:iso=>({ok:"The office wording works as written.",
+                 reword:"The office wording needs adapting for this country.",
+                 no:"No office can be named here — v1 can't be asked as written."}
+                [MP.ask[iso]]||"")}};
+
+function drawProtection(){
+ const cfg=PROT_LAYERS[PLAYER]||PROT_LAYERS.reg;
+ LANDS.forEach(p=>{
+  const iso=p.dataset.iso, cls=(iso&&cfg.cls(iso))||'pr-nodata';
+  if(p.dataset.pr&&p.dataset.pr!==cls)p.classList.remove(p.dataset.pr);
+  p.classList.add(cls); p.dataset.pr=cls;});
+ document.getElementById('key').innerHTML=cfg.legend
+  .map(([cls,label])=>`<span><i style="background:var(${
+    {'pr-reg-GOVERNMENT':'--reg-gov','pr-reg-UNHCR':'--reg-unhcr','pr-reg-BOTH':'--reg-both',
+     'pr-reg-NONE':'--reg-none','pr-doc-0':'--doc0','pr-doc-1':'--doc1','pr-doc-2':'--doc2',
+     'pr-ask-ok':'--ask-ok','pr-ask-reword':'--ask-reword','pr-ask-no':'--ask-no'}[cls]
+    })"></i>${label}</span>`).join('')+
+  `<span><i style="background:var(--pr-nodata)"></i>No drafted example yet</span>`;
+ document.getElementById('anchor').innerHTML=
+  `<b>A different question item</b> — where a protection claim is lodged and `+
+  `what document it produces, not why anyone was displaced.`;
+ document.getElementById('modenote').innerHTML="<b>What you are looking at.</b> "+
+  `Drafted from public sources for 151 countries — see `+
+  `<a href="questions.html" target="_blank" rel="noopener">questions.html</a> for the full `+
+  `wording, country by country, or click a country here to jump straight to it.`;
+ document.getElementById('tbl').innerHTML="";
+}
+
+document.querySelectorAll('.players').forEach(b=>b.addEventListener('click',()=>{
+ document.querySelectorAll('.players').forEach(x=>x.classList.remove('on'));
+ b.classList.add('on');PLAYER=b.dataset.pl;unpin();draw();}));
+
 function draw(){
  layer.innerHTML="";
+ if(VIEW==="prot"){drawProtection();return;}
+ // leaving the registration view — strip its colour classes off the land
+ // layer so the base population/events tint comes back.
+ LANDS.forEach(p=>{if(p.dataset.pr){p.classList.remove(p.dataset.pr);delete p.dataset.pr;}});
  if(VIEW==="events"){drawEvents();return;}
  if(MODE==="sub"){drawSub();return;}
  if(CAUSE!=="all"&&NO_COUNT.includes(CAUSE)&&MODE!=="flows"){drawEvidenceCause(CAUSE);return;}
@@ -2053,19 +2153,31 @@ function setCause(c){
  document.querySelectorAll('.cz').forEach(x=>x.classList.toggle('on',x.dataset.c===c));
  CAUSE=c;}
 function applyView(){
- const ev=VIEW==="events";
- document.getElementById('popctl').hidden=ev;
+ const ev=VIEW==="events", pr=VIEW==="prot";
+ document.getElementById('popctl').hidden=ev||pr;
  document.getElementById('evctl').hidden=!ev;
- document.getElementById('layerctl').hidden=ev;
+ document.getElementById('protctl').hidden=!pr;
+ document.getElementById('map').classList.toggle('pr-mode',pr);
+ document.getElementById('layerctl').hidden=ev||pr;
+ document.getElementById('causectl').hidden=pr;
  // code 3 has no event source anywhere; code 5 has no population attribution
- // anywhere. Each view offers only the causes it can actually answer for.
- document.querySelectorAll('.cz.poponly').forEach(b=>b.hidden=ev);
- document.querySelectorAll('.cz.evonly').forEach(b=>b.hidden=!ev);
- if(document.querySelector('.cz.on')&&document.querySelector('.cz.on').hidden)
-   setCause("all");
- document.getElementById('title').textContent=ev
-   ? "Events by cause" : "Displaced population by cause";
- document.getElementById('lede').innerHTML=ev
+ // anywhere. Each view offers only the causes it can actually answer for. The
+ // registration view has no causes at all — it is a different question item.
+ if(!pr){
+  document.querySelectorAll('.cz.poponly').forEach(b=>b.hidden=ev);
+  document.querySelectorAll('.cz.evonly').forEach(b=>b.hidden=!ev);
+  if(document.querySelector('.cz.on')&&document.querySelector('.cz.on').hidden)
+    setCause("all");
+ }
+ document.getElementById('title').textContent = pr
+   ? "Registration wording by country"
+   : ev ? "Events by cause" : "Displaced population by cause";
+ document.getElementById('lede').innerHTML = pr
+   ? `Each country coloured by the drafted registration item — a separate part of the `+
+     `instrument asking whether someone ever applied for international protection. See `+
+     `<a href="questions.html" target="_blank" rel="noopener">questions.html</a> for the `+
+     `full drafted wording, country by country. Scroll to zoom, drag to pan.`
+   : ev
    ? `One circle per ${ELEVEL==="country"?"country":"subnational area"}, sized by how many `+
      `events were recorded there and divided by what kind. This is frequency, not `+
      `magnitude — hover to see the named conflicts and hazards behind it. `+
@@ -2117,6 +2229,14 @@ document.querySelectorAll('.esrc').forEach(b=>b.addEventListener('click',()=>{
 LANDS.forEach(p=>{
  const iso=p.dataset.iso; if(!iso)return;
  p.addEventListener('mousemove',e=>{
+  if(VIEW==="prot"){
+   const cfg=PROT_LAYERS[PLAYER]||PROT_LAYERS.reg, nm=(D.data[iso]||{}).name||MP.names[iso]||iso;
+   tt.className='';
+   tt.innerHTML = MP.office[iso]!=null
+    ? `<div class="hd"><b>${nm}</b></div><div class="bd">${cfg.tip(iso)}</div>`
+    : `<div class="hd"><b>${nm}</b></div><div class="bd" style="color:var(--muted)">`+
+      `No drafted registration example for this country yet.</div>`;
+   tt.style.opacity=1; place(e,false); return;}
   if(PIN||!EVID||!D.vdem[iso])return;
   const nm=(D.data[iso]||{}).name||D.vdem[iso].name;
   tt.className='wide';
@@ -2125,7 +2245,10 @@ LANDS.forEach(p=>{
     (D.qual[iso]?``:`<div class="blk" style="color:var(--muted)">Not among the twenty `+
       `countries with documented displacement research.</div>`)+`</div>`;
   tt.style.opacity=1; place(e,true);});
- p.addEventListener('mouseleave',()=>{if(!PIN)tt.style.opacity=0;});});
+ p.addEventListener('mouseleave',()=>{if(!PIN)tt.style.opacity=0;});
+ p.addEventListener('click',e=>{
+  if(VIEW!=="prot"||!MP.office[iso])return;
+  e.stopPropagation(); window.open(`questions.html?c=${iso}`,'_blank','noopener');});});
 
 document.getElementById('attr').addEventListener('click',e=>{
  e.stopPropagation(); ATTR=!ATTR; unpin();
