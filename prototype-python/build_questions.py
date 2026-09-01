@@ -681,6 +681,36 @@ h2{font-size:15px;margin:28px 0 2px;font-weight:640}
 .cav{background:color-mix(in srgb,var(--a) 6%,transparent);
  border:1px solid color-mix(in srgb,var(--a) 20%,var(--g));border-radius:9px;
  padding:12px 15px;margin-top:12px;font-size:13px;color:var(--i2)}
+/* ---- module questions (Apply / IntApply / Outcome) ------------------------
+   The registration/international-protection item, shown as it would actually
+   appear in the instrument: stem, response options and skip logic, per the
+   revised module — not just an abstract "probe" sentence. Only Apply carries
+   a country-specific localisation example; IntApply and Outcome are fixed. */
+.modq{border-top:1px dotted var(--g);padding-top:14px;margin-top:14px;
+ font-family:ui-sans-serif,-apple-system,sans-serif}
+.modq:first-child{border-top:0;padding-top:0;margin-top:0}
+.modq-name{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;
+ color:var(--a);margin-bottom:3px}
+.modq-skip{font-size:11.5px;font-style:italic;color:var(--m);margin-bottom:6px}
+.modq-stem{font-family:ui-serif,Georgia,"Times New Roman",serif;font-size:15.5px;
+ line-height:1.5;font-weight:600;margin-bottom:4px}
+.modq-example{font-family:ui-serif,Georgia,"Times New Roman",serif;font-size:14.5px;
+ line-height:1.5;color:var(--i2);margin:6px 0 2px}
+.modq-example::before{content:"e.g. ";font-style:italic;color:var(--m)}
+.modq-opts{margin:10px 0 0;padding:0}
+.modq-opt{display:flex;align-items:baseline;gap:8px;padding:3px 0;font-size:13.5px}
+.modq-opt .box{flex:0 0 auto;width:12px;height:12px;border:1.5px solid var(--i);
+ border-radius:2px;margin-top:2px}
+.modq-arrow{margin-left:auto;font-size:11px;color:var(--m);white-space:nowrap}
+/* ---- download toolbar ------------------------------------------------- */
+.dlbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:16px 0 4px;
+ font-family:ui-sans-serif,-apple-system,sans-serif}
+.dlbar button{font:inherit;font-size:13px;padding:8px 14px;border-radius:8px;
+ border:1px solid var(--a);background:var(--a);color:#fff;cursor:pointer;font-weight:600}
+.dlbar button:disabled{opacity:.5;cursor:default}
+.dlbar button.secondary{background:var(--s);color:var(--a)}
+.dlstatus{font-size:12.5px;color:var(--m)}
+.dlstatus.err{color:#d03b3b}
 /* ---- document specimens ("what it looks like") ----------------------------
    A pilot feature: images are hotlinked to their original publisher (gov.uk,
    an NGO), never re-hosted, so a broken link degrades to a placeholder rather
@@ -720,10 +750,14 @@ button.help.on{border-style:solid}
 .pop.on{background:var(--a);color:#fff;border-color:var(--a)}
 .pop.nodata{border-style:dashed}
 .pophint{font-size:12px;color:var(--m);margin:9px 0 0;max-width:640px}
-@media print{body{background:#fff}.bar,select,h1,p.lede,h2,table,.warn{display:none}
+@media print{body{background:#fff}.bar,select,h1,p.lede,h2,table,.warn,.dlbar{display:none}
  .form{box-shadow:none;border:0;padding:0}}
 @media(max-width:700px){.form{padding:22px 18px}select{min-width:0;width:100%}}
 </style>
+<script src="https://cdn.jsdelivr.net/npm/html-docx-js@0.3.1/dist/html-docx.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.4/dist/purify.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -746,6 +780,12 @@ the text after each &ldquo;e.g.&rdquo; drafted from what was recorded in that
 country. <b>The response options never change</b> &mdash; only the examples, which
 the question variants document permits localising and which the desk review found
 respondents depend on.</p>
+
+<div class="dlbar">
+  <button id="docxBtn">Download questionnaire &amp; instructions (.docx)</button>
+  <button id="pdfBtn" class="secondary">Download as PDF</button>
+  <span class="dlstatus" id="dlStatus">Downloads the country and settings currently shown below.</span>
+</div>
 
 <div class="bar">
   <select id="pick"></select>
@@ -772,11 +812,14 @@ respondents depend on.</p>
 <div class="warn" id="warn"></div>
 
 <div class="regcard" id="regcard">
-<h2>Registration wording</h2>
-<p class="sub">A separate item in the same instrument &mdash; international
-protection status &mdash; drafted the same way as the item above: a
-country-specific example of <b>where the claim is lodged</b> and <b>what
-document it produces</b>; the question wording itself doesn't change.</p>
+<h2>International protection module</h2>
+<p class="sub">A separate module in the same instrument, following the wording
+Joanna d&rsquo;Ardenne&rsquo;s revised module proposes: <b>Apply</b> asks whether
+the respondent ever applied for international protection, with a country-specific
+localisation example; <b>IntApply</b> follows if they never applied, asking whether
+they ever planned to; <b>Outcome</b> follows if they did apply, asking what became
+of it. The response options are fixed across countries &mdash; only the
+localisation example changes.</p>
 <span class="badges" id="regbadges"></span>
 <div class="regform" id="regform"></div>
 <div class="warn" id="regwarn" style="display:none"></div>
@@ -1008,26 +1051,67 @@ function renderReg(iso){
  badges.innerHTML=
   `<span class="badge b-reg">${esc(REGLABEL[v.reg]||v.reg)} registers claims</span>`+
   `<span class="badge b-cf-${v.cf}">${v.cf} confidence</span>`;
+ if(v.reg==="NONE"){
+  form.innerHTML=`<div class="modq"><div class="modq-name">Apply</div>`+
+   `<div class="pmiss">No registration or international-protection procedure exists `+
+   `in this country &mdash; the Apply / IntApply / Outcome sequence below does not `+
+   `apply here.</div></div>`;
+  warn.style.display="none";cav.style.display="none";specBox.innerHTML="";
+  return;
+ }
  const glossLine=(local,colloq)=>{
   const bits=[local?`<i>${esc(local)}</i> in local language`:null,
               colloq?`commonly called &ldquo;${esc(colloq)}&rdquo;`:null].filter(Boolean);
   return bits.length?`<div class="gloss">${bits.join(" &middot; ")}</div>`:"";};
- let h=`<div class="probe"><div class="ptag">Where to register</div>`;
- h+= v.v1 ? `<div class="ptext">${esc(v.v1)}</div>${glossLine(v.orgL,null)}`+
-            (v.alt?`<div class="why">Also seen: ${esc(v.alt)}</div>`:"")+
-            (v.ow?`<div class="why">${esc(v.ow)}</div>`:"")
-          : `<div class="pmiss">&mdash; no office can be named for this country.</div>`;
- h+=`</div><div class="probe"><div class="ptag">What document it produces</div>`;
+ // The revised module gives Apply ONE combined localisation example — "did you
+ // go to an office like X to register for Y?" — rather than the two separate
+ // probes protection.py drafts (v1: office alone, v2: document alone). Combine
+ // when both are nameable; fall back to whichever single one is available,
+ // using protection.py's own wording for that case, when only one is.
+ const docName=v.da||v.dr;
+ let example=null;
+ if(v.org&&docName) example=`For example, did you go to an office like ${v.org} to register for ${docName}?`;
+ else if(v.v1) example=v.v1;
+ else if(v.v2) example=v.v2;
  const docLocal=v.da?v.daL:v.drL, docColloq=v.da?v.daC:v.drC;
- h+= v.v2 ? `<div class="ptext">${esc(v.v2)}</div>${glossLine(docLocal,docColloq)}`+
-            (v.da&&v.dr&&v.dr!==v.da?`<div class="why">On recognition, this becomes: `+
-              `${esc(v.dr)}${v.drC?` (&ldquo;${esc(v.drC)}&rdquo;)`:""}</div>`:"")+
-            (v.dw?`<div class="why">${esc(v.dw)}</div>`:"")
-          : `<div class="pmiss">&mdash; no document can be named for this country.</div>`;
- h+=`</div>`;
+ let support=glossLine(v.orgL,null);
+ if(v.alt&&v.alt.length) support+=`<div class="why">Also seen: ${esc(v.alt.join("; "))}</div>`;
+ if(v.ow) support+=`<div class="why">${esc(v.ow)}</div>`;
+ support+=glossLine(docLocal,docColloq);
+ if(v.da&&v.dr&&v.dr!==v.da) support+=`<div class="why">On recognition, this becomes: `+
+   `${esc(v.dr)}${v.drC?` (&ldquo;${esc(v.drC)}&rdquo;)`:""}</div>`;
+ if(v.dw) support+=`<div class="why">${esc(v.dw)}</div>`;
+
+ let h=`<div class="modq"><div class="modq-name">Apply</div>`+
+  `<div class="modq-stem">Did you ever apply for international protection, such as refugee status?</div>`+
+  (example?`<div class="modq-example">${esc(example)}</div>${support}`
+          :`<div class="pmiss">&mdash; no localisation example can be drafted for this country.</div>`)+
+  `<div class="modq-opts">`+
+   `<div class="modq-opt"><span class="box"></span>1. Yes<span class="modq-arrow">&rarr; go to Outcome</span></div>`+
+   `<div class="modq-opt"><span class="box"></span>2. No<span class="modq-arrow">&rarr; go to IntApply</span></div>`+
+  `</div></div>`;
+
+ h+=`<div class="modq"><div class="modq-name">IntApply</div>`+
+  `<div class="modq-skip">Ask if Apply = No</div>`+
+  `<div class="modq-stem">Did you ever plan to apply for international protection, such as refugee status?</div>`+
+  `<div class="modq-opts">`+
+   `<div class="modq-opt"><span class="box"></span>1. Yes</div>`+
+   `<div class="modq-opt"><span class="box"></span>2. No</div>`+
+  `</div></div>`;
+
+ h+=`<div class="modq"><div class="modq-name">Outcome</div>`+
+  `<div class="modq-skip">Ask if Apply = Yes</div>`+
+  `<div class="modq-stem">What was the outcome of your application for international protection?</div>`+
+  `<div class="modq-opts">`+
+   `<div class="modq-opt"><span class="box"></span>1. Refugee status granted</div>`+
+   `<div class="modq-opt"><span class="box"></span>2. Refugee status denied</div>`+
+   `<div class="modq-opt"><span class="box"></span>3. Outcome still being decided</div>`+
+   `<div class="modq-opt"><span class="box"></span>4. I withdrew my application</div>`+
+  `</div></div>`;
+
  form.innerHTML=h;
  if(v.mis){warn.style.display="";
-  warn.innerHTML=`<b>V1 wording likely needs rewording here.</b> ${esc(v.how)}`;
+  warn.innerHTML=`<b>The Apply localisation example likely needs rewording here.</b> ${esc(v.how)}`;
  }else{warn.style.display="none";}
  const cols=(v.cols&&v.cols.length)?v.cols.join(", "):null;
  if(v.cav){cav.style.display="";cav.innerHTML=`<b>Note.</b> ${esc(v.cav)}`;
@@ -1092,6 +1176,189 @@ function panelToggle(btnId,panelId,openTxt,shutTxt){
   if(!h.hidden)h.scrollIntoView({behavior:"smooth",block:"nearest"});});}
 panelToggle('notesbtn','notespanel',"Show the full notes","Hide");
 panelToggle('regnotesbtn','regnotespanel',"Read this before using it","Hide");
+/* ---------------------------------------------------------------------
+   Downloadable questionnaire + interviewer instructions — DOCX / PDF,
+   built in the browser from the two forms currently on screen (the
+   forced-to-flee question as selected by Level/Length/Language/
+   Population, and the international-protection module below it). No
+   server involved. This is a real public page, not a Claude Artifact,
+   so the file is handed to the browser via a Blob + object URL and a
+   temporary <a download> click, rather than the Artifact `downloads`
+   capability (which only exists inside the Artifact viewer sandbox).
+   Specimen images are cited as a name + source link, never embedded —
+   they're hotlinked from outside sites with no CORS/base64 access from
+   here, and html-docx-js only supports inlined base64 images anyway.
+   --------------------------------------------------------------------- */
+
+function stripImgs(html){
+ const tmp=document.createElement('div'); tmp.innerHTML=html;
+ tmp.querySelectorAll('img').forEach(im=>im.remove());
+ tmp.querySelectorAll('.spec-item').forEach(el=>el.classList.remove('broken'));
+ return tmp.innerHTML;
+}
+
+const EXPORT_CSS=`
+body{font-family:Calibri,Arial,sans-serif;color:#1d2940;font-size:11pt;line-height:1.5;margin:36pt}
+h1{font-family:Georgia,serif;color:#14234c;font-size:20pt;margin:0 0 4pt}
+h2{font-family:Georgia,serif;color:#14234c;font-size:13pt;margin:20pt 0 8pt;border-bottom:1pt solid #dde1e8;padding-bottom:3pt}
+p.lede{color:#5a6884;font-size:10pt;margin:0 0 14pt}
+.fhead{border-bottom:1.5pt solid #1d2940;padding-bottom:6pt;margin-bottom:12pt;font-size:9.5pt;color:#5a6884}
+.fitem{font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#1d2940}
+.fask{font-style:italic}
+.fcountry{float:right;text-transform:uppercase;letter-spacing:.05em;font-weight:700}
+.stem{margin:0 0 8pt}
+.lead{margin:12pt 0 3pt;font-weight:700}
+.instr{font-size:8.5pt;color:#5a6884;border:1pt solid #dde1e8;padding:3pt 7pt;display:inline-block;margin-bottom:10pt}
+ol.opts{list-style:none;margin:0;padding:0}
+ol.opts li{padding:4pt 0;border-bottom:0.5pt dotted #dde1e8}
+.box{display:inline-block;width:9pt;height:9pt;border:1pt solid #1d2940;margin-right:8pt}
+.num{color:#8b93a8;margin-right:6pt}
+.eg{color:#3b71b9}
+.eg .lab{font-style:italic;color:#5a6884}
+.gen{color:#8b93a8;font-style:italic}
+.more,.excl{font-size:8.5pt;color:#8b93a8}
+.warn{background:#fbf1dc;border:1pt solid #e0a93b;padding:8pt 10pt;margin-top:10pt;font-size:9.5pt}
+.badges{margin:0 0 10pt}
+.badge{font-size:8pt;text-transform:uppercase;letter-spacing:.04em;padding:2pt 6pt;border:1pt solid #dde1e8;margin-right:6pt}
+.modq{border-top:0.5pt dotted #dde1e8;padding-top:10pt;margin-top:10pt}
+.modq:first-child{border-top:0;padding-top:0;margin-top:0}
+.modq-name{font-size:8.5pt;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#3b71b9}
+.modq-skip{font-size:9pt;font-style:italic;color:#8b93a8;margin-bottom:5pt}
+.modq-stem{font-family:Georgia,serif;font-size:11.5pt;margin:4pt 0}
+.modq-example{font-family:Georgia,serif;font-style:italic;font-size:10.5pt;color:#3b71b9;margin:2pt 0 6pt}
+.modq-opts{margin:7pt 0 0}
+.modq-opt{padding:2pt 0;font-size:10pt}
+.modq-opt .box{width:8pt;height:8pt}
+.modq-arrow{float:right;font-size:8.5pt;color:#8b93a8}
+.gloss{font-size:9pt;color:#5a6884;margin-top:3pt}
+.why{font-size:8.5pt;color:#8b93a8;margin-top:3pt}
+.pmiss{color:#8b93a8;font-style:italic}
+.cav{background:#eef3fa;padding:8pt 10pt;margin-top:10pt;font-size:9.5pt}
+.spec-head{font-size:8.5pt;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#5a6884;margin-top:10pt}
+.spec-item{margin:4pt 0}
+.spec-item figcaption{font-size:9pt;color:#5a6884}
+.spec-note{font-size:9.5pt;color:#5a6884}
+.spec-links a{font-size:9pt;color:#3b71b9;margin-right:10pt}
+.gen-note{color:#8b93a8;font-size:8.5pt}
+`;
+
+function buildExportHTML(iso){
+ const v=Q[iso];
+ const langName=(LANGS[LANG]&&LANGS[LANG][0])||LANG;
+ const lenName=LEN==="showcard"?"Showcard":"Read aloud";
+ const formHTML=document.getElementById('form').innerHTML;
+ const warnHTML=document.getElementById('warn').innerHTML;
+ const regBadgesHTML=document.getElementById('regbadges').innerHTML;
+ const regFormHTML=stripImgs(document.getElementById('regform').innerHTML);
+ const regWarnEl=document.getElementById('regwarn');
+ const regWarnHTML=(regWarnEl&&regWarnEl.style.display!=="none")?regWarnEl.innerHTML:"";
+ const regCavEl=document.getElementById('regcav');
+ const regCavHTML=(regCavEl&&regCavEl.style.display!=="none")?regCavEl.innerHTML:"";
+ const specHTML=stripImgs(document.getElementById('regspecimens').innerHTML);
+
+ let h=`<!DOCTYPE html><html><head><meta charset="utf-8">`+
+  `<title>${esc(v.name)} — questionnaire</title><style>${EXPORT_CSS}</style></head><body>`;
+ h+=`<h1>${esc(v.name)}</h1>`+
+  `<p class="lede">Forced-to-flee question, ${esc(lenName)} length, ${esc(langName)}. `+
+  `The response options never change &mdash; only the examples, localised for this country.</p>`;
+ h+=`<h2>Forced to flee</h2><div class="fform">${formHTML}</div>`;
+ if(warnHTML) h+=`<div class="warn">${warnHTML}</div>`;
+ h+=`<h2>International protection</h2><div class="badges">${regBadgesHTML}</div>`+
+  `<div class="regform">${regFormHTML}</div>`;
+ if(regWarnHTML) h+=`<div class="warn">${regWarnHTML}</div>`;
+ if(regCavHTML) h+=`<div class="cav">${regCavHTML}</div>`;
+ if(specHTML) h+=specHTML;
+ h+=`<p><small class="gen-note">Generated ${new Date().toISOString().slice(0,10)} from the EGRISS `+
+  `identification-questions dataset. Translations are unreviewed drafts; a specimen document `+
+  `listed above has not been visually verified &mdash; confirm before fielding.</small></p>`;
+ h+=`</body></html>`;
+ return h;
+}
+
+function safeFileStem(name){
+ return (name||'country').replace(/[^\w\-]+/g,'_').replace(/^_+|_+$/g,'')||'country';
+}
+
+function setDlStatus(msg,isErr){
+ const el=document.getElementById('dlStatus');
+ el.textContent=msg||'';
+ el.classList.toggle('err',!!isErr);
+}
+
+function saveBlob(filename,blob){
+ const url=URL.createObjectURL(blob);
+ const a=document.createElement('a');
+ a.href=url;a.download=filename;
+ document.body.appendChild(a);a.click();a.remove();
+ setTimeout(()=>URL.revokeObjectURL(url),4000);
+}
+
+// Rasterizes the export HTML through the browser's own text engine
+// (html2canvas) rather than drawing text with jsPDF's built-in fonts —
+// see the same technique/rationale in the specimen show-card tool:
+// jsPDF's standard fonts only cover WinAnsi/Latin-1 (no Arabic, Korean,
+// Cyrillic, or even a plain em dash), and this dataset is full of
+// exactly that.
+async function generatePdfBytesQ(htmlStr){
+ if(!window.jspdf||!window.html2canvas) throw new Error('pdf libraries not loaded');
+ const {jsPDF}=window.jspdf;
+ const iframe=document.createElement('iframe');
+ iframe.style.cssText='position:fixed;left:-10000px;top:0;width:760px;height:200px;border:0;';
+ document.body.appendChild(iframe);
+ await new Promise(resolve=>{iframe.onload=resolve;iframe.srcdoc=htmlStr;});
+ const idoc=iframe.contentDocument;
+ const target=idoc.body;
+ if(idoc.fonts&&idoc.fonts.ready){try{await idoc.fonts.ready;}catch(e){}}
+ await new Promise(r=>setTimeout(r,60));
+ let canvas;
+ try{
+  canvas=await window.html2canvas(target,{scale:2,backgroundColor:'#ffffff',useCORS:false,logging:false});
+ }finally{ iframe.remove(); }
+ const pageW=595.28,pageH=841.89; // A4 in pt
+ const pxPerPt=canvas.width/pageW;
+ const pageHpx=Math.floor(pageH*pxPerPt);
+ const doc=new jsPDF({unit:'pt',format:'a4'});
+ let renderedPx=0,first=true;
+ while(renderedPx<canvas.height){
+  const sliceH=Math.min(pageHpx,canvas.height-renderedPx);
+  const pageCanvas=document.createElement('canvas');
+  pageCanvas.width=canvas.width;pageCanvas.height=sliceH;
+  const ctx=pageCanvas.getContext('2d');
+  ctx.fillStyle='#ffffff';ctx.fillRect(0,0,pageCanvas.width,pageCanvas.height);
+  ctx.drawImage(canvas,0,renderedPx,canvas.width,sliceH,0,0,canvas.width,sliceH);
+  const imgData=pageCanvas.toDataURL('image/jpeg',0.92);
+  if(!first) doc.addPage();
+  doc.addImage(imgData,'JPEG',0,0,pageW,sliceH/pxPerPt);
+  renderedPx+=sliceH;first=false;
+ }
+ return doc.output('arraybuffer');
+}
+
+document.getElementById('docxBtn').addEventListener('click',async()=>{
+ const iso=sel.value,v=Q[iso]; if(!v) return;
+ setDlStatus('Building the Word document…');
+ try{
+  const html=buildExportHTML(iso);
+  if(!window.htmlDocx){setDlStatus('The Word-export library did not load — try again in a moment.',true);return;}
+  const blob=window.htmlDocx.asBlob(html);
+  const fn=safeFileStem(v.name)+'_questionnaire.docx';
+  saveBlob(fn,blob);
+  setDlStatus('Downloaded '+fn);
+ }catch(e){ setDlStatus('Could not build the Word document.',true); }
+});
+
+document.getElementById('pdfBtn').addEventListener('click',async()=>{
+ const iso=sel.value,v=Q[iso]; if(!v) return;
+ setDlStatus('Building the PDF…');
+ try{
+  const html=buildExportHTML(iso);
+  const arrbuf=await generatePdfBytesQ(html);
+  const fn=safeFileStem(v.name)+'_questionnaire.pdf';
+  saveBlob(fn,new Blob([arrbuf],{type:'application/pdf'}));
+  setDlStatus('Downloaded '+fn);
+ }catch(e){ setDlStatus('Could not build the PDF.',true); }
+});
+
 // Deep link from map.html's country panel ("View the full drafted question
 // for X" -> questions.html?c=ISO3) -- preselects that country in place of the
 // NGA/first-country default, so the two pages actually connect instead of
