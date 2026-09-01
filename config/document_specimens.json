@@ -135,7 +135,7 @@
      "url": "https://help.unhcr.org/brazil/wp-content/uploads/sites/8/2022/07/Folder_DPRNM_WEB_PT.pdf"
     }
    ],
-   "note": "Round 5. Two official UNHCR/Ministry of Justice folders carry labelled diagrams of both faces of the CRNM and the DPRNM (inside PDFs). The Commons image is the same card format, not a refugee-marked specimen, and was not visually inspected from this build."
+   "note": "Visually confirmed on 1 Sept 2026 by opening the file in a browser on Filip's laptop: a scan of the Cédula de Identidade de Estrangeiro (585×387), the card format the CRNM/DPRNM use; not a refugee-marked example. The two UNHCR/MJSP folders carry labelled diagrams of both refugee documents inside PDFs."
   },
   "URY": {
    "images": [
@@ -482,7 +482,7 @@
      "url": "https://www.segip.gob.bo/cedulas-de-identidad-de-extranjeros/"
     }
    ],
-   "note": "Round 5 (Sept 2026). The pending-applicant document is illustrated on UNHCR's own Bolivia page; the file was confirmed to exist but not visually inspected from this build. No image of the SEGIP cédula for recognised refugees."
+   "note": "Visually confirmed on 1 Sept 2026 by opening the file in a browser on Filip's laptop: a CONARE-headed card template titled 'Documento Temporal de Solicitante de Refugio' with name, nationality, issue and validity fields and a photo box (1000×634). No image of the SEGIP cédula for recognised refugees."
   },
   "CRI": {
    "images": [
@@ -500,7 +500,7 @@
      "url": "https://migracion.go.cr/dimex/"
     }
    ],
-   "note": "Round 5. Pending-applicant carné illustrated on UNHCR's Costa Rica page (file confirmed to exist, not visually inspected). DIMEX is a generic foreigners' residence card and no image was found."
+   "note": "Visually confirmed on 1 Sept 2026 by opening the file in a browser on Filip's laptop: a filled specimen 'Carné Provisional / Permiso Laboral' with photo, expediente number and dates, in Costa Rica's colours (800×800). DIMEX for recognised refugees not found."
   },
   "ETH": {
    "images": [
@@ -518,7 +518,7 @@
      "url": "https://rrs.et/ethiopia-launches-inclusive-id-system-for-refugees-boosts-access-to-national-services/"
     }
    ],
-   "note": "Round 5. An official UNHCR design specimen of both card types (not a photograph of a physical card); file confirmed to exist, not visually inspected from this build."
+   "note": "Visually confirmed on 1 Sept 2026 by opening the file in a browser on Filip's laptop: UNHCR's side-by-side design of the refugee ID and asylum-seeker ID cards with QR codes and fictitious data (487×310 — small; fine as a show card on screen, marginal in print)."
   },
   "GTM": {
    "images": [
@@ -540,7 +540,7 @@
      "url": "https://www.renap.gob.gt/noticias/dpie-identidad-para-refugiados-en-guatemala"
     }
    ],
-   "note": "Round 5. RENAP hosts an official image of the DPI for foreigners on a page dedicated to it (file confirmed to exist, not visually inspected). The applicant's provisional document is shown as a filled specimen inside a RENAP PDF."
+   "note": "Visually confirmed on 1 Sept 2026 by opening the file in a browser on Filip's laptop: a photograph of a real DPI card for foreigners held in a hand, red RENAP design with chip (401×293 — small). The applicant's provisional document is a filled specimen inside the RENAP PDF."
   },
   "DEU": {
    "images": [
