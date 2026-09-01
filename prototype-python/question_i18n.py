@@ -377,10 +377,61 @@ def _actors(a, lang):
     return CONJ.get(lang, " and ").join(parts)
 
 
+# ACLED sub-event types rendered as category phrases - the wording an
+# enumerator would read, not ACLED's own labels. Used for codes 1, 2, 4 and 5
+# where UCDP's named conflicts give nothing (build_questions.py joins up to
+# three with LIST_SEP).
+ACLED_PHRASES = {
+    "armed clashes": {"fr": "affrontements armés", "es": "enfrentamientos armados",
+                      "ar": "اشتباكات مسلحة", "ru": "вооружённые столкновения", "zh": "武装冲突"},
+    "air or drone strikes": {"fr": "frappes aériennes ou de drones", "es": "ataques aéreos o con drones",
+                             "ar": "غارات جوية أو بطائرات مسيّرة", "ru": "авиаудары или удары беспилотников", "zh": "空袭或无人机袭击"},
+    "shelling": {"fr": "bombardements", "es": "bombardeos", "ar": "قصف", "ru": "артиллерийские обстрелы", "zh": "炮击"},
+    "landmines or explosive devices": {"fr": "mines ou engins explosifs", "es": "minas o artefactos explosivos",
+                                       "ar": "ألغام أو عبوات ناسفة", "ru": "мины или взрывные устройства", "zh": "地雷或爆炸装置"},
+    "suicide bombings": {"fr": "attentats-suicides", "es": "atentados suicidas", "ar": "تفجيرات انتحارية",
+                         "ru": "теракты смертников", "zh": "自杀式爆炸袭击"},
+    "grenade attacks": {"fr": "attaques à la grenade", "es": "ataques con granadas", "ar": "هجمات بالقنابل اليدوية",
+                        "ru": "нападения с применением гранат", "zh": "手榴弹袭击"},
+    "chemical weapon attacks": {"fr": "attaques à l'arme chimique", "es": "ataques con armas químicas",
+                                "ar": "هجمات بالأسلحة الكيميائية", "ru": "применение химического оружия", "zh": "化学武器袭击"},
+    "fighting over territory": {"fr": "combats pour le contrôle du territoire", "es": "combates por el control del territorio",
+                                "ar": "قتال للسيطرة على الأراضي", "ru": "бои за контроль над территорией", "zh": "争夺领土的战斗"},
+    "mob violence": {"fr": "violences de foule", "es": "violencia de turbas", "ar": "عنف الغوغاء",
+                     "ru": "насилие толпы", "zh": "暴民暴力"},
+    "violent demonstrations": {"fr": "manifestations violentes", "es": "manifestaciones violentas",
+                               "ar": "مظاهرات عنيفة", "ru": "насильственные демонстрации", "zh": "暴力示威"},
+    "protests broken up by force": {"fr": "manifestations dispersées par la force", "es": "protestas disueltas por la fuerza",
+                                    "ar": "احتجاجات فُرّقت بالقوة", "ru": "разгон протестов силой", "zh": "被强行驱散的抗议"},
+    "looting or destruction of property": {"fr": "pillages ou destructions de biens", "es": "saqueos o destrucción de bienes",
+                                           "ar": "نهب أو تدمير للممتلكات", "ru": "мародёрство или уничтожение имущества", "zh": "抢劫或破坏财产"},
+    "arrests": {"fr": "arrestations", "es": "detenciones", "ar": "اعتقالات", "ru": "аресты", "zh": "逮捕"},
+    "use of force by the authorities against protesters": {
+        "fr": "usage de la force par les autorités contre des manifestants",
+        "es": "uso de la fuerza por las autoridades contra manifestantes",
+        "ar": "استخدام السلطات للقوة ضد المحتجين", "ru": "применение силы властями против протестующих",
+        "zh": "当局对抗议者使用武力"},
+    "attacks on civilians": {"fr": "attaques contre des civils", "es": "ataques contra civiles",
+                             "ar": "هجمات على المدنيين", "ru": "нападения на мирных жителей", "zh": "针对平民的袭击"},
+    "sexual violence": {"fr": "violences sexuelles", "es": "violencia sexual", "ar": "عنف جنسي",
+                        "ru": "сексуальное насилие", "zh": "性暴力"},
+    "abductions or forced disappearances": {"fr": "enlèvements ou disparitions forcées",
+                                            "es": "secuestros o desapariciones forzadas",
+                                            "ar": "اختطاف أو إخفاء قسري", "ru": "похищения или насильственные исчезновения",
+                                            "zh": "绑架或强迫失踪"},
+}
+LIST_SEP = {"en": ", ", "fr": ", ", "es": ", ", "ar": "، ", "ru": ", ", "zh": "、"}
+
+
 def translate_example(text, lang):
     """Translate a generated example, leaving proper nouns alone."""
     if lang == "en":
         return text, True
+    parts = [p.strip() for p in text.split(", ")]
+    if parts and all(p in ACLED_PHRASES for p in parts):
+        tr = [ACLED_PHRASES[p].get(lang) for p in parts]
+        if all(tr):
+            return LIST_SEP.get(lang, ", ").join(tr), True
     if text in HAZ:
         return HAZ[text].get(lang, text), lang in HAZ[text]
     for src, tr in FRAG.items():

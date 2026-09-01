@@ -40,8 +40,35 @@ THREE THINGS THAT MAKE THIS A DRAFT AND NOT A DELIVERABLE
 """
 from paths import TIDY_S, OUT_S
 from question_i18n import (LANGS, T, lang_for, translate_example)
+from module_i18n import M as MODULE_T
 import json
+import os
 import re
+
+ACLED_MIN_EVENTS = 100   # per code, recent years, before ACLED contributes an example
+ACLED_MIN_KIND = 25      # per kind of event, before it is named
+# ACLED sub-event type -> the category phrase an enumerator would read. Kinds
+# not listed (Disrupted weapons use, Peaceful protest ...) are not examples.
+ACLED_PHRASE = {
+    "Armed clash": "armed clashes",
+    "Air/drone strike": "air or drone strikes",
+    "Shelling/artillery/missile attack": "shelling",
+    "Remote explosive/landmine/IED": "landmines or explosive devices",
+    "Suicide bomb": "suicide bombings",
+    "Grenade": "grenade attacks",
+    "Chemical weapon": "chemical weapon attacks",
+    "Government regains territory": "fighting over territory",
+    "Non-state actor overtakes territory": "fighting over territory",
+    "Mob violence": "mob violence",
+    "Violent demonstration": "violent demonstrations",
+    "Protest with intervention": "protests broken up by force",
+    "Looting/property destruction": "looting or destruction of property",
+    "Arrests": "arrests",
+    "Excessive force against protesters": "use of force by the authorities against protesters",
+    "Attack": "attacks on civilians",
+    "Sexual violence": "sexual violence",
+    "Abduction/forced disappearance": "abductions or forced disappearances",
+}
 
 import pandas as pd
 
@@ -283,9 +310,19 @@ def main():
 
     latest_year = max((c["last"] for v in conflicts.values() for c in v),
                       default=2025)
+    # ACLED's sub-event kinds per country and code (harmonize.py). Turned into
+    # ONE category-phrased example per code - "mob violence, looting or
+    # destruction of property" - after UCDP's named conflicts, so codes 2, 4 and
+    # 5, where UCDP is thin, still get something a respondent would recognise.
+    # Public build: kinds and years only, never counts (ACLED terms).
+    try:
+        acled_sub = json.load(open(f"{TIDY}/acled_subevents.json"))
+    except FileNotFoundError:
+        acled_sub = {}
+    PUBLIC = os.environ.get("IDQ_PUBLIC") == "1"
 
     out, rows = {}, []
-    isos = set(conflicts) | set(disasters)
+    isos = set(conflicts) | set(disasters) | set(acled_sub)
     for iso in sorted(isos):
         ex = {}
         used_actors = set()
@@ -317,6 +354,29 @@ def main():
                                    n=int(c.get("events") or 0)))
                 if len(picked) >= SHOWCARD_MAX:
                     break
+            # ACLED: one category-phrased example from the kinds of event it
+            # records here, recent years only, ranked after UCDP's named ones.
+            # Thresholds keep this to places where the kind of event is part
+            # of life, not a one-off: at least ACLED_MIN_EVENTS for the code in
+            # recent years, and at least ACLED_MIN_KIND for any kind named.
+            kinds = [k for k in acled_sub.get(iso, {}).get(str(code), [])
+                     if k["last"] >= latest_year - 5 and ACLED_PHRASE.get(k["sub"])
+                     and k["events"] >= ACLED_MIN_KIND]
+            phrases, seen_ph = [], set()
+            for k in kinds:
+                ph = ACLED_PHRASE[k["sub"]]
+                if ph not in seen_ph:
+                    seen_ph.add(ph); phrases.append(ph)
+                if len(phrases) >= 2:
+                    break
+            if phrases and sum(k["events"] for k in kinds) >= ACLED_MIN_EVENTS:
+                n_ev = sum(k["events"] for k in kinds)
+                y0 = min(k["first"] for k in kinds); y1 = max(k["last"] for k in kinds)
+                detail = (f"{len(kinds)} kind{'s' if len(kinds) > 1 else ''} of event recorded "
+                          f"by ACLED, {max(y0, 2020)}–{y1}"
+                          + ("" if PUBLIC else f" ({n_ev:,} events)"))
+                picked.append(dict(text=", ".join(phrases), kind="category", src="ACLED",
+                                   detail=detail, n=None if PUBLIC else int(n_ev)))
             if picked:
                 ex[code] = picked
         # ---- hazards ------------------------------------------------------
@@ -580,7 +640,7 @@ def main():
 
 PAGE = """<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Forced to flee — localised question form</title><style>
+<title>Identification questions — customised by country</title><style>
 :root{color-scheme:light dark;--s:#fcfcfb;--p:#f2f1ec;--i:#111;--i2:#4a4945;
  --m:#8a8880;--g:#d9d8d0;--a:#2a78d6;--w:#fab219;--paper:#fff}
 @media(prefers-color-scheme:dark){:root{--s:#1c1c1a;--p:#111110;--i:#f4f3ee;
@@ -702,7 +762,13 @@ h2{font-size:15px;margin:28px 0 2px;font-weight:640}
  line-height:1.5;font-weight:600;margin-bottom:4px}
 .modq-example{font-family:ui-serif,Georgia,"Times New Roman",serif;font-size:14.5px;
  line-height:1.5;color:var(--i2);margin:6px 0 2px}
-.modq-example::before{content:"e.g. ";font-style:italic;color:var(--m)}
+.modq-example{font-style:italic}
+.modq-example .eg{font-style:normal;font-weight:600;color:var(--a)}
+.modq-vtag{font-family:ui-sans-serif,-apple-system,sans-serif;font-style:normal;font-size:10px;
+ font-weight:700;color:var(--a);border:1px solid color-mix(in srgb,var(--a) 40%,var(--g));
+ border-radius:3px;padding:0 4px;margin-inline-end:4px;vertical-align:middle}
+.regform[dir="rtl"],.form[dir="rtl"] .aprobe{direction:rtl;text-align:right}
+.regform[dir="rtl"] .modq-arrow{margin-left:0;margin-right:auto}
 .modq-opts{margin:10px 0 0;padding:0}
 .modq-opt{display:flex;align-items:baseline;gap:8px;padding:3px 0;font-size:13.5px}
 .modq-opt .box{flex:0 0 auto;width:12px;height:12px;border:1.5px solid var(--i);
@@ -759,7 +825,9 @@ h2{font-size:15px;margin:28px 0 2px;font-weight:640}
  border:1px solid var(--a);background:var(--a);color:#fff;cursor:pointer;font-weight:600}
 .dlbar button:disabled{opacity:.5;cursor:default}
 .dlbar button.secondary{background:var(--s);color:var(--a)}
-.dlstatus{font-size:12.5px;color:var(--m)}
+.dlstatus{font-size:12.5px;color:var(--m);max-width:60ch}
+.dlbar-compact{margin:4px 0 12px}
+.dlbar-compact button{font-size:12.5px;padding:6px 11px}
 .dlstatus.err{color:#d03b3b}
 /* ---- document specimens ("what it looks like") ----------------------------
    A pilot feature: images are hotlinked to their original publisher (gov.uk,
@@ -824,17 +892,21 @@ select,.bar button{border-color:var(--g) !important}
 .form{box-shadow:0 1px 3px rgba(20,35,76,.06),0 10px 28px rgba(20,35,76,.08) !important}
 .regform{box-shadow:0 1px 3px rgba(20,35,76,.06),0 10px 28px rgba(20,35,76,.08) !important}
 </style></head><body><div class="w">
-<h1>Forced to flee &mdash; localised question form</h1>
-<p class="lede">Version 3 of the item, rendered as it would appear on a form, with
-the text after each &ldquo;e.g.&rdquo; drafted from what was recorded in that
-country. <b>The response options never change</b> &mdash; only the examples, which
-the question variants document permits localising and which the desk review found
-respondents depend on.</p>
+<h1>Identification questions &mdash; customised by country</h1>
+<p class="lede">The forced-to-flee question and the international protection item,
+rendered as they would appear on a form, with the parts the instrument allows to
+vary &mdash; the examples after each &ldquo;e.g.&rdquo;, the office and document
+named in the Apply item &mdash; drafted from what was recorded in that country and
+shown in <span class="eg">blue</span>. <b>The questions and response options never
+change.</b> Below the two customised cards sits the full questionnaire, in the
+version you choose, with the same customisations carried through.</p>
 
 <div class="dlbar">
   <button id="docxBtn">Download questionnaire &amp; instructions (.docx)</button>
   <button id="pdfBtn" class="secondary">Download as PDF</button>
-  <span class="dlstatus" id="dlStatus">Downloads the country and settings currently shown below.</span>
+  <span class="dlstatus" id="dlStatus">Downloads the full questionnaire &mdash; the customised
+  cards and the module below, in the version, language and settings currently shown &mdash;
+  opening with a summary of every customisation.</span>
 </div>
 
 <div class="bar">
@@ -885,13 +957,17 @@ definition of "forced to flee". Only drafted in English so far; pick English to 
 </div>
 
 <div class="regcard" id="regcard">
-<h2>International protection &amp; displacement module</h2>
-<p class="sub">The rest of the combined refugee/IDP module Joanna d&rsquo;Ardenne&rsquo;s
-revision proposes, following the paper's own &ldquo;short and long form&rdquo; item
-table: a handful of items &mdash; Forced to flee, Location of displacement, Whether ever
-crossed a border, Applied for protection, Outcome &mdash; are always needed for baseline
-classification and shown by default below. Everything else unlocks one specific
-sub-category and can be switched on or off.</p>
+<h2>Full questionnaire &mdash; international protection &amp; displacement module</h2>
+<p class="sub">The whole combined refugee/IDP module of the revised instrument, with the
+customisations from the two cards above carried into it. A handful of items &mdash; Forced
+to flee, Location of displacement, Whether ever crossed a border, Applied for protection,
+Outcome &mdash; are always needed for baseline classification and always shown; everything
+else is added by the populations you choose to identify.</p>
+<div class="dlbar dlbar-compact">
+  <button class="dl-again" data-for="docxBtn">Download this questionnaire (.docx)</button>
+  <button class="dl-again secondary" data-for="pdfBtn">PDF</button>
+  <span class="dlstatus">Same download as at the top of the page.</span>
+</div>
 <button class="help" id="modpickerbtn">Customise which items are included</button>
 <div class="modpicker" id="modpicker" hidden>
  <p class="sectitle">Which populations do you need to identify?</p>
@@ -977,7 +1053,7 @@ whose examples merely repeat the national list is not shown.
 conflict, IDMC for hazards. Generated by
 <code>prototype-python/build_questions.py</code>. Ctrl/Cmd-P prints the form alone.</p>
 </div><script>
-const Q=__DATA__, P=__PROV__, T=__T__, LANGS=__LANGS__, REG=__REG__, REGLABEL=__REGLABEL__, SPEC=__SPEC__;
+const Q=__DATA__, P=__PROV__, T=__T__, LANGS=__LANGS__, REG=__REG__, REGLABEL=__REGLABEL__, SPEC=__SPEC__, M=__M__;
 const CODES=[1,2,3,4,5,6,7,8];
 const LBL={1:"1. Armed conflict",2:"2. Widespread violence",3:"3. Persecution",
  4:"4. HR violations",5:"5. Other violence",6:"6. Natural disasters",
@@ -1033,7 +1109,7 @@ function buildLangs(){
   .map(([k,v])=>`<button class="lang${k===LANG?' on':''}" data-k="${k}">${v[0]}</button>`)
   .join(" ");
  document.querySelectorAll('.lang').forEach(b=>b.addEventListener('click',()=>{
-  LANG=b.dataset.k; syncVerButtons(); buildLangs(); render();}));
+  LANG=b.dataset.k; syncVerButtons(); buildLangs(); render(); renderReg(sel.value);}));
  syncVerButtons();}
 
 // Shortest/Mid-length (VER 1/2) are English-only drafts (see VER's comment) —
@@ -1343,128 +1419,72 @@ document.getElementById('fwIdp').addEventListener('change',e=>{
 document.getElementById('fwRef').addEventListener('change',e=>{
  FW.refugee=e.target.checked; buildModPicker(); renderReg(sel.value);});
 
-// Static (non-localised) modq blocks for the optional items — same wording for
-// every country, built once rather than per-render.
-const OPT_ITEM_HTML={
- frcoth:`<div class="modq"><div class="modq-name">FrcOth</div>`+
-  `<div class="modq-skip">Ask if FrcFl = &ldquo;a different threat&rdquo;</div>`+
-  `<div class="modq-stem">What was the other threat to your safety that meant you `+
-  `had to leave a home?</div>`+
-  `<div class="modq-note">Open response, coded by the enumerator or in office &mdash; `+
-  `not read aloud. Localisation of examples and of which answers count as valid is `+
-  `permitted; the paper's own back-coding list:</div>`+
-  `<ul class="modq-list">`+
-  `<li>Risk of conscription or forced recruitment by armed groups `+
-  `<span class="modq-softcheck">recode into armed conflict/widespread violence at FrcFl</span></li>`+
-  `<li>Eviction <span class="modq-softcheck">mass evictions for infrastructure go to `+
-  `FrcFl; one-off evictions by landlords stay here</span></li>`+
-  `<li>Fear of violent crime</li><li>Political insecurity, public disorder or civil unrest</li>`+
-  `<li>Food insecurity or famine</li><li>Lack of medical facilities</li>`+
-  `<li>Family violence, forced marriage or domestic abuse</li>`+
-  `<li>Lack of employment opportunities</li>`+
-  `<li>Lack of local infrastructure e.g. schools, housing, sewage, electricity</li>`+
-  `<li>Marital, relationship or family breakdown</li><li>Other reason (specify)</li>`+
-  `</ul></div>`,
- idploc:`<div class="modq"><div class="modq-name">IDPLoc</div>`+
-  `<div class="modq-skip">Ask if FleeLoc = Survey country</div>`+
-  `<div class="modq-stem">Tell me where you were living right before you were forced `+
-  `to flee home for the first time.</div>`+
-  `<div class="modq-note">Open response &mdash; village or town, county, province.</div></div>`,
- locliv:`<div class="modq"><div class="modq-name">LocLiv</div>`+
-  `<div class="modq-skip">Ask if any valid reason to flee was coded</div>`+
-  `<div class="modq-stem">Before you fled this home, had you always lived in the `+
-  `country you fled from?</div>`+
-  `<div class="modq-opts">`+
-   `<div class="modq-opt"><span class="box"></span>1. Yes</div>`+
-   `<div class="modq-opt"><span class="box"></span>2. No<span class="modq-arrow">`+
-   `&rarr; go to CitLoc</span></div></div></div>`+
-  `<div class="modq"><div class="modq-name">CitLoc</div>`+
-  `<div class="modq-skip">Ask if LocLiv = No</div>`+
-  `<div class="modq-stem">Were you a citizen of that country when you fled your home `+
-  `there?</div>`+
-  `<div class="modq-opts">`+
-   `<div class="modq-opt"><span class="box"></span>1. Yes</div>`+
-   `<div class="modq-opt"><span class="box"></span>2. No</div></div></div>`,
- idppost:`<div class="modq"><div class="modq-name">IDPPost</div>`+
-  `<div class="modq-skip">Ask if FleeLoc = Survey country and FleeCross = No</div>`+
-  `<div class="modq-stem">When you first fled your home, where did you move to first?</div>`+
-  `<div class="modq-note">Open response &mdash; village or town, county, province. `+
-  `Do not include short stays or stopovers.</div></div>`,
- mnths12:`<div class="modq"><div class="modq-name">12Mnths</div>`+
-  `<div class="modq-skip">Ask if FleeCross = Yes</div>`+
-  `<div class="modq-stem">How long did you stay abroad after fleeing your home?</div>`+
-  `<div class="modq-opts">`+
-   `<div class="modq-opt"><span class="box"></span>1. Less than 12 months</div>`+
-   `<div class="modq-opt"><span class="box"></span>2. 12 months or more</div></div></div>`,
- legal:`<div class="modq"><div class="modq-name">Legal</div>`+
-  `<div class="modq-skip">Ask all</div>`+
-  `<div class="modq-stem">Thinking about your current situation, what is the main `+
-  `document that allows you to stay in the survey country?</div>`+
-  `<div class="modq-note">Higher-order categories are fixed; the response options `+
-  `under each are localisable to the country's own visa/status categories &mdash; `+
-  `not yet drafted per country here.</div>`+
-  `<div class="modq-cats">`+
-   `<div class="modq-cathead">No documents</div><div class="modq-catopt">No documents</div>`+
-   `<div class="modq-cathead">Visas</div>`+
-   `<div class="modq-catopt">Tourist visa</div><div class="modq-catopt">Student visa</div>`+
-   `<div class="modq-catopt">Work visa</div><div class="modq-catopt">Humanitarian visa</div>`+
-   `<div class="modq-catopt">Family visa</div><div class="modq-catopt">Other visa (specify)</div>`+
-   `<div class="modq-cathead">International agreements</div>`+
-   `<div class="modq-catopt">Regional free movement agreement (e.g. Mercosur, EU, `+
-   `SADC, EAC, ECOWAS)</div>`+
-   `<div class="modq-cathead">Permanent residency and citizenship</div>`+
-   `<div class="modq-catopt">Permanent resident document</div>`+
-   `<div class="modq-catopt">[Survey country] passport</div>`+
-   `<div class="modq-catopt">Other document certifying [survey country] citizenship</div>`+
-   `<div class="modq-cathead">Protected status</div>`+
-   `<div class="modq-catopt">Asylum applicant document</div><div class="modq-catopt">Refugee</div>`+
-   `<div class="modq-catopt">Recognized stateless person document</div>`+
-   `<div class="modq-catopt">Complementary and subsidiary protection</div>`+
-   `<div class="modq-catopt">Temporary protection</div>`+
-   `<div class="modq-cathead">Enrolment document</div>`+
-   `<div class="modq-catopt">Enrolment document</div>`+
-   `<div class="modq-cathead">Other</div><div class="modq-catopt">Other (specify)</div>`+
-  `</div></div>`,
-};
+// ---- the module, generated from module_i18n.py's M[LANG] --------------------
+// Every stem, skip condition, option and note below comes from M, so the Apply
+// card and the full questionnaire follow the Language buttons exactly as the
+// forced-to-flee form does. Item codes stay as they are in every language.
+const MT=()=>M[LANG]||M.en;
+const RTL=()=>((LANGS[LANG]||["","ltr"])[1])==="rtl";
+function modq(name,skip,stem,body){
+ return `<div class="modq"><div class="modq-name">${name}</div>`+
+  (skip?`<div class="modq-skip">${skip}</div>`:"")+
+  `<div class="modq-stem">${stem}</div>${body||""}</div>`;}
+function optRows(opts,arrows){
+ return `<div class="modq-opts">`+opts.map((o,i)=>
+  `<div class="modq-opt"><span class="box"></span>${i+1}. ${o}`+
+  (arrows&&arrows[i]?`<span class="modq-arrow">${arrows[i]}</span>`:"")+`</div>`).join("")+`</div>`;}
+function yesno(t,arrows){ return optRows([t.ui.yes,t.ui.no],arrows); }
 
-// FleeLoc/FleeCross are core (Table X: "Yes") — always rendered, never gated by
-// a checkbox, same as FrcFl/Apply/Outcome.
-const CORE_FLEELOC=`<div class="modq"><div class="modq-name">FleeLoc</div>`+
- `<div class="modq-skip">Ask if any valid reason to flee was coded at FrcFl or FrcOth</div>`+
- `<div class="modq-stem">In which country was the home you had to flee from?</div>`+
- `<div class="modq-opts">`+
-  `<div class="modq-opt"><span class="box"></span>1. Survey country</div>`+
-  `<div class="modq-opt"><span class="box"></span>2. Other country [SPECIFY]</div>`+
- `</div></div>`;
-const CORE_FLEECROSS=`<div class="modq"><div class="modq-name">FleeCross</div>`+
- `<div class="modq-skip">Ask if any valid reason to flee was coded</div>`+
- `<div class="modq-stem">After you fled your home did you ever move to another `+
- `country, even if this was only temporary?</div>`+
- `<div class="modq-opts">`+
-  `<div class="modq-opt"><span class="box"></span>1. Yes</div>`+
-  `<div class="modq-opt"><span class="box"></span>2. No</div>`+
- `</div></div>`;
+function itemHTML(key){
+ const t=MT(), u=t.ui, goto=x=>u.goto.replace("{x}",x);
+ switch(key){
+  case "frcoth": return modq("FrcOth",t.frcoth.skip,t.frcoth.stem,
+   `<div class="modq-note">${t.frcoth.note}</div><ul class="modq-list">`+
+   t.frcoth.list.map(([txt,soft])=>`<li>${txt}${soft?` <span class="modq-softcheck">${soft}</span>`:""}</li>`).join("")+
+   `</ul>`);
+  case "fleeloc": return modq("FleeLoc",t.fleeloc.skip,t.fleeloc.stem,optRows(t.fleeloc.opts));
+  case "idploc": return modq("IDPLoc",t.idploc.skip,t.idploc.stem,`<div class="modq-note">${u.open}</div>`);
+  case "locliv": return modq("LocLiv",t.locliv.skip,t.locliv.stem,yesno(t,[null,goto("CitLoc")]))+
+                        modq("CitLoc",t.citloc.skip,t.citloc.stem,yesno(t));
+  case "fleecross": return modq("FleeCross",t.fleecross.skip,t.fleecross.stem,yesno(t));
+  case "idppost": return modq("IDPPost",t.idppost.skip,t.idppost.stem,`<div class="modq-note">${t.idppost.note}</div>`);
+  case "mnths12": return modq("12Mnths",t.mnths12.skip,t.mnths12.stem,optRows(t.mnths12.opts));
+  case "intapply": return modq("IntApply",t.intapply.skip,t.intapply.stem,yesno(t));
+  case "outcome": return modq("Outcome",t.outcome.skip,t.outcome.stem,optRows(t.outcome.opts));
+  case "legal": return modq("Legal",t.legal.skip,t.legal.stem,
+   `<div class="modq-note">${t.legal.note}</div><div class="modq-cats">`+
+   t.legal.cats.map(([head,opts])=>`<div class="modq-cathead">${head}</div>`+
+     opts.map(o=>`<div class="modq-catopt">${o}</div>`).join("")).join("")+`</div>`);
+ }
+ return "";
+}
 
-// An optional item only actually renders when BOTH its own checkbox is ticked
-// AND the framework group it belongs to is still selected — unticking a
-// framework hides that group's checkboxes in the picker (buildModPicker), but
-// without this check their last checked state would silently keep rendering
-// them anyway.
-
-// Assembles the fixed-wording part of the chain (everything except Apply/
-// IntApply/Outcome/Legal, which need REG[iso]'s data or are appended after)
-// in item order, honouring the current ITEMS picker state.
+// Assembles the fixed-wording part of the chain (everything before Apply) in
+// item order, honouring the sub-category picker.
 function buildFrontChain(){
  let h="";
- if(itemActive("frcoth")) h+=OPT_ITEM_HTML.frcoth;
- h+=CORE_FLEELOC;
- if(itemActive("idploc")) h+=OPT_ITEM_HTML.idploc;
- if(itemActive("locliv")) h+=OPT_ITEM_HTML.locliv;
- h+=CORE_FLEECROSS;
- if(itemActive("idppost")) h+=OPT_ITEM_HTML.idppost;
- if(itemActive("mnths12")) h+=OPT_ITEM_HTML.mnths12;
+ if(itemActive("frcoth")) h+=itemHTML("frcoth");
+ h+=itemHTML("fleeloc");
+ if(itemActive("idploc")) h+=itemHTML("idploc");
+ if(itemActive("locliv")) h+=itemHTML("locliv");
+ h+=itemHTML("fleecross");
+ if(itemActive("idppost")) h+=itemHTML("idppost");
+ if(itemActive("mnths12")) h+=itemHTML("mnths12");
  return h;
 }
+
+// The localised names for Apply, in the language being shown: when the page
+// language is the country's own survey language, the local-language name
+// (as printed on the source pages) is the one read out and the formal name
+// becomes the gloss; otherwise the formal name leads.
+function applyNames(iso,v){
+ const local=LANG!=="en"&&Q[iso]&&Q[iso].lang===LANG;
+ const office=local&&v.orgL?v.orgL:v.org, officeGloss=local&&v.orgL?v.org:v.orgL;
+ const da=v.da||v.dr, daL=v.da?v.daL:v.drL, daC=v.da?v.daC:v.drC;
+ const doc=local&&daL?daL:da, docGloss=local&&daL?da:daL;
+ return {office,officeGloss,doc,docGloss,docColloq:daC};
+}
+const probeHTML=(tpl,name)=>tpl.replace("{name}",`<span class="eg">${esc(name)}</span>`);
 
 // The Apply item on its own card, styled exactly like the forced-to-flee form:
 // the stem never changes, only the blue example does. Two versions of that
@@ -1475,82 +1495,61 @@ function buildFrontChain(){
 // identification, so it is hidden when only IDPs are being identified.
 function renderApply(iso,v){
  const sec=document.getElementById('applysec'), f=document.getElementById('applyform');
+ const t=MT(), u=t.ui, goto=x=>u.goto.replace("{x}",x);
  const hostName=(Q[iso]&&Q[iso].name)||(v&&v.c)||iso;
  sec.hidden=!FW.refugee;
+ f.setAttribute('dir',RTL()?"rtl":"ltr");
  const head=`<div class="fhead"><span class="fitem">Apply</span>`+
-  `<span class="fask">{Ask if any valid reason to flee was coded and FleeCross = Yes}</span>`+
+  `<span class="fask">{${t.apply.skip}}</span>`+
   `<span class="fcountry">${esc(hostName)}</span></div>`+
-  `<p class="stem"><b>Did you ever apply for international protection, such as refugee status?</b></p>`;
+  `<p class="stem"><b>${t.apply.stem}</b></p>`;
  const opts=`<ol class="opts aopts">`+
-  `<li><span class="box"></span><span class="num">1</span><span class="otext">Yes `+
-  `<span class="more">&rarr; go to Outcome</span></span></li>`+
-  `<li><span class="box"></span><span class="num">2</span><span class="otext">No `+
-  `<span class="more">${itemActive("intapply")?"&rarr; go to IntApply":""}</span></span></li></ol>`;
- if(!v){
-  f.innerHTML=head+`<p class="pmiss">No drafted localisation example for this country yet &mdash; `+
-   `the question is asked as written, without an example.</p>`+opts;
-  return;
- }
- if(v.reg==="NONE"){
-  f.innerHTML=head+`<p class="pmiss">No registration or international-protection procedure exists `+
-   `in this country &mdash; the Apply / IntApply / Outcome sequence does not apply here.</p>`+opts;
-  return;
- }
+  `<li><span class="box"></span><span class="num">1</span><span class="otext">${u.yes} `+
+  `<span class="more">${goto("Outcome")}</span></span></li>`+
+  `<li><span class="box"></span><span class="num">2</span><span class="otext">${u.no} `+
+  `<span class="more">${itemActive("intapply")?goto("IntApply"):""}</span></span></li></ol>`;
+ if(!v){ f.innerHTML=head+`<p class="pmiss">${u.no_example}</p>`+opts; return; }
+ if(v.reg==="NONE"){ f.innerHTML=head+`<p class="pmiss">${u.none_proc}</p>`+opts; return; }
+ const n=applyNames(iso,v);
+ const localMode=LANG!=="en"&&Q[iso]&&Q[iso].lang===LANG;
  const gloss=(local,colloq)=>{
-  const bits=[local?`<i>${esc(local)}</i> in local language`:null,
-              colloq?`commonly called &ldquo;${esc(colloq)}&rdquo;`:null].filter(Boolean);
+  const bits=[local?(localMode?u.formal:u.in_local).replace("{n}",esc(local)):null,
+              colloq?u.called.replace("{n}",esc(colloq)):null].filter(Boolean);
   return bits.length?`<div class="gloss">${bits.join(" &middot; ")}</div>`:"";};
- // Version A - office
- let a=`<div class="aver"><span class="avertag">Version <b>A</b> &middot; the office &middot; as in the paper</span>`;
- if(v.org){
-  a+=`<p class="aprobe">For example, did you go to an office like <span class="eg">${esc(v.org)}</span> to register?</p>`;
-  a+=gloss(v.orgL,null);
-  if(v.alt&&v.alt.length) a+=`<div class="why">Also seen: ${esc(v.alt.join("; "))}</div>`;
+ let a=`<div class="aver"><span class="avertag">${u.verA}</span>`;
+ if(n.office){
+  a+=`<p class="aprobe">${probeHTML(t.apply.probe_office,n.office)}</p>`+gloss(n.officeGloss,null);
+  if(v.alt&&v.alt.length) a+=`<div class="why">${u.also_seen.replace("{n}",esc(v.alt.join("; ")))}</div>`;
   if(v.ow) a+=`<div class="why">${esc(v.ow)}</div>`;
- }else{
-  a+=`<p class="pmiss">Cannot be worded here &mdash; no office a respondent would have gone to is named.`+
-     (v.how?` ${esc(v.how)}`:``)+`</p>`;
- }
+ }else a+=`<p class="pmiss">${u.noA}${v.how?` ${esc(v.how)}`:``}</p>`;
  a+=`</div>`;
- // Version B - document
- const docName=v.da||v.dr, docLocal=v.da?v.daL:v.drL, docColloq=v.da?v.daC:v.drC;
- let b=`<div class="aver"><span class="avertag">Version <b>B</b> &middot; the document &middot; proposed after the paper</span>`;
- if(docName){
-  b+=`<p class="aprobe">For example, did you apply for a document like <span class="eg">${esc(docName)}</span>?</p>`;
-  b+=gloss(docLocal,docColloq);
-  if(v.da&&v.dr&&v.dr!==v.da) b+=`<div class="why">On recognition, this becomes: ${esc(v.dr)}`+
-    `${v.drC?` (&ldquo;${esc(v.drC)}&rdquo;)`:""}</div>`;
+ let b=`<div class="aver"><span class="avertag">${u.verB}</span>`;
+ if(n.doc){
+  b+=`<p class="aprobe">${probeHTML(t.apply.probe_doc,n.doc)}</p>`+gloss(n.docGloss,n.docColloq);
+  if(v.da&&v.dr&&v.dr!==v.da) b+=`<div class="why">${u.on_recog.replace("{n}",esc(v.dr)+(v.drC?` (&ldquo;${esc(v.drC)}&rdquo;)`:""))}</div>`;
   if(v.dw) b+=`<div class="why">${esc(v.dw)}</div>`;
   b+=`<div class="specimens" id="regspecimens">${renderSpecimenHTML(iso,v)}</div>`;
- }else{
-  b+=`<p class="pmiss">Cannot be worded here &mdash; no document, card or certificate is named for this country.`+
-     (v.dw?` ${esc(v.dw)}`:``)+`</p>`;
- }
+ }else b+=`<p class="pmiss">${u.noB}${v.dw?` ${esc(v.dw)}`:``}</p>`;
  b+=`</div>`;
- const instr=`<div class="ainstr"><b>Interviewer instructions.</b> Read the question as written, then `+
-  `<b>one</b> example. Version A names where the claim is lodged &mdash; never the body that decides it. `+
-  `Version B names the document the claim produces, which respondents often recall better than the office, `+
-  `and which the Legal item later asks about; where a specimen is shown, it can be used as a show card. `+
-  (v.mis?`In this country the office framing is known to misfire (see the note below), so prefer Version B. `:``)+
-  `The stem and the response options never change between countries.</div>`;
- f.innerHTML=head+`<p class="lead">Localisation example &mdash; two versions</p>`+a+b+opts+instr;
+ const instr=`<div class="ainstr">${u.instr}${v.mis?` ${u.instr_misfire}`:``}</div>`;
+ f.innerHTML=head+`<p class="lead">${u.loc_two}</p>`+a+b+opts+instr;
 }
 
 function renderReg(iso){
- const v=REG[iso];
+ const v=REG[iso], t=MT(), u=t.ui, goto=x=>u.goto.replace("{x}",x);
  const badges=document.getElementById('regbadges'), form=document.getElementById('regform'),
        warn=document.getElementById('regwarn'), cav=document.getElementById('regcav'),
        miss=document.getElementById('regmiss');
  renderApply(iso,v);
+ form.setAttribute('dir',RTL()?"rtl":"ltr");
  miss.style.display="none";form.style.display="";
- const legalHTML=itemActive("legal")?OPT_ITEM_HTML.legal:"";
+ const legalHTML=itemActive("legal")?itemHTML("legal"):"";
+ const tail=()=>(itemActive("intapply")?itemHTML("intapply"):"")+itemHTML("outcome")+legalHTML;
+ const applyOpts=yesno(t,[goto("Outcome"),itemActive("intapply")?goto("IntApply"):null]);
  if(!v){
   badges.innerHTML="";
-  form.innerHTML=buildFrontChain()+
-   `<div class="modq"><div class="modq-name">Apply</div>`+
-   `<div class="pmiss">No drafted registration/international-protection example `+
-   `for this country yet &mdash; the question itself still applies, just without a `+
-   `localised example.</div></div>`+legalHTML;
+  form.innerHTML=buildFrontChain()+modq("Apply",t.apply.skip,t.apply.stem,
+   `<div class="pmiss">${u.no_example}</div>`+applyOpts)+tail();
   warn.style.display="none";cav.style.display="none";
   return;
  }
@@ -1558,68 +1557,21 @@ function renderReg(iso){
   `<span class="badge b-reg">${esc(REGLABEL[v.reg]||v.reg)} registers claims</span>`+
   `<span class="badge b-cf-${v.cf}">${v.cf} confidence</span>`;
  if(v.reg==="NONE"){
-  form.innerHTML=buildFrontChain()+
-   `<div class="modq"><div class="modq-name">Apply</div>`+
-   `<div class="pmiss">No registration or international-protection procedure exists `+
-   `in this country &mdash; the Apply / IntApply / Outcome sequence does not apply `+
-   `here.</div></div>`+legalHTML;
+  form.innerHTML=buildFrontChain()+modq("Apply",t.apply.skip,t.apply.stem,
+   `<div class="pmiss">${u.none_proc}</div>`)+legalHTML;
   warn.style.display="none";cav.style.display="none";
   return;
  }
- const glossLine=(local,colloq)=>{
-  const bits=[local?`<i>${esc(local)}</i> in local language`:null,
-              colloq?`commonly called &ldquo;${esc(colloq)}&rdquo;`:null].filter(Boolean);
-  return bits.length?`<div class="gloss">${bits.join(" &middot; ")}</div>`:"";};
- // The revised module gives Apply ONE combined localisation example — "did you
- // go to an office like X to register for Y?" — rather than the two separate
- // probes protection.py drafts (v1: office alone, v2: document alone). Combine
- // when both are nameable; fall back to whichever single one is available,
- // using protection.py's own wording for that case, when only one is.
- const docName=v.da||v.dr;
- let example=null;
- if(v.org&&docName) example=`For example, did you go to an office like ${v.org} to register for ${docName}?`;
- else if(v.v1) example=v.v1;
- else if(v.v2) example=v.v2;
- const docLocal=v.da?v.daL:v.drL, docColloq=v.da?v.daC:v.drC;
- let support=glossLine(v.orgL,null);
- if(v.alt&&v.alt.length) support+=`<div class="why">Also seen: ${esc(v.alt.join("; "))}</div>`;
- if(v.ow) support+=`<div class="why">${esc(v.ow)}</div>`;
- support+=glossLine(docLocal,docColloq);
- if(v.da&&v.dr&&v.dr!==v.da) support+=`<div class="why">On recognition, this becomes: `+
-   `${esc(v.dr)}${v.drC?` (&ldquo;${esc(v.drC)}&rdquo;)`:""}</div>`;
- if(v.dw) support+=`<div class="why">${esc(v.dw)}</div>`;
-
- let h=buildFrontChain();
- h+=`<div class="modq"><div class="modq-name">Apply</div>`+
-  `<div class="modq-skip">Ask if any valid reason to flee was coded and FleeCross = Yes</div>`+
-  `<div class="modq-stem">Did you ever apply for international protection, such as refugee status?</div>`+
-  (example?`<div class="modq-example">${esc(example)}</div>${support}`
-          :`<div class="pmiss">&mdash; no localisation example can be drafted for this country.</div>`+
-           (v.ow?`<div class="why">${esc(v.ow)}</div>`:"")+(v.dw?`<div class="why">${esc(v.dw)}</div>`:""))+
-  `<div class="modq-opts">`+
-   `<div class="modq-opt"><span class="box"></span>1. Yes<span class="modq-arrow">&rarr; go to Outcome</span></div>`+
-   `<div class="modq-opt"><span class="box"></span>2. No<span class="modq-arrow">${itemActive("intapply")?"&rarr; go to IntApply":""}</span></div>`+
-  `</div></div>`;
-
- if(itemActive("intapply")) h+=`<div class="modq"><div class="modq-name">IntApply</div>`+
-  `<div class="modq-skip">Ask if Apply = No</div>`+
-  `<div class="modq-stem">Did you ever plan to apply for international protection, such as refugee status?</div>`+
-  `<div class="modq-opts">`+
-   `<div class="modq-opt"><span class="box"></span>1. Yes</div>`+
-   `<div class="modq-opt"><span class="box"></span>2. No</div>`+
-  `</div></div>`;
-
- h+=`<div class="modq"><div class="modq-name">Outcome</div>`+
-  `<div class="modq-skip">Ask if Apply = Yes</div>`+
-  `<div class="modq-stem">What was the outcome of your application for international protection?</div>`+
-  `<div class="modq-opts">`+
-   `<div class="modq-opt"><span class="box"></span>1. Refugee status granted</div>`+
-   `<div class="modq-opt"><span class="box"></span>2. Refugee status denied</div>`+
-   `<div class="modq-opt"><span class="box"></span>3. Outcome still being decided</div>`+
-   `<div class="modq-opt"><span class="box"></span>4. I withdrew my application</div>`+
-  `</div></div>`;
-
- h+=legalHTML;
+ // In the full questionnaire the Apply item carries the SAME two customised
+ // examples as the card above - the selected customisation travels with the
+ // questionnaire - set in the example style (italic, name in blue).
+ const n=applyNames(iso,v);
+ let ex="";
+ if(n.office) ex+=`<div class="modq-example"><span class="modq-vtag">A</span> ${probeHTML(t.apply.probe_office,n.office)}</div>`;
+ if(n.doc) ex+=`<div class="modq-example"><span class="modq-vtag">B</span> ${probeHTML(t.apply.probe_doc,n.doc)}</div>`;
+ if(!ex) ex=`<div class="pmiss">${u.no_example_short}</div>`+
+   (v.ow?`<div class="why">${esc(v.ow)}</div>`:"")+(v.dw?`<div class="why">${esc(v.dw)}</div>`:"");
+ let h=buildFrontChain()+modq("Apply",t.apply.skip,t.apply.stem,ex+applyOpts)+tail();
  form.innerHTML=h;
  if(v.mis){warn.style.display="";
   warn.innerHTML=`<b>The Apply localisation example likely needs rewording here.</b> ${esc(v.how)}`;
@@ -1736,7 +1688,9 @@ ol.opts li{padding:4pt 0;border-bottom:0.5pt dotted #dde1e8}
 .modq-name{font-size:8.5pt;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#3b71b9}
 .modq-skip{font-size:9pt;font-style:italic;color:#8b93a8;margin-bottom:5pt}
 .modq-stem{font-family:Georgia,serif;font-size:11.5pt;margin:4pt 0}
-.modq-example{font-family:Georgia,serif;font-style:italic;font-size:10.5pt;color:#3b71b9;margin:2pt 0 6pt}
+.modq-example{font-family:Georgia,serif;font-style:italic;font-size:10.5pt;color:#1d2940;margin:2pt 0 6pt}
+.modq-example .eg{font-style:normal;font-weight:700;color:#3b71b9}
+.modq-vtag{font-family:Calibri,Arial,sans-serif;font-style:normal;font-size:8pt;font-weight:700;color:#3b71b9;border:0.5pt solid #b9c9e4;padding:0 3pt;margin-right:3pt}
 .modq-opts{margin:7pt 0 0}
 .modq-opt{padding:2pt 0;font-size:10pt}
 .modq-opt .box{width:8pt;height:8pt}
@@ -1790,9 +1744,10 @@ function buildExportHTML(iso){
  let h=`<!DOCTYPE html><html><head><meta charset="utf-8">`+
   `<title>${esc(v.name)} — questionnaire</title><style>${EXPORT_CSS}</style></head><body>`;
  h+=`<h1>${esc(v.name)}</h1>`+
-  `<p class="lede">Forced-to-flee question, ${esc(lenName)} length, ${esc(langName)}. `+
-  `The response options never change &mdash; only the examples, localised for this country. `+
-  `The Apply item follows with its two localisation versions, then the rest of the module.</p>`;
+  `<p class="lede">Identification questions, ${esc(langName)}, ${esc(lenName)} length. `+
+  `The questions and response options never change &mdash; only the examples and the office `+
+  `and document names, customised for this country. The forced-to-flee question comes first, `+
+  `then the Apply item with its two localisation versions, then the full module.</p>`;
  h+=customisationHTML(iso);
  h+=`<h2>Forced to flee</h2><div class="fform">${formHTML}</div>`;
  if(warnHTML) h+=`<div class="warn">${warnHTML}</div>`;
@@ -1924,6 +1879,9 @@ document.getElementById('docxBtn').addEventListener('click',async()=>{
  }catch(e){ setDlStatus('Could not build the Word document.',true); }
 });
 
+document.querySelectorAll('.dl-again').forEach(b=>b.addEventListener('click',()=>{
+ document.getElementById(b.dataset.for).click();
+ document.getElementById('dlStatus').scrollIntoView({behavior:"smooth",block:"center"});}));
 document.getElementById('pdfBtn').addEventListener('click',async()=>{
  const iso=sel.value,v=Q[iso]; if(!v) return;
  setDlStatus('Building the PDF…');
@@ -1977,6 +1935,7 @@ def write_page(out, rows, reg=None, spec=None):
                 .replace("__REG__", json.dumps(reg, separators=(",", ":")))
                 .replace("__REGLABEL__", json.dumps(REGISTRAR_LABEL, separators=(",", ":")))
                 .replace("__SPEC__", json.dumps(spec, separators=(",", ":")))
+                .replace("__M__", json.dumps(MODULE_T, separators=(",", ":"), ensure_ascii=False))
                 .replace("__SURVEYNOTE__", survey_note()))
     open(f"{OUT}/idq_localised_questions.html", "w").write(html)
     print(f"\nwrote idq_localised_questions.html "

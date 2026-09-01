@@ -56,11 +56,11 @@ PAGES = [
      "how often each kind of event actually happens. Search a country for the "
      "response options the evidence supports there.", "Open the map"),
     ("idq_localised_questions.html", "questions.html",
-     "Localised examples for the question",
-     "Version 3 of the forced-to-flee item, with the text after each “e.g.” "
-     "drafted from what was actually recorded in that country. The response options "
-     "do not change; only the examples. Also carries the registration "
-     "(international protection) item's drafted wording, country by country.",
+     "Identification questions, customised by country",
+     "The forced-to-flee and international-protection questions as they would appear "
+     "on a form, with the examples and the office and document names drafted from what "
+     "was recorded in each country, then the full module in the version you choose. "
+     "Six languages; downloads as Word or PDF with a summary of every customisation.",
      "Open the questionnaire"),
     ("idq_crosswalk_mechanisms.html", "crosswalk.html",
      "What sits under each option",

@@ -167,6 +167,39 @@ def load_acled(paths):
     return pd.concat(long, ignore_index=True)
 
 
+def acled_subevents(paths, out_path):
+    """Per country and forced-to-flee code, which KINDS of event ACLED records
+    - sub-event types with their event totals and year span. build_questions.py
+    turns these into category-phrased examples ("e.g. mob violence, looting")
+    for codes 1, 2, 4 and 5, where UCDP's named conflicts are thin or absent.
+    Counts are kept here for the internal build; the public build prints only
+    the kinds and the years (ACLED's terms restrict republishing counts)."""
+    frames = []
+    for p in paths:
+        d = pd.read_excel(p)
+        d.columns = [c.strip().upper() for c in d.columns]
+        frames.append(d[["WEEK", "COUNTRY", "SUB_EVENT_TYPE", "EVENTS"]])
+    d = pd.concat(frames, ignore_index=True)
+    d["year"] = pd.to_datetime(d["WEEK"]).dt.year
+    d["code_id"] = d["SUB_EVENT_TYPE"].map(ACLED_SUBEVENT_TO_CODE)
+    d = d[d["code_id"].notna()].copy()
+    d["code_id"] = d["code_id"].astype(int)
+    d["iso3"] = d["COUNTRY"].map(to_iso3)
+    d = d[d["iso3"].notna()]
+    g = (d.groupby(["iso3", "code_id", "SUB_EVENT_TYPE"], as_index=False)
+           .agg(events=("EVENTS", "sum"), first=("year", "min"), last=("year", "max")))
+    out = {}
+    for r in g.itertuples(index=False):
+        out.setdefault(r.iso3, {}).setdefault(str(r.code_id), []).append(
+            dict(sub=r.SUB_EVENT_TYPE, events=int(r.events), first=int(r.first), last=int(r.last)))
+    for iso in out:
+        for code in out[iso]:
+            out[iso][code].sort(key=lambda x: -x["events"])
+    with open(out_path, "w") as fh:
+        json.dump(out, fh)
+    return out
+
+
 # ============================================================ 2. IDMC GIDD
 # The single most valuable source here: it reports how many people were
 # ACTUALLY DISPLACED, attributed to a cause, at event level with coordinates.
@@ -312,8 +345,12 @@ def recognition_rate_by_origin(dec, years=(2015, 2030)):
 def main():
     import glob
     print("ACLED ...")
-    acled = load_acled(sorted(glob.glob(os.path.join(UP, "*aggregated_data*.xlsx"))))
+    acled_files = sorted(glob.glob(os.path.join(UP, "*aggregated_data*.xlsx")))
+    acled = load_acled(acled_files)
     print(f"  {len(acled):,} rows, {acled.iso3.nunique()} countries")
+    os.makedirs(TIDY_S, exist_ok=True)
+    sub = acled_subevents(acled_files, os.path.join(TIDY_S, "acled_subevents.json"))
+    print(f"  sub-event kinds per country and code: {len(sub)} countries")
 
     print("IDMC ...")
     # IDMC's export filenames carry a per-download hash prefix, so pinning one
