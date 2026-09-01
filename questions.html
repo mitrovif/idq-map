@@ -152,6 +152,22 @@ h2{font-size:15px;margin:28px 0 2px;font-weight:640}
  flex-wrap:wrap}
 .modwhy{font-size:11.5px;color:var(--m);flex-basis:100%;margin-left:22px}
 .modhint{font-size:12px;color:var(--m);margin:10px 0 0;max-width:72ch}
+/* ---- Apply card: two localisation versions on the FrcFl form styling ---- */
+.applysec{margin-top:18px}
+.applysec[hidden]{display:none}
+.aver{margin:16px 0 0;padding-top:12px;border-top:1px dotted var(--g)}
+.avertag{font-family:ui-sans-serif,-apple-system,sans-serif;font-size:10.5px;font-weight:700;
+ text-transform:uppercase;letter-spacing:.06em;color:var(--m);display:block;margin-bottom:5px}
+.avertag b{color:var(--a)}
+.aprobe{margin:0 0 5px;font-style:italic}
+.aprobe .eg{font-style:normal;font-weight:600}
+.form .gloss,.form .why{font-family:ui-sans-serif,-apple-system,sans-serif}
+.form .specimens{margin-top:6px}
+.form .spec-head{margin-top:12px}
+.ainstr{font-family:ui-sans-serif,-apple-system,sans-serif;font-size:12.5px;line-height:1.5;
+ color:var(--i2);border-top:1px dotted var(--g);margin-top:16px;padding-top:12px}
+.ainstr b{color:var(--i)}
+.form ol.opts.aopts{margin-top:14px}
 /* ---- download toolbar ------------------------------------------------- */
 .dlbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:16px 0 4px;
  font-family:ui-sans-serif,-apple-system,sans-serif}
@@ -272,6 +288,18 @@ definition of "forced to flee". Only drafted in English so far; pick English to 
 <div class="form" id="form"></div>
 <div class="warn" id="warn"></div>
 
+<!-- The Apply item as its own localisable card, same shape as the forced-to-flee
+     form above: fixed stem, and only the blue example varies by country. Two
+     localisation versions are shown - A names the office (the paper's version),
+     B names the document (proposed after the paper), with the document's
+     specimen as a show card. Hidden when the IRRS/refugee framework is switched
+     off in the picker below, since Apply serves refugee identification. -->
+<div class="applysec" id="applysec">
+<div class="form" id="applyform"></div>
+<div class="warn" id="regwarn" style="display:none"></div>
+<div class="cav" id="regcav" style="display:none"></div>
+</div>
+
 <div class="regcard" id="regcard">
 <h2>International protection &amp; displacement module</h2>
 <p class="sub">The rest of the combined refugee/IDP module Joanna d&rsquo;Ardenne&rsquo;s
@@ -295,9 +323,6 @@ sub-category and can be switched on or off.</p>
 </div>
 <span class="badges" id="regbadges"></span>
 <div class="regform" id="regform"></div>
-<div class="warn" id="regwarn" style="display:none"></div>
-<div class="cav" id="regcav" style="display:none"></div>
-<div class="specimens" id="regspecimens"></div>
 <p class="pmiss" id="regmiss" style="display:none">No drafted registration example for
 this country yet.</p>
 <button class="help" id="regnotesbtn">Read this before using it</button>
@@ -807,11 +832,82 @@ function buildFrontChain(){
  return h;
 }
 
+// The Apply item on its own card, styled exactly like the forced-to-flee form:
+// the stem never changes, only the blue example does. Two versions of that
+// example are drafted side by side - A names the OFFICE (the wording in the
+// paper), B names the DOCUMENT (proposed after the paper was written), with
+// the document's specimen shown as a show card under B when one is sourced.
+// The card follows the IRRS/refugee framework checkbox: Apply serves refugee
+// identification, so it is hidden when only IDPs are being identified.
+function renderApply(iso,v){
+ const sec=document.getElementById('applysec'), f=document.getElementById('applyform');
+ const hostName=(Q[iso]&&Q[iso].name)||(v&&v.c)||iso;
+ sec.hidden=!FW.refugee;
+ const head=`<div class="fhead"><span class="fitem">Apply</span>`+
+  `<span class="fask">{Ask if any valid reason to flee was coded and FleeCross = Yes}</span>`+
+  `<span class="fcountry">${esc(hostName)}</span></div>`+
+  `<p class="stem"><b>Did you ever apply for international protection, such as refugee status?</b></p>`;
+ const opts=`<ol class="opts aopts">`+
+  `<li><span class="box"></span><span class="num">1</span><span class="otext">Yes `+
+  `<span class="more">&rarr; go to Outcome</span></span></li>`+
+  `<li><span class="box"></span><span class="num">2</span><span class="otext">No `+
+  `<span class="more">${itemActive("intapply")?"&rarr; go to IntApply":""}</span></span></li></ol>`;
+ if(!v){
+  f.innerHTML=head+`<p class="pmiss">No drafted localisation example for this country yet &mdash; `+
+   `the question is asked as written, without an example.</p>`+opts;
+  return;
+ }
+ if(v.reg==="NONE"){
+  f.innerHTML=head+`<p class="pmiss">No registration or international-protection procedure exists `+
+   `in this country &mdash; the Apply / IntApply / Outcome sequence does not apply here.</p>`+opts;
+  return;
+ }
+ const gloss=(local,colloq)=>{
+  const bits=[local?`<i>${esc(local)}</i> in local language`:null,
+              colloq?`commonly called &ldquo;${esc(colloq)}&rdquo;`:null].filter(Boolean);
+  return bits.length?`<div class="gloss">${bits.join(" &middot; ")}</div>`:"";};
+ // Version A - office
+ let a=`<div class="aver"><span class="avertag">Version <b>A</b> &middot; the office &middot; as in the paper</span>`;
+ if(v.org){
+  a+=`<p class="aprobe">For example, did you go to an office like <span class="eg">${esc(v.org)}</span> to register?</p>`;
+  a+=gloss(v.orgL,null);
+  if(v.alt&&v.alt.length) a+=`<div class="why">Also seen: ${esc(v.alt.join("; "))}</div>`;
+  if(v.ow) a+=`<div class="why">${esc(v.ow)}</div>`;
+ }else{
+  a+=`<p class="pmiss">Cannot be worded here &mdash; no office a respondent would have gone to is named.`+
+     (v.how?` ${esc(v.how)}`:``)+`</p>`;
+ }
+ a+=`</div>`;
+ // Version B - document
+ const docName=v.da||v.dr, docLocal=v.da?v.daL:v.drL, docColloq=v.da?v.daC:v.drC;
+ let b=`<div class="aver"><span class="avertag">Version <b>B</b> &middot; the document &middot; proposed after the paper</span>`;
+ if(docName){
+  b+=`<p class="aprobe">For example, did you apply for a document like <span class="eg">${esc(docName)}</span>?</p>`;
+  b+=gloss(docLocal,docColloq);
+  if(v.da&&v.dr&&v.dr!==v.da) b+=`<div class="why">On recognition, this becomes: ${esc(v.dr)}`+
+    `${v.drC?` (&ldquo;${esc(v.drC)}&rdquo;)`:""}</div>`;
+  if(v.dw) b+=`<div class="why">${esc(v.dw)}</div>`;
+  b+=`<div class="specimens" id="regspecimens">${renderSpecimenHTML(iso,v)}</div>`;
+ }else{
+  b+=`<p class="pmiss">Cannot be worded here &mdash; no document, card or certificate is named for this country.`+
+     (v.dw?` ${esc(v.dw)}`:``)+`</p>`;
+ }
+ b+=`</div>`;
+ const instr=`<div class="ainstr"><b>Interviewer instructions.</b> Read the question as written, then `+
+  `<b>one</b> example. Version A names where the claim is lodged &mdash; never the body that decides it. `+
+  `Version B names the document the claim produces, which respondents often recall better than the office, `+
+  `and which the Legal item later asks about; where a specimen is shown, it can be used as a show card. `+
+  (v.mis?`In this country the office framing is known to misfire (see the note below), so prefer Version B. `:``)+
+  `The stem and the response options never change between countries.</div>`;
+ f.innerHTML=head+`<p class="lead">Localisation example &mdash; two versions</p>`+a+b+opts+instr;
+}
+
 function renderReg(iso){
  const v=REG[iso];
  const badges=document.getElementById('regbadges'), form=document.getElementById('regform'),
        warn=document.getElementById('regwarn'), cav=document.getElementById('regcav'),
-       miss=document.getElementById('regmiss'), specBox=document.getElementById('regspecimens');
+       miss=document.getElementById('regmiss');
+ renderApply(iso,v);
  miss.style.display="none";form.style.display="";
  const legalHTML=itemActive("legal")?OPT_ITEM_HTML.legal:"";
  if(!v){
@@ -821,7 +917,7 @@ function renderReg(iso){
    `<div class="pmiss">No drafted registration/international-protection example `+
    `for this country yet &mdash; the question itself still applies, just without a `+
    `localised example.</div></div>`+legalHTML;
-  warn.style.display="none";cav.style.display="none";specBox.innerHTML="";
+  warn.style.display="none";cav.style.display="none";
   return;
  }
  badges.innerHTML=
@@ -833,7 +929,7 @@ function renderReg(iso){
    `<div class="pmiss">No registration or international-protection procedure exists `+
    `in this country &mdash; the Apply / IntApply / Outcome sequence does not apply `+
    `here.</div></div>`+legalHTML;
-  warn.style.display="none";cav.style.display="none";specBox.innerHTML="";
+  warn.style.display="none";cav.style.display="none";
   return;
  }
  const glossLine=(local,colloq)=>{
@@ -899,7 +995,6 @@ function renderReg(iso){
   if(cols)cav.innerHTML+=`<br><b>Colour names in use:</b> ${esc(cols)}`;
  }else if(cols){cav.style.display="";cav.innerHTML=`<b>Colour names in use:</b> ${esc(cols)}`;
  }else{cav.style.display="none";}
- specBox.innerHTML=renderSpecimenHTML(iso,v);
 }
 
 // "What it looks like" - a picture of the actual document, for interviewer
@@ -1029,6 +1124,13 @@ ol.opts li{padding:4pt 0;border-bottom:0.5pt dotted #dde1e8}
 .modq-cats{margin-top:6pt}
 .modq-cathead{font-size:8pt;text-transform:uppercase;letter-spacing:.04em;color:#8b93a8;font-weight:700;margin:6pt 0 1pt}
 .modq-catopt{font-size:10pt;margin:1pt 0 1pt 3pt}
+.aver{margin:12pt 0 0;padding-top:8pt;border-top:0.5pt dotted #dde1e8}
+.avertag{display:block;font-size:8.5pt;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8b93a8;margin-bottom:3pt}
+.avertag b{color:#3b71b9}
+.aprobe{font-family:Georgia,serif;font-style:italic;margin:0 0 3pt}
+.aprobe .eg{font-style:normal;font-weight:700}
+.ainstr{font-size:9.5pt;color:#5a6884;border-top:0.5pt dotted #dde1e8;margin-top:12pt;padding-top:8pt}
+.aopts{margin-top:10pt}
 `;
 
 function buildExportHTML(iso){
@@ -1043,20 +1145,28 @@ function buildExportHTML(iso){
  const regWarnHTML=(regWarnEl&&regWarnEl.style.display!=="none")?regWarnEl.innerHTML:"";
  const regCavEl=document.getElementById('regcav');
  const regCavHTML=(regCavEl&&regCavEl.style.display!=="none")?regCavEl.innerHTML:"";
- const specHTML=stripImgs(document.getElementById('regspecimens').innerHTML);
+ const applySec=document.getElementById('applysec');
+ const applyHTML=applySec.hidden?"":stripImgs(document.getElementById('applyform').innerHTML);
 
  let h=`<!DOCTYPE html><html><head><meta charset="utf-8">`+
   `<title>${esc(v.name)} — questionnaire</title><style>${EXPORT_CSS}</style></head><body>`;
  h+=`<h1>${esc(v.name)}</h1>`+
   `<p class="lede">Forced-to-flee question, ${esc(lenName)} length, ${esc(langName)}. `+
-  `The response options never change &mdash; only the examples, localised for this country.</p>`;
+  `The response options never change &mdash; only the examples, localised for this country. `+
+  `The Apply item follows with its two localisation versions, then the rest of the module.</p>`;
  h+=`<h2>Forced to flee</h2><div class="fform">${formHTML}</div>`;
  if(warnHTML) h+=`<div class="warn">${warnHTML}</div>`;
+ if(applyHTML){
+  h+=`<h2>Apply &mdash; international protection, localised</h2><div class="fform">${applyHTML}</div>`;
+  if(regWarnHTML) h+=`<div class="warn">${regWarnHTML}</div>`;
+  if(regCavHTML) h+=`<div class="cav">${regCavHTML}</div>`;
+ }
  h+=`<h2>International protection &amp; displacement module</h2><div class="badges">${regBadgesHTML}</div>`+
   `<div class="regform">${regFormHTML}</div>`;
- if(regWarnHTML) h+=`<div class="warn">${regWarnHTML}</div>`;
- if(regCavHTML) h+=`<div class="cav">${regCavHTML}</div>`;
- if(specHTML) h+=specHTML;
+ if(!applyHTML){
+  if(regWarnHTML) h+=`<div class="warn">${regWarnHTML}</div>`;
+  if(regCavHTML) h+=`<div class="cav">${regCavHTML}</div>`;
+ }
  h+=`<p><small class="gen-note">Generated ${new Date().toISOString().slice(0,10)} from the EGRISS `+
   `identification-questions dataset. Translations are unreviewed drafts; a specimen document `+
   `listed above has not been visually verified &mdash; confirm before fielding.</small></p>`;
