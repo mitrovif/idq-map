@@ -596,8 +596,14 @@ select,.bar button{font:inherit;font-size:13.5px;padding:8px 12px;border-radius:
  border:1px solid var(--g);background:var(--s);color:var(--i);cursor:pointer}
 select{min-width:250px}
 .bar button.on{background:var(--i);color:var(--p);border-color:var(--i)}
+.bar button:disabled{opacity:.4;cursor:default}
+.verhint{font-size:12px;color:var(--m);margin:-2px 0 6px;max-width:640px}
 .bar span.lbl{font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;
  color:var(--m);font-weight:680;margin-left:6px}
+.bar span.grp{font-size:11px;text-transform:uppercase;letter-spacing:.05em;
+ color:var(--m);font-weight:680;min-width:172px}
+@media(max-width:700px){.bar span.grp{min-width:0;width:100%}}
+.bar+.bar{margin-top:2px}
 /* ---- the form itself ---- */
 .form{background:var(--paper);border:1px solid var(--g);border-radius:4px;
  padding:34px 38px 30px;margin-top:14px;
@@ -702,6 +708,30 @@ h2{font-size:15px;margin:28px 0 2px;font-weight:640}
 .modq-opt .box{flex:0 0 auto;width:12px;height:12px;border:1.5px solid var(--i);
  border-radius:2px;margin-top:2px}
 .modq-arrow{margin-left:auto;font-size:11px;color:var(--m);white-space:nowrap}
+.modq-note{font-size:12.5px;color:var(--i2);margin:6px 0 0;max-width:72ch}
+.modq-list{margin:6px 0 0;padding-left:18px;font-size:12.5px;color:var(--i2)}
+.modq-list li{margin-bottom:3px}
+.modq-softcheck{color:var(--m);font-style:italic}
+.modq-cats{margin-top:8px}
+.modq-cathead{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;
+ color:var(--m);font-weight:680;margin:8px 0 2px}
+.modq-catopt{font-size:13.5px;margin:2px 0 2px 4px}
+.modpicker{background:color-mix(in srgb,var(--a) 5%,transparent);
+ border:1px solid color-mix(in srgb,var(--a) 22%,var(--g));border-radius:8px;
+ padding:12px 15px 14px;margin:0 0 16px}
+.modpicker .sectitle{font-family:ui-sans-serif,-apple-system,sans-serif;font-size:11px;
+ text-transform:uppercase;letter-spacing:.06em;color:var(--m);font-weight:680;margin:0 0 8px}
+.modfw{display:flex;gap:18px;flex-wrap:wrap;margin-bottom:8px;
+ font-family:ui-sans-serif,-apple-system,sans-serif;font-size:13.5px}
+.modfw label{display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:600}
+.modgrouptitle{font-family:ui-sans-serif,-apple-system,sans-serif;font-size:11px;
+ text-transform:uppercase;letter-spacing:.05em;color:var(--a);font-weight:680;
+ margin:10px 0 4px}
+.moditem{display:flex;align-items:baseline;gap:7px;cursor:pointer;
+ font-family:ui-sans-serif,-apple-system,sans-serif;font-size:13px;margin:3px 0;
+ flex-wrap:wrap}
+.modwhy{font-size:11.5px;color:var(--m);flex-basis:100%;margin-left:22px}
+.modhint{font-size:12px;color:var(--m);margin:10px 0 0;max-width:72ch}
 /* ---- download toolbar ------------------------------------------------- */
 .dlbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:16px 0 4px;
  font-family:ui-sans-serif,-apple-system,sans-serif}
@@ -750,7 +780,7 @@ button.help.on{border-style:solid}
 .pop.on{background:var(--a);color:#fff;border-color:var(--a)}
 .pop.nodata{border-style:dashed}
 .pophint{font-size:12px;color:var(--m);margin:9px 0 0;max-width:640px}
-@media print{body{background:#fff}.bar,select,h1,p.lede,h2,table,.warn,.dlbar{display:none}
+@media print{body{background:#fff}.bar,select,h1,p.lede,h2,table,.warn,.dlbar,.modpicker,.verhint{display:none}
  .form{box-shadow:none;border:0;padding:0}}
 @media(max-width:700px){.form{padding:22px 18px}select{min-width:0;width:100%}}
 </style>
@@ -788,12 +818,23 @@ respondents depend on.</p>
 </div>
 
 <div class="bar">
+  <span class="grp">Country &amp; area</span>
   <select id="pick"></select>
   <span class="lbl">Level</span>
   <select id="lvl"></select>
 </div>
 <div class="bar">
-  <span class="lbl">Length</span>
+  <span class="grp">Which version of the question</span>
+  <button class="ver on" data-v="3">Long</button>
+  <button class="ver" data-v="2">Mid-length</button>
+  <button class="ver" data-v="1">Shortest</button>
+</div>
+<p class="verhint" id="verhint" style="display:none">Shortest and Mid-length are the
+other two official variants from the question-testing document — each merges some of
+the Long version's options into broader categories, and Mid-length uses an alternate
+definition of "forced to flee". Only drafted in English so far; pick English to use them.</p>
+<div class="bar">
+  <span class="grp">Format &amp; language</span>
   <button class="len on" data-l="read_out">Read aloud</button>
   <button class="len" data-l="showcard">Showcard</button>
   <span class="lbl">Language</span>
@@ -812,14 +853,26 @@ respondents depend on.</p>
 <div class="warn" id="warn"></div>
 
 <div class="regcard" id="regcard">
-<h2>International protection module</h2>
-<p class="sub">A separate module in the same instrument, following the wording
-Joanna d&rsquo;Ardenne&rsquo;s revised module proposes: <b>Apply</b> asks whether
-the respondent ever applied for international protection, with a country-specific
-localisation example; <b>IntApply</b> follows if they never applied, asking whether
-they ever planned to; <b>Outcome</b> follows if they did apply, asking what became
-of it. The response options are fixed across countries &mdash; only the
-localisation example changes.</p>
+<h2>International protection &amp; displacement module</h2>
+<p class="sub">The rest of the combined refugee/IDP module Joanna d&rsquo;Ardenne&rsquo;s
+revision proposes, following the paper's own &ldquo;short and long form&rdquo; item
+table: a handful of items &mdash; Forced to flee, Location of displacement, Whether ever
+crossed a border, Applied for protection, Outcome &mdash; are always needed for baseline
+classification and shown by default below. Everything else unlocks one specific
+sub-category and can be switched on or off.</p>
+<button class="help" id="modpickerbtn">Customise which items are included</button>
+<div class="modpicker" id="modpicker" hidden>
+ <p class="sectitle">Which populations do you need to identify?</p>
+ <div class="modfw">
+  <label><input type="checkbox" id="fwIdp" checked> Identify IDPs (IRIS framework)</label>
+  <label><input type="checkbox" id="fwRef" checked> Identify refugees (IRRS framework)</label>
+ </div>
+ <div id="moditems"></div>
+ <p class="modhint">Core items &mdash; Forced to flee, Location of displacement, Whether
+ ever crossed a border, Applied for protection, Outcome &mdash; are always included below;
+ they're needed either way. Each item above adds one specific sub-category, named the way
+ the paper names it, with its own rationale for review.</p>
+</div>
 <span class="badges" id="regbadges"></span>
 <div class="regform" id="regform"></div>
 <div class="warn" id="regwarn" style="display:none"></div>
@@ -899,7 +952,38 @@ const CODES=[1,2,3,4,5,6,7,8];
 const LBL={1:"1. Armed conflict",2:"2. Widespread violence",3:"3. Persecution",
  4:"4. HR violations",5:"5. Other violence",6:"6. Natural disasters",
  7:"7. Man-made events",8:"8. A different threat"};
-let LEN="read_out", LANG=null, ADM=-1, POP=null;   // POP: index into v.populations, or null (= national/default)
+let LEN="read_out", LANG=null, ADM=-1, POP=null, VER=3;   // POP: index into v.populations, or null (= national/default)
+// VER: which of the three official FrcFl variants from "Question Variants for
+// Cognitive interviewing.docx" is shown — 3 (Long, today's 9-line version, the
+// only one with per-language translations) is the default; 1 (Shortest) and 2
+// (Mid-length, alternate definition) merge several Long options into broader
+// categories and are drafted in English only, so picking a non-English language
+// forces VER back to 3 (see buildLangs()).
+const VERSION_DEFS={
+ 1:{label:"Shortest",
+  stem2:"By this we mean leaving a home, or land, due to events that posed a "+
+        "threat to you or your family's safety.",
+  buckets:[
+   {label:"Threat of <b>armed conflict</b> or <b>widespread violence</b>", codes:[1,2]},
+   {label:"Threat of <b>persecution</b> or <b>human rights violation</b>", codes:[3,4]},
+   {label:"<b>Natural</b> or <b>man-made disaster</b>", codes:[6,7]},
+   {label:"A <b>different threat</b> to your safety", codes:[8], specify:true},
+  ]},
+ 2:{label:"Mid-length",
+  stem2:"By this we mean being unable to continue to live in an area due to "+
+        "risks to you or your family.",
+  buckets:[
+   {label:"Threat of <b>armed conflict</b> or <b>widespread violence</b>", codes:[1,2]},
+   {label:"Threat of <b>persecution</b>", codes:[3],
+    generic:"due to your background, religion or political beliefs"},
+   {label:"Threat of <b>human rights violation</b>", codes:[4], generic:"detention, torture"},
+   {label:"<b>Natural disasters</b>", codes:[6],
+    generic:"floods, droughts, landslides, earthquakes, hurricanes"},
+   {label:"<b>Man-made events</b>", codes:[7],
+    generic:"eviction for infrastructure projects, pollution events"},
+   {label:"A <b>different threat</b> to your safety", codes:[8], specify:true},
+  ]},
+};
 const sel=document.getElementById('pick'), lvl=document.getElementById('lvl');
 function fmtN(n){
  n=+n||0;
@@ -917,7 +1001,27 @@ function buildLangs(){
   .map(([k,v])=>`<button class="lang${k===LANG?' on':''}" data-k="${k}">${v[0]}</button>`)
   .join(" ");
  document.querySelectorAll('.lang').forEach(b=>b.addEventListener('click',()=>{
-  LANG=b.dataset.k; buildLangs(); render();}));}
+  LANG=b.dataset.k; syncVerButtons(); buildLangs(); render();}));
+ syncVerButtons();}
+
+// Shortest/Mid-length (VER 1/2) are English-only drafts (see VER's comment) —
+// disabled rather than hidden when another language is picked, so it's obvious
+// they exist without silently mixing an English question structure into a
+// non-English preview. Also the single place that enforces "VER can only be
+// 1 or 2 when LANG is English" — called from every path that changes either
+// (pickCountry, the language buttons, and the version buttons themselves) so
+// render() never has to re-check the invariant itself.
+function syncVerButtons(){
+ const enOnly=LANG!=="en";
+ if(enOnly)VER=3;
+ document.querySelectorAll('.ver').forEach(b=>{
+  const isEn3=b.dataset.v==="3";
+  b.disabled=enOnly&&!isEn3;
+  b.classList.toggle('on',+b.dataset.v===VER);});
+ document.getElementById('verhint').style.display=enOnly?"":"none";}
+document.querySelectorAll('.ver').forEach(b=>b.addEventListener('click',()=>{
+ if(b.disabled)return;
+ VER=+b.dataset.v; syncVerButtons(); render();}));
 
 function buildLevels(v){
  lvl.innerHTML=`<option value="-1">Whole country</option>`+
@@ -954,6 +1058,50 @@ function optsListHTML(data, lang, t, lim, region){
     `<span class="otext">${esc(t.none)} <span class="excl">${esc(t.excl)}</span>`+
     `</span></li></ol>`;
  return h;}
+
+// Looks up one Long-form code's examples the same way optsListHTML does (region
+// override, else the country/population's own form data) — shared so Shortest/
+// Mid-length can pool several codes' real examples into one merged bucket rather
+// than duplicating the lookup.
+function codeItems(data, region, code){
+ if(region&&region.ex[String(code)])
+  return {items:region.ex[String(code)].map(e=>e.text), real:true};
+ const row=(data.form||[]).find(x=>x.code===code);
+ if(row&&row.n)
+  return {items:row.eg, real:(data.localised||[]).includes(code)};
+ return {items:[], real:false};
+}
+
+// Shortest/Mid-length variants (VER 1/2) — English only (see VER's comment).
+// Each bucket merges one or more Long-form codes; real examples from every
+// merged code are pooled, falling back to the bucket's own generic text (from
+// the question-testing document) only when none of them have real evidence.
+function versionOptsHTML(data, lim, region){
+ const def=VERSION_DEFS[VER];
+ let h=`<ol class="opts">`, nReal=0, nBeyond=0;
+ def.buckets.forEach((b,i)=>{
+  let items=[];
+  b.codes.forEach(code=>{
+   const r=codeItems(data, region, code);
+   if(r.real) items=items.concat(r.items);
+  });
+  let eg="", generic=false;
+  if(items.length){
+   nReal++;
+   const use=items.slice(0,lim), more=items.length-use.length;
+   nBeyond+=Math.max(0,more);
+   eg=` <span class="eg"><span class="lab">e.g.</span> ${esc(use.join(", "))}</span>`+
+      (more?` <span class="more">+${more} more recorded</span>`:``);
+  } else if(b.generic){
+   generic=true;
+   eg=` <span class="eg gen"><span class="lab">e.g.</span> ${esc(b.generic)}</span>`;
+  }
+  h+=`<li><span class="box"></span><span class="num">${i+1}</span>`+
+     `<span class="otext">${b.label}${b.specify?" [SPECIFY]":""}${eg}</span></li>`;});
+ h+=`<li><span class="box"></span><span class="num">99</span>`+
+    `<span class="otext">None of the above <span class="excl">[EXCLUSIVE CODE]</span>`+
+    `</span></li></ol>`;
+ return {html:h, nBuckets:def.buckets.length, nReal, nBeyond};}
 
 // Population radio buttons — national/IDP + each major refugee-origin population
 // hosted here, as computed in build_questions.py's "hosted populations" block.
@@ -1003,14 +1151,16 @@ function render(){
    `own examples in place of ${esc(v.name)}&rsquo;s</div>`
   :`<div class="custombanner">No country-specific examples are available for `+
    `${esc(pop.name)} yet &mdash; showing the questionnaire&rsquo;s generic wording only.</div>`;
+ const stem2=VER===3?t.stem2:VERSION_DEFS[VER].stem2;
  let h=banner+`<div class="fhead"><span class="fitem">${t.item}</span>`+
    `<span class="fask">${esc(t.ask)}</span>`+
    `<span class="fcountry">${esc(v.name)}${region?" · "+esc(region.name):""}`+
    `${usingPop?" · "+esc(pop.name):""}</span></div>`+
-   `<p class="stem">${t.stem1}</p><p class="stem">${t.stem2}</p>`+
+   `<p class="stem">${t.stem1}</p><p class="stem">${stem2}</p>`+
    `<p class="lead">${esc(t.lead)}</p>`+
    `<div class="instr">${esc(t.instr)}</div>`;
- h+=optsListHTML(data, LANG, t, lim, region);
+ const verResult=VER===3?null:versionOptsHTML(data, lim, region);
+ h+=VER===3?optsListHTML(data, LANG, t, lim, region):verResult.html;
  f.innerHTML=h;
 
  const provIso=usingPop?dataIso:iso;
@@ -1018,8 +1168,9 @@ function render(){
  const miss=rows.filter(r=>r.kind==="generic"||r.kind==="none").length;
  document.getElementById('warn').innerHTML=(usingPop&&!dataIso)?
   `<b>No source data exists yet for ${esc(pop.name)} in this pipeline.</b> `+
-  `All 8 options show the questionnaire's generic wording, the same as any `+
+  `All options show the questionnaire's generic wording, the same as any `+
   `country this project hasn't reached.`:
+  VER===3?(
   `<b>${data.n_localised} of 7 options carry country-specific examples, `+
   `${data.n_available} in total.</b> ${miss} still use the questionnaire's generic `+
   `wording or none at all. `+
@@ -1028,7 +1179,16 @@ function render(){
   (!usingPop?((v.adm1&&v.adm1.length)?`<b>${v.adm1.length} subnational sets</b> differ from the `+
     `national one and are in the Level menu. `:`No subnational set differs enough from `+
     `the national one to be worth showing. `):``)+
-  (LANG!=="en"?`<b>The ${LANGS[LANG][0]} text is an unreviewed draft translation.</b>`:``);
+  (LANG!=="en"?`<b>The ${LANGS[LANG][0]} text is an unreviewed draft translation.</b>`:``)
+  ):(
+  `<b>${verResult.nReal} of ${verResult.nBuckets} options carry country-specific `+
+  `examples</b> once the Long version's options are merged into ${VERSION_DEFS[VER].label}'s `+
+  `broader categories. ${verResult.nBuckets-verResult.nReal} use generic wording or none at all. `+
+  (verResult.nBeyond?`<b>${verResult.nBeyond} more examples are recorded</b> than belong in a `+
+    `read-aloud list — the showcard length includes them. `:``)+
+  `<b>${VERSION_DEFS[VER].label} is drafted in English only</b> — the official variant from `+
+  `the question-testing document, not yet translated.`
+  );
  document.querySelector('#prov tbody').innerHTML=rows.map(r=>
   `<tr><td>${LBL[r.code_id]||r.code_id}</td><td>${esc(r.example||"—")}</td>`+
   `<td><span class="k k-${r.kind}">${r.kind}</span></td><td>${r.source||"—"}</td>`+
@@ -1040,22 +1200,219 @@ function render(){
 // only the selected country matters. Same probe-card structure as
 // build_protection.py's own per-country render(), inlined here instead of on
 // a separate page. See protection.py for what v1/v2/registrar/confidence mean.
+// The optional items in the combined refugee/IDP module, from "Review of
+// Existing Measures_JD (1).docx"'s "Short and long form versions of module"
+// table — each one's `why` is that table's own rationale for keeping it.
+// FrcFl, FleeLoc, FleeCross, Apply and Outcome are core (Table X: "Yes") and
+// always render; everything here is optional (Table X: "No") and gated by its
+// own checkbox, grouped under whichever framework(s) it unlocks a sub-category
+// for. None of these carry country-specific localisation the way Apply does —
+// the wording is fixed, so they render identically for every country.
+const OPT_ITEMS=[
+ {key:"frcoth", group:"shared", label:"Other/uncoded reasons for fleeing (FrcOth)",
+  why:"More detailed reasons for fleeing, more room to localise examples and valid "+
+      "codes, and a check against false positives."},
+ {key:"idploc", group:"idp", label:"Location of displacement vs. return (IDPLoc)",
+  why:"Sub-categorises IDPs into location of displacement and location of return."},
+ {key:"idppost", group:"idp", label:"Location of displacement vs. other settlement (IDPPost)",
+  why:"Sub-categorises IDPs into location of displacement or location of other settlement."},
+ {key:"locliv", group:"idp", label:"Citizenship at time of displacement (LocLiv / CitLoc)",
+  why:"Needed in some form to classify IDP stocks &mdash; can be dropped if citizenship "+
+      "is already captured elsewhere in the survey."},
+ {key:"mnths12", group:"shared", label:"Length of time stayed abroad (12Mnths)",
+  why:"Sub-categorises IDPs into a returning-migrant category, and distinguishes "+
+      "citizens returning post-migration from refugees."},
+ {key:"intapply", group:"refugee", label:"Prospective asylum seekers (IntApply)",
+  why:"Needed for the refugee sub-category &lsquo;prospective asylum seeker.&rsquo;"},
+ {key:"legal", group:"refugee", label:"Type of protection / naturalised former refugees (Legal)",
+  why:"Distinguishes temporary, complementary and permanent protection, and identifies "+
+      "naturalised former refugees (those who now hold citizenship)."},
+];
+let ITEMS={frcoth:true, idploc:true, idppost:true, locliv:true, mnths12:true,
+           intapply:true, legal:true};
+let FW={idp:true, refugee:true};
+
+function buildModPicker(){
+ const groups=[["shared","Applies either way"],
+               ["idp","IDP identification (IRIS)"],
+               ["refugee","Refugee identification (IRRS)"]];
+ let h="";
+ groups.forEach(([g,title])=>{
+  if(g==="idp"&&!FW.idp)return;
+  if(g==="refugee"&&!FW.refugee)return;
+  const items=OPT_ITEMS.filter(it=>it.group===g);
+  if(!items.length)return;
+  h+=`<p class="modgrouptitle">${title}</p>`+items.map(it=>
+   `<label class="moditem"><input type="checkbox" class="moditem-cb" data-k="${it.key}" `+
+   `${ITEMS[it.key]?"checked":""}> ${it.label}<span class="modwhy">${it.why}</span></label>`
+  ).join("");
+ });
+ document.getElementById('moditems').innerHTML=h||
+  `<p class="modhint" style="margin-top:2px">Pick a framework above to see what it unlocks.</p>`;
+ document.querySelectorAll('.moditem-cb').forEach(cb=>cb.addEventListener('change',()=>{
+  ITEMS[cb.dataset.k]=cb.checked; renderReg(sel.value);}));
+}
+document.getElementById('fwIdp').addEventListener('change',e=>{
+ FW.idp=e.target.checked; buildModPicker(); renderReg(sel.value);});
+document.getElementById('fwRef').addEventListener('change',e=>{
+ FW.refugee=e.target.checked; buildModPicker(); renderReg(sel.value);});
+
+// Static (non-localised) modq blocks for the optional items — same wording for
+// every country, built once rather than per-render.
+const OPT_ITEM_HTML={
+ frcoth:`<div class="modq"><div class="modq-name">FrcOth</div>`+
+  `<div class="modq-skip">Ask if FrcFl = &ldquo;a different threat&rdquo;</div>`+
+  `<div class="modq-stem">What was the other threat to your safety that meant you `+
+  `had to leave a home?</div>`+
+  `<div class="modq-note">Open response, coded by the enumerator or in office &mdash; `+
+  `not read aloud. Localisation of examples and of which answers count as valid is `+
+  `permitted; the paper's own back-coding list:</div>`+
+  `<ul class="modq-list">`+
+  `<li>Risk of conscription or forced recruitment by armed groups `+
+  `<span class="modq-softcheck">recode into armed conflict/widespread violence at FrcFl</span></li>`+
+  `<li>Eviction <span class="modq-softcheck">mass evictions for infrastructure go to `+
+  `FrcFl; one-off evictions by landlords stay here</span></li>`+
+  `<li>Fear of violent crime</li><li>Political insecurity, public disorder or civil unrest</li>`+
+  `<li>Food insecurity or famine</li><li>Lack of medical facilities</li>`+
+  `<li>Family violence, forced marriage or domestic abuse</li>`+
+  `<li>Lack of employment opportunities</li>`+
+  `<li>Lack of local infrastructure e.g. schools, housing, sewage, electricity</li>`+
+  `<li>Marital, relationship or family breakdown</li><li>Other reason (specify)</li>`+
+  `</ul></div>`,
+ idploc:`<div class="modq"><div class="modq-name">IDPLoc</div>`+
+  `<div class="modq-skip">Ask if FleeLoc = Survey country</div>`+
+  `<div class="modq-stem">Tell me where you were living right before you were forced `+
+  `to flee home for the first time.</div>`+
+  `<div class="modq-note">Open response &mdash; village or town, county, province.</div></div>`,
+ locliv:`<div class="modq"><div class="modq-name">LocLiv</div>`+
+  `<div class="modq-skip">Ask if any valid reason to flee was coded</div>`+
+  `<div class="modq-stem">Before you fled this home, had you always lived in the `+
+  `country you fled from?</div>`+
+  `<div class="modq-opts">`+
+   `<div class="modq-opt"><span class="box"></span>1. Yes</div>`+
+   `<div class="modq-opt"><span class="box"></span>2. No<span class="modq-arrow">`+
+   `&rarr; go to CitLoc</span></div></div></div>`+
+  `<div class="modq"><div class="modq-name">CitLoc</div>`+
+  `<div class="modq-skip">Ask if LocLiv = No</div>`+
+  `<div class="modq-stem">Were you a citizen of that country when you fled your home `+
+  `there?</div>`+
+  `<div class="modq-opts">`+
+   `<div class="modq-opt"><span class="box"></span>1. Yes</div>`+
+   `<div class="modq-opt"><span class="box"></span>2. No</div></div></div>`,
+ idppost:`<div class="modq"><div class="modq-name">IDPPost</div>`+
+  `<div class="modq-skip">Ask if FleeLoc = Survey country and FleeCross = No</div>`+
+  `<div class="modq-stem">When you first fled your home, where did you move to first?</div>`+
+  `<div class="modq-note">Open response &mdash; village or town, county, province. `+
+  `Do not include short stays or stopovers.</div></div>`,
+ mnths12:`<div class="modq"><div class="modq-name">12Mnths</div>`+
+  `<div class="modq-skip">Ask if FleeCross = Yes</div>`+
+  `<div class="modq-stem">How long did you stay abroad after fleeing your home?</div>`+
+  `<div class="modq-opts">`+
+   `<div class="modq-opt"><span class="box"></span>1. Less than 12 months</div>`+
+   `<div class="modq-opt"><span class="box"></span>2. 12 months or more</div></div></div>`,
+ legal:`<div class="modq"><div class="modq-name">Legal</div>`+
+  `<div class="modq-skip">Ask all</div>`+
+  `<div class="modq-stem">Thinking about your current situation, what is the main `+
+  `document that allows you to stay in the survey country?</div>`+
+  `<div class="modq-note">Higher-order categories are fixed; the response options `+
+  `under each are localisable to the country's own visa/status categories &mdash; `+
+  `not yet drafted per country here.</div>`+
+  `<div class="modq-cats">`+
+   `<div class="modq-cathead">No documents</div><div class="modq-catopt">No documents</div>`+
+   `<div class="modq-cathead">Visas</div>`+
+   `<div class="modq-catopt">Tourist visa</div><div class="modq-catopt">Student visa</div>`+
+   `<div class="modq-catopt">Work visa</div><div class="modq-catopt">Humanitarian visa</div>`+
+   `<div class="modq-catopt">Family visa</div><div class="modq-catopt">Other visa (specify)</div>`+
+   `<div class="modq-cathead">International agreements</div>`+
+   `<div class="modq-catopt">Regional free movement agreement (e.g. Mercosur, EU, `+
+   `SADC, EAC, ECOWAS)</div>`+
+   `<div class="modq-cathead">Permanent residency and citizenship</div>`+
+   `<div class="modq-catopt">Permanent resident document</div>`+
+   `<div class="modq-catopt">[Survey country] passport</div>`+
+   `<div class="modq-catopt">Other document certifying [survey country] citizenship</div>`+
+   `<div class="modq-cathead">Protected status</div>`+
+   `<div class="modq-catopt">Asylum applicant document</div><div class="modq-catopt">Refugee</div>`+
+   `<div class="modq-catopt">Recognized stateless person document</div>`+
+   `<div class="modq-catopt">Complementary and subsidiary protection</div>`+
+   `<div class="modq-catopt">Temporary protection</div>`+
+   `<div class="modq-cathead">Enrolment document</div>`+
+   `<div class="modq-catopt">Enrolment document</div>`+
+   `<div class="modq-cathead">Other</div><div class="modq-catopt">Other (specify)</div>`+
+  `</div></div>`,
+};
+
+// FleeLoc/FleeCross are core (Table X: "Yes") — always rendered, never gated by
+// a checkbox, same as FrcFl/Apply/Outcome.
+const CORE_FLEELOC=`<div class="modq"><div class="modq-name">FleeLoc</div>`+
+ `<div class="modq-skip">Ask if any valid reason to flee was coded at FrcFl or FrcOth</div>`+
+ `<div class="modq-stem">In which country was the home you had to flee from?</div>`+
+ `<div class="modq-opts">`+
+  `<div class="modq-opt"><span class="box"></span>1. Survey country</div>`+
+  `<div class="modq-opt"><span class="box"></span>2. Other country [SPECIFY]</div>`+
+ `</div></div>`;
+const CORE_FLEECROSS=`<div class="modq"><div class="modq-name">FleeCross</div>`+
+ `<div class="modq-skip">Ask if any valid reason to flee was coded</div>`+
+ `<div class="modq-stem">After you fled your home did you ever move to another `+
+ `country, even if this was only temporary?</div>`+
+ `<div class="modq-opts">`+
+  `<div class="modq-opt"><span class="box"></span>1. Yes</div>`+
+  `<div class="modq-opt"><span class="box"></span>2. No</div>`+
+ `</div></div>`;
+
+// An optional item only actually renders when BOTH its own checkbox is ticked
+// AND the framework group it belongs to is still selected — unticking a
+// framework hides that group's checkboxes in the picker (buildModPicker), but
+// without this check their last checked state would silently keep rendering
+// them anyway.
+function itemActive(key){
+ const it=OPT_ITEMS.find(x=>x.key===key);
+ if(!it||!ITEMS[key]) return false;
+ if(it.group==="idp"&&!FW.idp) return false;
+ if(it.group==="refugee"&&!FW.refugee) return false;
+ return true;
+}
+
+// Assembles the fixed-wording part of the chain (everything except Apply/
+// IntApply/Outcome/Legal, which need REG[iso]'s data or are appended after)
+// in item order, honouring the current ITEMS picker state.
+function buildFrontChain(){
+ let h="";
+ if(itemActive("frcoth")) h+=OPT_ITEM_HTML.frcoth;
+ h+=CORE_FLEELOC;
+ if(itemActive("idploc")) h+=OPT_ITEM_HTML.idploc;
+ if(itemActive("locliv")) h+=OPT_ITEM_HTML.locliv;
+ h+=CORE_FLEECROSS;
+ if(itemActive("idppost")) h+=OPT_ITEM_HTML.idppost;
+ if(itemActive("mnths12")) h+=OPT_ITEM_HTML.mnths12;
+ return h;
+}
+
 function renderReg(iso){
  const v=REG[iso];
  const badges=document.getElementById('regbadges'), form=document.getElementById('regform'),
        warn=document.getElementById('regwarn'), cav=document.getElementById('regcav'),
        miss=document.getElementById('regmiss'), specBox=document.getElementById('regspecimens');
- if(!v){badges.innerHTML="";form.style.display="none";warn.style.display="none";
-  cav.style.display="none";specBox.innerHTML="";miss.style.display="";return;}
  miss.style.display="none";form.style.display="";
+ const legalHTML=itemActive("legal")?OPT_ITEM_HTML.legal:"";
+ if(!v){
+  badges.innerHTML="";
+  form.innerHTML=buildFrontChain()+
+   `<div class="modq"><div class="modq-name">Apply</div>`+
+   `<div class="pmiss">No drafted registration/international-protection example `+
+   `for this country yet &mdash; the question itself still applies, just without a `+
+   `localised example.</div></div>`+legalHTML;
+  warn.style.display="none";cav.style.display="none";specBox.innerHTML="";
+  return;
+ }
  badges.innerHTML=
   `<span class="badge b-reg">${esc(REGLABEL[v.reg]||v.reg)} registers claims</span>`+
   `<span class="badge b-cf-${v.cf}">${v.cf} confidence</span>`;
  if(v.reg==="NONE"){
-  form.innerHTML=`<div class="modq"><div class="modq-name">Apply</div>`+
+  form.innerHTML=buildFrontChain()+
+   `<div class="modq"><div class="modq-name">Apply</div>`+
    `<div class="pmiss">No registration or international-protection procedure exists `+
-   `in this country &mdash; the Apply / IntApply / Outcome sequence below does not `+
-   `apply here.</div></div>`;
+   `in this country &mdash; the Apply / IntApply / Outcome sequence does not apply `+
+   `here.</div></div>`+legalHTML;
   warn.style.display="none";cav.style.display="none";specBox.innerHTML="";
   return;
  }
@@ -1082,16 +1439,18 @@ function renderReg(iso){
    `${esc(v.dr)}${v.drC?` (&ldquo;${esc(v.drC)}&rdquo;)`:""}</div>`;
  if(v.dw) support+=`<div class="why">${esc(v.dw)}</div>`;
 
- let h=`<div class="modq"><div class="modq-name">Apply</div>`+
+ let h=buildFrontChain();
+ h+=`<div class="modq"><div class="modq-name">Apply</div>`+
+  `<div class="modq-skip">Ask if any valid reason to flee was coded and FleeCross = Yes</div>`+
   `<div class="modq-stem">Did you ever apply for international protection, such as refugee status?</div>`+
   (example?`<div class="modq-example">${esc(example)}</div>${support}`
           :`<div class="pmiss">&mdash; no localisation example can be drafted for this country.</div>`)+
   `<div class="modq-opts">`+
    `<div class="modq-opt"><span class="box"></span>1. Yes<span class="modq-arrow">&rarr; go to Outcome</span></div>`+
-   `<div class="modq-opt"><span class="box"></span>2. No<span class="modq-arrow">&rarr; go to IntApply</span></div>`+
+   `<div class="modq-opt"><span class="box"></span>2. No<span class="modq-arrow">${itemActive("intapply")?"&rarr; go to IntApply":""}</span></div>`+
   `</div></div>`;
 
- h+=`<div class="modq"><div class="modq-name">IntApply</div>`+
+ if(itemActive("intapply")) h+=`<div class="modq"><div class="modq-name">IntApply</div>`+
   `<div class="modq-skip">Ask if Apply = No</div>`+
   `<div class="modq-stem">Did you ever plan to apply for international protection, such as refugee status?</div>`+
   `<div class="modq-opts">`+
@@ -1109,6 +1468,7 @@ function renderReg(iso){
    `<div class="modq-opt"><span class="box"></span>4. I withdrew my application</div>`+
   `</div></div>`;
 
+ h+=legalHTML;
  form.innerHTML=h;
  if(v.mis){warn.style.display="";
   warn.innerHTML=`<b>The Apply localisation example likely needs rewording here.</b> ${esc(v.how)}`;
@@ -1176,6 +1536,7 @@ function panelToggle(btnId,panelId,openTxt,shutTxt){
   if(!h.hidden)h.scrollIntoView({behavior:"smooth",block:"nearest"});});}
 panelToggle('notesbtn','notespanel',"Show the full notes","Hide");
 panelToggle('regnotesbtn','regnotespanel',"Read this before using it","Hide");
+panelToggle('modpickerbtn','modpicker',"Customise which items are included","Hide");
 /* ---------------------------------------------------------------------
    Downloadable questionnaire + interviewer instructions — DOCX / PDF,
    built in the browser from the two forms currently on screen (the
@@ -1240,6 +1601,13 @@ ol.opts li{padding:4pt 0;border-bottom:0.5pt dotted #dde1e8}
 .spec-note{font-size:9.5pt;color:#5a6884}
 .spec-links a{font-size:9pt;color:#3b71b9;margin-right:10pt}
 .gen-note{color:#8b93a8;font-size:8.5pt}
+.modq-note{font-size:9pt;color:#5a6884;margin:5pt 0 0}
+.modq-list{margin:5pt 0 0;padding-left:14pt;font-size:9pt;color:#5a6884}
+.modq-list li{margin-bottom:2pt}
+.modq-softcheck{color:#8b93a8;font-style:italic}
+.modq-cats{margin-top:6pt}
+.modq-cathead{font-size:8pt;text-transform:uppercase;letter-spacing:.04em;color:#8b93a8;font-weight:700;margin:6pt 0 1pt}
+.modq-catopt{font-size:10pt;margin:1pt 0 1pt 3pt}
 `;
 
 function buildExportHTML(iso){
@@ -1263,7 +1631,7 @@ function buildExportHTML(iso){
   `The response options never change &mdash; only the examples, localised for this country.</p>`;
  h+=`<h2>Forced to flee</h2><div class="fform">${formHTML}</div>`;
  if(warnHTML) h+=`<div class="warn">${warnHTML}</div>`;
- h+=`<h2>International protection</h2><div class="badges">${regBadgesHTML}</div>`+
+ h+=`<h2>International protection &amp; displacement module</h2><div class="badges">${regBadgesHTML}</div>`+
   `<div class="regform">${regFormHTML}</div>`;
  if(regWarnHTML) h+=`<div class="warn">${regWarnHTML}</div>`;
  if(regCavHTML) h+=`<div class="cav">${regCavHTML}</div>`;
@@ -1363,6 +1731,7 @@ document.getElementById('pdfBtn').addEventListener('click',async()=>{
 // for X" -> questions.html?c=ISO3) -- preselects that country in place of the
 // NGA/first-country default, so the two pages actually connect instead of
 // each just restating what the other already showed.
+buildModPicker();
 const deepC=(new URLSearchParams(location.search).get('c')||"").toUpperCase();
 sel.value = (deepC && Q[deepC]) ? deepC : (Q["NGA"] ? "NGA" : Object.keys(Q)[0]);
 pickCountry();

@@ -416,6 +416,11 @@ h2{font-size:17px;margin:28px 0 4px;font-weight:620;letter-spacing:-.01em}
  padding:16px;margin-top:10px}
 .ctl{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:14px 0 0}
 .ctl[hidden]{display:none}
+/* A hairline between control groups so a page with several of them reads as a
+   stack of distinct settings rather than one long run of buttons. Replaces
+   .viewsw's own one-off border-bottom below, so there's a single consistent
+   rule regardless of which groups a given view shows. */
+.ctl+.ctl{border-top:1px solid var(--grid);padding-top:12px}
 button,select{font:inherit;font-size:13.5px;padding:7px 12px;border-radius:8px;
  border:1px solid var(--grid);background:var(--surface-1);color:var(--ink);cursor:pointer}
 button.on{background:var(--ink);color:var(--surface-1);border-color:var(--ink)}
@@ -432,7 +437,7 @@ button.on em{color:var(--surface-1);opacity:.72}
 :root[data-theme="dark"] .intbadge{color:#fab219}
 .intmsg{font-size:12.5px;color:var(--ink-2);line-height:1.5}
 @media(max-width:760px){#intbanner{flex-wrap:wrap}}
-.viewsw{margin-bottom:2px;padding-bottom:12px;border-bottom:1px solid var(--grid)}
+.viewsw{margin-bottom:2px}
 /* Marks "Registration wording" as a different item from the population/events
    pair before anyone clicks it, rather than reading as a third peer. */
 .viewsep{width:1px;align-self:stretch;background:var(--grid);margin:2px 2px}
@@ -744,10 +749,10 @@ recorded — the named storm, the named conflict. Scroll to zoom, drag to pan.</
 
 <div class="ctl viewsw">
   <span class="grp">What the map shows</span>
-  <button class="view on" data-v="pop">People displaced</button>
-  <button class="view" data-v="events">Events that happened</button>
+  <button class="view on" data-v="pop">People displaced<em>Forced-to-flee item</em></button>
+  <button class="view" data-v="events">Events that happened<em>Forced-to-flee item</em></button>
   <span class="viewsep" aria-hidden="true"></span>
-  <button class="view" data-v="prot">Registration wording<em>a different question</em></button>
+  <button class="view" data-v="prot">Registration wording<em>Apply item &mdash; a different question</em></button>
   <span class="findwrap">
     <input id="find" type="search" autocomplete="off" spellcheck="false"
            placeholder="Find a country &mdash; e.g. Chad" aria-label="Find a country">
