@@ -209,6 +209,13 @@ h2{font-size:15px;margin:28px 0 2px;font-weight:640}
 .moditem input{margin-top:2px}
 .modwhy{font-size:11.5px;color:var(--m);flex-basis:100%;margin-left:22px}
 .modadds{font-size:10px;color:var(--a);font-weight:700;letter-spacing:.02em;white-space:nowrap}
+.modgrp{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--m);font-weight:700;margin:8px 0 2px}
+.modgrp:first-of-type{margin-top:2px}
+.moditem.modcore,.moditem.modna{cursor:default}
+.moditem.modna .modlabel{color:var(--m)}
+.modtag{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:1px 5px;border-radius:3px;
+ background:color-mix(in srgb,var(--a) 14%,transparent);color:var(--a);white-space:nowrap;align-self:center}
+.modtag.na{background:transparent;border:1px dashed var(--g);color:var(--m);text-transform:none;letter-spacing:0;font-size:10px}
 .modcore,.modresult{font-family:ui-sans-serif,-apple-system,sans-serif;font-size:12.5px;color:var(--i2);margin:0 0 8px;max-width:76ch}
 .modresult{margin:10px 0 0;padding-top:8px;border-top:1px dotted var(--g)}
 .modquick{margin:0 0 4px}
@@ -1056,51 +1063,87 @@ const OPT_ITEMS={
   why:"Distinguishes temporary, complementary and permanent protection; identifies naturalised former refugees and people with protected status but no displacement history."},
 };
 const CORE_ITEMS="FrcFl, FleeLoc, FleeCross, Apply, Outcome";
-// What the core items alone can already identify, per the Classification Table.
-const CORE_IDENTIFIES=[
- "any history of forced displacement",
- "whether the first displacement was inside or outside the survey country",
- "refugees (status granted), asylum seekers (pending), failed or withdrawn applications",
- "repatriated refugees and asylum seekers",
-];
-// Sub-categories from the paper's Classification Table that need an item beyond
-// the core, each with the condition the paper gives and the item(s) it adds.
-// Ticking a sub-category is what switches its items on; the items themselves
-// are never picked directly, so the questionnaire always follows from a
+// The population categories of the two statistical frameworks, as laid out
+// in the 2023 methodological paper (IRRS: persons in need of international
+// protection / with a refugee background / returned from abroad after seeking
+// international protection; IRIS: the IDP stock and its three location
+// sub-categories, the IDP-related populations, and those who have overcome
+// key displacement-related vulnerabilities), each mapped to what the revised
+// module can do about it (Classification Table of the question-testing
+// document):
+//   items  - optional items beyond the core that the category needs; a
+//            category with none is identified by the core items alone
+//   core   - identified by the core questionnaire; shown, no checkbox
+//   na     - not identifiable from these questions: "roster" (household
+//            relationship/parent variables), "extra" (additional questions
+//            still to be developed), "composite" (the end-of-displacement
+//            composite measure)
+// Ticking a category is what switches its items on; the items themselves are
+// never picked directly, so the questionnaire always follows from a
 // population someone actually wants to identify.
 const SUBCATS=[
- {key:"prospective", group:"refugee", label:"Prospective asylum seekers",
-  cond:"Apply = No and IntApply = Yes", items:["intapply"]},
- {key:"nointent", group:"refugee", label:"Displaced abroad with no intention to seek asylum",
-  cond:"Apply = No and IntApply = No", items:["intapply"]},
- {key:"naturalised", group:"refugee", label:"Naturalised former refugees",
+ // ---- IRRS a. Persons in need of international protection ----
+ {key:"prospective", fw:"refugee", grp:"a. Persons in need of international protection", label:"Prospective asylum seekers",
+  cond:"Fled a home in another country; Apply = No and IntApply = Yes", items:["intapply"]},
+ {key:"asylum", fw:"refugee", grp:"a. Persons in need of international protection", label:"Asylum seekers", core:true,
+  cond:"Fled a home in another country; Apply = Yes and Outcome = still being decided", items:[]},
+ {key:"refugee", fw:"refugee", grp:"a. Persons in need of international protection", label:"Refugees", core:true,
+  cond:"Fled a home in another country; Apply = Yes and Outcome = granted", items:[]},
+ {key:"complementary", fw:"refugee", grp:"a. Persons in need of international protection", label:"Admitted for complementary and subsidiary forms of protection",
+  cond:"Fled a home in another country; Legal = complementary and subsidiary protection", items:["legal"]},
+ {key:"temporary", fw:"refugee", grp:"a. Persons in need of international protection", label:"Admitted for temporary protection",
+  cond:"Fled a home in another country; Legal = temporary protection", items:["legal"]},
+ {key:"reflike", fw:"refugee", grp:"a. Persons in need of international protection", label:"Others in refugee-like situations",
+  cond:"Fled a home in another country; Apply = No, IntApply = No, Legal = a visa or a regional free-movement agreement", items:["intapply","legal"]},
+ // ---- IRRS b. Persons with a refugee background ----
+ {key:"naturalised", fw:"refugee", grp:"b. Persons with a refugee background", label:"Naturalised former refugees",
   cond:"Apply = Yes, Outcome = granted, Legal = permanent residence or citizenship", items:["legal"]},
- {key:"proctype", group:"refugee", label:"Refugees by type of protection (temporary, complementary, permanent)",
-  cond:"Outcome = granted, read against the Legal protected-status categories", items:["legal"]},
- {key:"protnoflee", group:"refugee", label:"Protected status without a forced-displacement history",
-  cond:"FrcFl = none of the above and Legal = protected status", items:["legal"]},
- {key:"idpcit", group:"idp", label:"IDP stock with the citizenship condition asked here",
-  cond:"LocLiv = Yes or CitLoc = Yes; skip if citizenship at displacement is captured elsewhere in the survey",
-  items:["locliv"]},
- {key:"idpdisp", group:"idp", label:"IDPs in location of displacement",
-  cond:"current location = the first location moved to (IDPPost)", items:["idppost"]},
- {key:"idpret", group:"idp", label:"IDPs in location of return",
-  cond:"current location = the location fled from (IDPLoc)", items:["idploc"]},
- {key:"idpother", group:"idp", label:"IDPs in other settlement locations",
-  cond:"current location is neither IDPLoc nor IDPPost", items:["idploc","idppost"]},
- {key:"retmig", group:"idp", label:"Citizens returning after 12 months or more abroad (not IDPs)",
-  cond:"FleeCross = Yes, 12Mnths = 12 months or more, Apply = No", items:["mnths12"]},
- {key:"frcoth", group:"shared", label:"Other or locally-defined reasons for fleeing",
+ {key:"refchild", fw:"refugee", grp:"b. Persons with a refugee background", label:"Children born of refugee parents", na:"roster",
+  cond:"From the household roster: child of a person identified as a refugee, naturalised former refugee or repatriating refugee", items:[]},
+ {key:"reunified", fw:"refugee", grp:"b. Persons with a refugee background", label:"Reunified refugee family members from abroad", na:"extra",
+  cond:"Additional questions still to be developed (paper, p. 20)", items:[]},
+ {key:"refbackground", fw:"refugee", grp:"b. Persons with a refugee background", label:"Others with a refugee background",
+  cond:"The module's approximation: no history of forced displacement but Legal = a protected-status document (Classification Table); spouses and other family members of refugees come from the roster", items:["legal"]},
+ // ---- IRRS c. Persons returned from abroad after seeking international protection ----
+ {key:"repref", fw:"refugee", grp:"c. Returned from abroad after seeking international protection", label:"Repatriating refugees", core:true,
+  cond:"Fled a home in this country, moved to another country, Apply = Yes and Outcome = granted", items:[]},
+ {key:"repas", fw:"refugee", grp:"c. Returned from abroad after seeking international protection", label:"Repatriating asylum seekers", core:true,
+  cond:"Fled a home in this country, moved to another country, Apply = Yes and Outcome = pending, denied or withdrawn", items:[]},
+ {key:"retprot", fw:"refugee", grp:"c. Returned from abroad after seeking international protection", label:"Returning from international protection abroad / others returning from seeking it",
+  cond:"Fled a home in this country, moved to another country for 12 months or more, Apply = No; the module cannot separate these two categories from each other or from returning migrants (paper, p. 17)", items:["mnths12"]},
+ // ---- IRIS 1. Total stock of IDPs ----
+ {key:"idpdisp", fw:"idp", grp:"1. Total stock of IDPs", label:"IDPs in locations of displacement",
+  cond:"Fled a home in this country and did not establish residence or seek protection abroad; current location = the first location moved to (IDPPost)", items:["idppost"]},
+ {key:"idpret", fw:"idp", grp:"1. Total stock of IDPs", label:"IDPs in locations of return",
+  cond:"… current location = the location fled from (IDPLoc)", items:["idploc"]},
+ {key:"idpother", fw:"idp", grp:"1. Total stock of IDPs", label:"IDPs in other settlement locations",
+  cond:"… current location is neither IDPLoc nor IDPPost", items:["idploc","idppost"]},
+ {key:"idpcit", fw:"idp", grp:"1. Total stock of IDPs", label:"IDP condition: usually resident (or a citizen) where the causing event occurred",
+  cond:"LocLiv = Yes or CitLoc = Yes; skip these two items if citizenship or residence at the time of displacement is captured elsewhere in the survey", items:["locliv"]},
+ {key:"retmig", fw:"idp", grp:"1. Total stock of IDPs", label:"IDP exclusion: established residence abroad (12 months or more)",
+  cond:"FleeCross = Yes, 12Mnths = 12 months or more, Apply = No — a returning migrant, not an IDP (IRIS para. 15–17)", items:["mnths12"]},
+ {key:"idpchild", fw:"idp", grp:"IDP-related populations", label:"Children of at least one IDP parent, born after displacement", na:"roster",
+  cond:"From the household roster's parent-identification variables; only parents alive and in the same household can be linked", items:[]},
+ {key:"idpfamily", fw:"idp", grp:"IDP-related populations", label:"Other non-displaced family members of IDPs", na:"roster",
+  cond:"From the household roster's relationship variables (outside the core IRIS framework)", items:[]},
+ {key:"overcome", fw:"idp", grp:"2. Overcome key displacement-related vulnerabilities", label:"Locally integrated / returned and reintegrated / settled elsewhere and integrated", na:"composite",
+  cond:"Requires EGRISS's composite measure of displacement-related vulnerabilities, not these questions (paper, paras 26–28)", items:[]},
+ // ---- shared ----
+ {key:"frcoth", fw:"shared", grp:"", label:"Other or locally-defined reasons for fleeing",
   cond:"FrcOth coded to a locally valid reason; also screens out false positives", items:["frcoth"]},
 ];
+const SELECTABLE=SUBCATS.filter(c=>!c.core&&!c.na);
+const NA_LABEL={roster:"roster",extra:"more questions",composite:"composite measure"};
+const NA_LONG={roster:"from the household roster",extra:"needs additional questions still to be developed",composite:"needs the composite measure of displacement-related vulnerabilities"};
 let SUB={}; SUBCATS.forEach(c=>SUB[c.key]=true);
 let FW={idp:true, refugee:true};
 
 function subActive(c){
- if(!SUB[c.key]) return false;
- if(c.group==="idp"&&!FW.idp) return false;
- if(c.group==="refugee"&&!FW.refugee) return false;
- return true;
+ if(c.na) return false;
+ if(c.fw==="idp"&&!FW.idp) return false;
+ if(c.fw==="refugee"&&!FW.refugee) return false;
+ if(c.core) return true;
+ return !!SUB[c.key];
 }
 function itemActive(key){
  return SUBCATS.some(c=>subActive(c)&&c.items.includes(key));
@@ -1108,7 +1151,7 @@ function itemActive(key){
 function activeItemNames(){
  return Object.keys(OPT_ITEMS).filter(itemActive).map(k=>OPT_ITEMS[k].name);
 }
-function setAllSubs(on){ SUBCATS.forEach(c=>SUB[c.key]=on); }
+function setAllSubs(on){ SELECTABLE.forEach(c=>SUB[c.key]=on); }
 // Presets: one click sets both the frameworks and the sub-categories.
 function applyPreset(p){
  if(p==="core"){ FW.idp=true; FW.refugee=true; setAllSubs(false); }
@@ -1118,13 +1161,15 @@ function applyPreset(p){
  buildModPicker(); renderReg(sel.value);
 }
 function currentPreset(){
- const all=SUBCATS.every(c=>SUB[c.key]), none=SUBCATS.every(c=>!SUB[c.key]);
+ const all=SELECTABLE.every(c=>SUB[c.key]), none=SELECTABLE.every(c=>!SUB[c.key]);
  if(FW.idp&&FW.refugee&&none) return "core";
  if(FW.idp&&FW.refugee&&all) return "both";
  if(FW.refugee&&!FW.idp&&all) return "refugee";
  if(FW.idp&&!FW.refugee&&all) return "idp";
  return null;
 }
+// What the core items alone identify: the framework categories marked core.
+function coreIdentifies(){ return SUBCATS.filter(c=>c.core).map(c=>c.label); }
 
 function buildModPicker(){
  const cur=currentPreset();
@@ -1133,21 +1178,30 @@ function buildModPicker(){
  const names=activeItemNames();
  document.getElementById('modsummary').innerHTML=
   `<b>${5+names.length} items</b>: core${names.length?" + "+names.join(", "):" only"}`;
+ const line=c=>{
+  const adds=c.items.length?`<span class="modadds">+${c.items.map(k=>OPT_ITEMS[k].name).join(" +")}</span>`:"";
+  if(c.core) return `<div class="moditem modcore" title="${esc(c.cond)}"><span class="modtag">core</span><span class="modlabel">${c.label}</span></div>`;
+  if(c.na) return `<div class="moditem modna" title="${esc(c.cond)}"><span class="modtag na">${NA_LABEL[c.na]}</span><span class="modlabel">${c.label}</span></div>`;
+  return `<label class="moditem" title="${esc(c.cond)}"><input type="checkbox" class="moditem-cb" data-k="${c.key}" ${SUB[c.key]?"checked":""}>`+
+   `<span class="modlabel">${c.label}</span>${adds}</label>`;};
  const card=(key,title,on,cats,coreText)=>{
   const toggle=key?`<label class="modtoggle"><input type="checkbox" class="fw-cb" data-fw="${key}" ${on?"checked":""}> ${title}</label>`
                    :`<span class="modtoggle">${title}</span>`;
-  const body=key&&!on?`<p class="modoff">Not being identified. Tick to add its sub-categories.</p>`
-   :(coreText||"")+(cats||[]).map(c=>
-     `<label class="moditem" title="${esc(c.cond)}"><input type="checkbox" class="moditem-cb" data-k="${c.key}" ${SUB[c.key]?"checked":""}>`+
-     `<span class="modlabel">${c.label}</span><span class="modadds">+${c.items.map(k=>OPT_ITEMS[k].name).join(" +")}</span></label>`).join("");
+  let body="";
+  if(key&&!on) body=`<p class="modoff">Not being identified. Tick to add its categories.</p>`;
+  else{
+   body=coreText||"";
+   let lastGrp=null;
+   (cats||[]).forEach(c=>{ if(c.grp&&c.grp!==lastGrp){ body+=`<div class="modgrp">${c.grp}</div>`; lastGrp=c.grp; } body+=line(c); });
+  }
   return `<div class="modcard${key&&!on?" off":""}">${toggle}${body}</div>`;};
- const shared=SUBCATS.filter(c=>c.group==="shared");
+ const shared=SUBCATS.filter(c=>c.fw==="shared");
  let h=`<div class="modgrid">`+
   card(null,"Core &mdash; always asked",true,shared,
-   `<p class="modcoretext">${CORE_ITEMS}.<br>Identifies: ${CORE_IDENTIFIES.join("; ")}.</p>`)+
-  card("refugee","Refugees (IRRS)",FW.refugee,SUBCATS.filter(c=>c.group==="refugee"))+
-  card("idp","IDPs (IRIS)",FW.idp,SUBCATS.filter(c=>c.group==="idp"))+
-  `</div><p class="modhint">Each ticked sub-category adds the question it needs (shown as +Item); hover a line for the paper&rsquo;s condition. The questionnaire in step 4 and the files in step 6 follow this.</p>`;
+   `<p class="modcoretext">${CORE_ITEMS}.<br>Enough on their own for: any history of forced displacement; whether it began inside or outside the survey country; ${coreIdentifies().join("; ").toLowerCase()}.</p>`)+
+  card("refugee","IRRS &mdash; refugees and related populations",FW.refugee,SUBCATS.filter(c=>c.fw==="refugee"))+
+  card("idp","IRIS &mdash; IDPs and related populations",FW.idp,SUBCATS.filter(c=>c.fw==="idp"))+
+  `</div><p class="modhint">The categories are the statistical frameworks&rsquo; own (IRRS a&ndash;c, IRIS 1&ndash;2), as in the methodological paper. <b>core</b> = identified by the core items alone; a ticked category adds the item it needs (+Item); greyed categories cannot be identified from these questions &mdash; they come from the household roster, from questions still to be developed, or from the composite measure. Hover a line for the condition. The questionnaire in step 4 and the files in step 6 follow this.</p>`;
  document.getElementById('moditems').innerHTML=h;
  document.querySelectorAll('.moditem-cb').forEach(cb=>cb.addEventListener('change',()=>{
   SUB[cb.dataset.k]=cb.checked; buildModPicker(); renderReg(sel.value);}));
@@ -1633,10 +1687,12 @@ function customisationHTML(iso){
  h+=row("Length",LEN==="showcard"?"Showcard &mdash; all recorded examples":"Read aloud &mdash; up to three examples per option");
  h+=row("Language",esc(langName)+(LANG!=="en"?" (unreviewed draft translation)":""));
  h+=row("Frameworks",fw.length?fw.join(" and "):"none selected");
- h+=row("Core items, always asked",CORE_ITEMS+`. These alone identify: ${CORE_IDENTIFIES.join("; ")}.`);
+ h+=row("Core items, always asked",CORE_ITEMS+`. These alone identify: any history of forced displacement; whether it began inside or outside the survey country; ${coreIdentifies().join("; ").toLowerCase()}.`);
  if(FW.idp&&!FW.refugee) h+=row("IDP-only version (IRIS)","FleeCross, 12Mnths and Apply are kept only as IRIS's exclusion conditions (established residence abroad; sought protection abroad); Outcome, IntApply and Legal are dropped; a home fled in another country is out of scope.");
  if(FW.refugee&&!FW.idp) h+=row("Refugee-only version (IRRS)","The IDP location items are dropped; a respondent who fled within the survey country and never crossed a border is out of scope and the module can end at FleeCross.");
- h+=row("Sub-categories selected",subs.length?`<ul>`+subs.map(c=>`<li>${c.label} <small>(${esc(c.cond)}; adds ${c.items.map(k=>OPT_ITEMS[k].name).join(" + ")})</small></li>`).join("")+`</ul>`:"none &mdash; core questionnaire only (short version)");
+ const notId=SUBCATS.filter(c=>c.na&&((c.fw==="refugee"&&FW.refugee)||(c.fw==="idp"&&FW.idp)));
+ h+=row("Framework categories identified",subs.length?`<ul>`+subs.map(c=>`<li>${c.label} <small>(${c.fw==="idp"?"IRIS":c.fw==="refugee"?"IRRS":""} ${esc(c.grp)}; ${esc(c.cond)}${c.items.length?`; adds ${c.items.map(k=>OPT_ITEMS[k].name).join(" + ")}`:"; core items"})</small></li>`).join("")+`</ul>`:"none &mdash; core questionnaire only (short version)");
+ if(notId.length) h+=row("Not identifiable from these questions",`<ul>`+notId.map(c=>`<li>${c.label} <small>(${NA_LONG[c.na]}: ${esc(c.cond)})</small></li>`).join("")+`</ul>`);
  h+=row("Items added beyond the core",items.length?`<ul>`+items.map(k=>`<li><b>${OPT_ITEMS[k].name}</b> &mdash; ${OPT_ITEMS[k].label}. <small>${OPT_ITEMS[k].why}</small></li>`).join("")+`</ul>`:"none");
  const cu=effCust(iso);
  if(cu.origins) h+=row("FleeLoc &mdash; other-country examples",`${cu.origins.join(", ")} <small>(largest refugee populations hosted in ${esc(v.name)}, UNHCR)</small>`);
@@ -1964,60 +2020,72 @@ function ruleSet(){
  const A=itemActive, mode=fwMode();
  const has={intapply:A("intapply"),legal:A("legal"),locliv:A("locliv"),m12:A("mnths12"),
             idploc:A("idploc"),idppost:A("idppost"),outcome:mode!=="idp",frcoth:A("frcoth")};
- const R=[]; const add=(code,label,group,cond,note)=>R.push({code,label,group,cond,note});
+ const R=[]; const add=(code,label,group,cond,note,fwref)=>R.push({code,label,group,cond,note,fwref});
  const FD=[[eq("fd_hist",1)]];
  // --- no history of forced displacement ---
- if(has.legal) add(31,"Protected status without a forced-displacement history","none",[[eq("fd_hist",0)],[inl("legal",LEGAL_PROT)]],
-   "Children of refugees born here without full citizenship, people who claimed protection while away from home, status granted in error - the questions cannot separate these.");
- add(30,"No history of forced displacement","none",[[eq("fd_hist",0)]]);
+ if(has.legal) add(31,"Others with a refugee background — protected-status document without a forced-displacement history","none",[[eq("fd_hist",0)],[inl("legal",LEGAL_PROT)]],
+   "IRRS b.4 as the module approximates it: children of refugees born here without full citizenship, people who claimed protection while away from home, status granted in error - the questions cannot separate these.","IRRS b.4");
+ add(30,"No history of forced displacement","none",[[eq("fd_hist",0)]],null,"—");
  if(mode!=="idp"){
-  // --- first displaced outside the survey country ---
+  // --- first displaced outside the survey country: IRRS a and b ---
   const OUT=FD.concat([[eq("fleeloc",2)]]);
   if(has.legal){
-   add(11,"Refugee (status granted)","ref",OUT.concat([[eq("apply",1)],[eq("outcome",1)],[nin("legal",LEGAL_PERM)]]),
-     "Legal separates temporary (16), complementary (15) and permanent protection.");
-   add(12,"Naturalised former refugee","ref",OUT.concat([[eq("apply",1)],[eq("outcome",1)],[inl("legal",LEGAL_PERM)]]));
-  }else add(11,"Refugee (status granted) - naturalised former refugees included","ref",OUT.concat([[eq("apply",1)],[eq("outcome",1)]]),
-     "Legal is not in this questionnaire, so naturalised former refugees cannot be separated.");
-  add(13,"Asylum seeker (decision pending)","ref",OUT.concat([[eq("apply",1)],[eq("outcome",3)]]));
-  add(14,"Failed or withdrawn asylum application","ref",OUT.concat([[eq("apply",1)],[inl("outcome",[2,4])]]));
+   add(12,"Admitted for complementary and subsidiary forms of protection","ref",OUT.concat([[eq("legal",15)]]),
+     "Read from the document held, whether or not an application was made (some are granted on a group basis).","IRRS a.3.ii");
+   add(13,"Admitted for temporary protection","ref",OUT.concat([[eq("legal",16)]]),
+     "Read from the document held, whether or not an application was made.","IRRS a.3.iii");
+   add(11,"Refugees","ref",OUT.concat([[eq("apply",1)],[eq("outcome",1)],[nin("legal",LEGAL_PERM)]]),
+     "Refugee status granted and no permanent residence or citizenship since.","IRRS a.3.i");
+   add(17,"Naturalised former refugees","ref",OUT.concat([[eq("apply",1)],[eq("outcome",1)],[inl("legal",LEGAL_PERM)]]),null,"IRRS b.1");
+  }else add(11,"Refugees — including those since naturalised and those under complementary or temporary protection","ref",OUT.concat([[eq("apply",1)],[eq("outcome",1)]]),
+     "Legal is not in this questionnaire, so IRRS a.3.i–iii and b.1 cannot be separated.","IRRS a.3, b.1");
+  add(14,"Asylum seekers","ref",OUT.concat([[eq("apply",1)],[eq("outcome",3)]]),null,"IRRS a.2");
+  add(18,"Failed or withdrawn asylum application","ref",OUT.concat([[eq("apply",1)],[inl("outcome",[2,4])]]),
+    "Not an IRRS category; kept separately (Classification Table). May hold another legal basis for staying - see Legal - or none.","—");
   if(has.intapply){
-   add(15,"Prospective asylum seeker","ref",OUT.concat([[eq("apply",2)],[eq("intapply",1)]]));
-   add(16,"Displaced abroad, no intention to seek asylum","ref",OUT.concat([[eq("apply",2)],[eq("intapply",2)]]),
-     "May hold another legal basis for being here (citizenship, visa, free movement) - see Legal - or none.");
-  }else add(17,"Displaced abroad, no application for protection","ref",OUT.concat([[eq("apply",2)]]),
-     "IntApply is not in this questionnaire, so prospective asylum seekers cannot be separated from those with no intention to apply.");
+   add(15,"Prospective asylum seekers","ref",OUT.concat([[eq("apply",2)],[eq("intapply",1)]]),null,"IRRS a.1");
+   if(has.legal) add(16,"Others in refugee-like situations","ref",OUT.concat([[eq("apply",2)],[eq("intapply",2)],[inl("legal",[2,3,4,5,6,7,8])]]),
+     "Fled and never applied, admitted on a visa or under a regional free-movement agreement (paper, p. 19).","IRRS a.4");
+   add(19,"Displaced abroad, no application for protection and no intention to apply","ref",OUT.concat([[eq("apply",2)],[eq("intapply",2)]]),
+     has.legal?"Another legal basis for being here (citizenship, permanent residence), undocumented, or an enrolment document - not an IRRS category.":"Legal is not in this questionnaire, so ‘others in refugee-like situations’ (IRRS a.4) cannot be separated from this group.","—");
+  }else{
+   if(has.legal) add(16,"Others in refugee-like situations — prospective asylum seekers included","ref",OUT.concat([[eq("apply",2)],[inl("legal",[2,3,4,5,6,7,8])]]),
+     "IntApply is not in this questionnaire, so prospective asylum seekers (IRRS a.1) cannot be separated.","IRRS a.4 (+a.1)");
+   add(19,"Displaced abroad, no application for protection","ref",OUT.concat([[eq("apply",2)]]),
+     "IntApply is not in this questionnaire, so prospective asylum seekers (IRRS a.1) cannot be separated from those with no intention to apply.","—");
+  }
  }
  if(mode!=="ref"){
-  // --- first displaced inside the survey country ---
+  // --- first displaced inside the survey country: IRIS 1 and IRRS c ---
   let IN=FD.concat([[eq("fleeloc",1)]]);
   if(has.locliv){
-   add(28,"Displaced inside the survey country while neither resident nor citizen of it (not an IDP)","idp",IN.concat([[eq("locliv",2)],[eq("citloc",2)]]),
-     "For example a refugee later displaced within the host country; classify through the refugee track or Legal.");
+   add(28,"Displaced inside the survey country while neither usually resident nor a citizen of it (not an IDP)","idp",IN.concat([[eq("locliv",2)],[eq("citloc",2)]]),
+     "For example a refugee later displaced within the host country; classify through the refugee track or Legal (IRIS para. 5, condition 2).","—");
    IN=IN.concat([[eq("locliv",1),eq("citloc",1)]]);
   }
-  // sought protection abroad -> not an IDP
+  // sought protection abroad -> IRRS c, not an IDP
   if(has.outcome){
-   add(25,"Repatriated refugee","idp",IN.concat([[eq("fleecross",1)],[eq("apply",1)],[eq("outcome",1)]]));
-   add(24,"Repatriated asylum seeker (pending, failed or withdrawn)","idp",IN.concat([[eq("fleecross",1)],[eq("apply",1)],[inl("outcome",[2,3,4])]]));
-  }else add(24,"Sought international protection abroad - not an IDP (repatriated refugee or asylum seeker)","idp",IN.concat([[eq("fleecross",1)],[eq("apply",1)]]),
-     "In the IDP-only questionnaire Outcome is not asked, so the two cannot be separated.");
-  if(has.m12) add(26,"Citizen returning after 12 months or more abroad (not an IDP)","idp",IN.concat([[eq("fleecross",1)],[eq("mnths12",2)],[eq("apply",2)]]));
+   add(25,"Repatriating refugees","idp",IN.concat([[eq("fleecross",1)],[eq("apply",1)],[eq("outcome",1)]]),null,"IRRS c.1");
+   add(24,"Repatriating asylum seekers","idp",IN.concat([[eq("fleecross",1)],[eq("apply",1)],[inl("outcome",[2,3,4])]]),null,"IRRS c.2");
+  }else add(24,"Sought international protection abroad — not an IDP (repatriating refugee or asylum seeker)","idp",IN.concat([[eq("fleecross",1)],[eq("apply",1)]]),
+     "In the IDP-only questionnaire Outcome is not asked, so IRRS c.1 and c.2 cannot be separated.","IRRS c.1–2");
+  if(has.m12) add(26,"Returned after 12 months or more abroad without applying — returning from international protection abroad, others returning, or a returning migrant","idp",IN.concat([[eq("fleecross",1)],[eq("mnths12",2)],[eq("apply",2)]]),
+    "Established residence abroad, so not an IDP (IRIS paras 15–17); the module cannot tell IRRS c.3 and c.4 from a returning migrant (paper, p. 17).","IRRS c.3–4 / not IDP");
   // IDPs: never left, or left for under 12 months without applying
   const IDP=has.m12?IN.concat([[eq("fleecross",2),eq("mnths12",1)],[eq("fleecross",2),eq("apply",2)]])
                    :IN.concat([[eq("fleecross",2)]]);
-  if(has.idppost) add(21,"IDP in location of displacement","idp",IDP.concat([[eq("loc_now_idppost",1)]]));
-  if(has.idploc) add(22,"IDP in location of return","idp",IDP.concat([[eq("loc_now_idploc",1)]]));
-  if(has.idploc&&has.idppost) add(23,"IDP in other settlement location","idp",IDP.concat([[eq("loc_now_idppost",0)],[eq("loc_now_idploc",0)]]));
-  add(20,(has.idploc||has.idppost)?"IDP (location sub-category undetermined)":"IDP","idp",IDP,
-    (has.idploc||has.idppost)?"Location could not be compared (a location missing or not coded)":"IDPLoc and IDPPost are not in this questionnaire, so the three IRIS location sub-categories cannot be formed.");
-  if(!has.m12) add(27,"Moved abroad and returned without applying - IDP or returning migrant, undetermined","idp",IN.concat([[eq("fleecross",1)],[eq("apply",2)]]),
-    "12Mnths is not in this questionnaire, so returning migrants (12 months or more abroad) cannot be separated from IDPs who were abroad briefly.");
-  if(!has.locliv) R.filter(r=>r.group==="idp"&&r.code<28).forEach(r=>r.note=(r.note?r.note+" ":"")+"LocLiv/CitLoc are not in this questionnaire: the IDP condition (resident or citizen of the country when displaced) must come from elsewhere in the survey.");
+  if(has.idppost) add(21,"IDPs in locations of displacement","idp",IDP.concat([[eq("loc_now_idppost",1)]]),null,"IRIS 1");
+  if(has.idploc) add(22,"IDPs in locations of return","idp",IDP.concat([[eq("loc_now_idploc",1)]]),null,"IRIS 1");
+  if(has.idploc&&has.idppost) add(23,"IDPs in other settlement locations","idp",IDP.concat([[eq("loc_now_idppost",0)],[eq("loc_now_idploc",0)]]),null,"IRIS 1");
+  add(20,(has.idploc||has.idppost)?"IDPs — location sub-category undetermined":"IDPs (total stock)","idp",IDP,
+    (has.idploc||has.idppost)?"Location could not be compared (a location missing or not coded)":"IDPLoc and IDPPost are not in this questionnaire, so the three IRIS location sub-categories cannot be formed.","IRIS 1");
+  if(!has.m12) add(27,"Moved abroad and returned without applying — IDP or returning migrant, undetermined","idp",IN.concat([[eq("fleecross",1)],[eq("apply",2)]]),
+    "12Mnths is not in this questionnaire, so returning migrants (12 months or more abroad) cannot be separated from IDPs who were abroad briefly.","IRIS 1 / IRRS c.3–4");
+  if(!has.locliv) R.filter(r=>r.group==="idp"&&r.code<28).forEach(r=>r.note=(r.note?r.note+" ":"")+"LocLiv/CitLoc are not in this questionnaire: the IDP condition (usually resident, or a citizen, where the causing event occurred) must come from elsewhere in the survey.");
  }
- if(mode==="ref") add(29,"Internal displacement only - out of scope for the refugee questionnaire","idp",FD.concat([[eq("fleeloc",1)],[eq("fleecross",2)]]));
- if(mode==="idp") add(29,"Displaced from a home in another country - out of scope for the IDP questionnaire","ref",FD.concat([[eq("fleeloc",2)]]));
- add(90,"Not classifiable (missing or inconsistent answers)","none",[]);
+ if(mode==="ref") add(29,"Internal displacement only - out of scope for the refugee questionnaire","idp",FD.concat([[eq("fleeloc",1)],[eq("fleecross",2)]]),null,"—");
+ if(mode==="idp") add(29,"Displaced from a home in another country - out of scope for the IDP questionnaire","ref",FD.concat([[eq("fleeloc",2)]]),null,"—");
+ add(90,"Not classifiable (missing or inconsistent answers)","none",[],null,"—");
  return R;
 }
 function classify(ans){ const R=ruleSet(); for(const r of R){ if(r.code===90) continue; if(evalCond(r.cond,ans)) return r; } return R[R.length-1]; }
@@ -2086,7 +2154,7 @@ function buildDerivationHTML(iso){
  h+=`<h1>${esc(v.name)} &mdash; derivation sheet</h1>`+
   `<p class="lede">How the answers to the identification questions become population categories, for the questionnaire as configured on the page `+
   `(${mode==="idp"?"IDP-only, IRIS":mode==="ref"?"refugee-only, IRRS":"combined refugee and IDP"}; `+
-  `${subs.length?subs.length+" sub-categories selected":"core items only"}). The rules are the Classification Table of the revised module, `+
+  `${subs.length} framework categories identified). The rules are the Classification Table of the revised module mapped onto the IRRS and IRIS categories of the 2023 paper, `+
   `restricted to what the questionnaire actually asks: where an optional item is left out, the categories it would have separated are merged and the merge is noted. `+
   `First rule that fits wins. Draft for review.</p>`;
  const A=itemActive;
@@ -2099,10 +2167,16 @@ function buildDerivationHTML(iso){
    .map(([n,from,val])=>`<tr><td><code>${esc(n)}</code></td><td>${esc(from)}</td><td>${esc(val)}</td></tr>`).join("")+`</table>`+
   `<p class="note">Code the FrcFl options as separate 0/1 variables (it is a choose-all-that-apply question). <code>frcoth_valid</code> is coded in the office against the list of reasons ${esc(v.name)} treats as valid causes of forced displacement &mdash; document that list with the dataset. `+
   `Location comparisons for the IDP sub-categories are made at the lowest administrative level both places are coded to.</p>`;
- h+=`<h2>2. Rules</h2><table class="dv"><tr><th>Code</th><th>Category</th><th>Condition</th></tr>`+
-  R.map(r=>`<tr><td><code>${r.code}</code></td><td><b>${esc(r.label)}</b>${r.note?`<div class="note">${esc(r.note)}</div>`:""}</td><td>${esc(condPlain(r.cond))}</td></tr>`).join("")+`</table>`;
+ // Framework coverage: every IRRS / IRIS category and how this questionnaire reaches it.
+ const cov=SUBCATS.filter(c=>c.fw!=="shared"&&((c.fw==="refugee"&&mode!=="idp")||(c.fw==="idp"&&mode!=="ref")));
+ h+=`<h2>2. Framework coverage</h2><p class="note">Every population category of the two statistical frameworks (2023 methodological paper), and whether this questionnaire identifies it.</p>`+
+  `<table class="dv"><tr><th>Framework</th><th>Category</th><th>In this questionnaire</th></tr>`+
+  cov.map(c=>{ const st=c.na?NA_LONG[c.na]+" — not from these questions":c.core?"identified by the core items":subActive(c)?`identified (adds ${c.items.map(k=>OPT_ITEMS[k].name).join(" + ")})`:`<i>not selected</i> — would need ${c.items.map(k=>OPT_ITEMS[k].name).join(" + ")}`;
+   return `<tr><td>${c.fw==="idp"?"IRIS":"IRRS"} ${esc(c.grp)}</td><td>${esc(c.label)}<div class="note">${esc(c.cond)}</div></td><td>${st}</td></tr>`; }).join("")+`</table>`;
+ h+=`<h2>3. Rules</h2><table class="dv"><tr><th>Code</th><th>Category</th><th>Condition</th></tr>`+
+  R.map(r=>`<tr><td><code>${r.code}</code></td><td><b>${esc(r.label)}</b> <span class="fwref">${esc(r.fwref||"")}</span>${r.note?`<div class="note">${esc(r.note)}</div>`:""}</td><td>${esc(condPlain(r.cond))}</td></tr>`).join("")+`</table>`;
  h+=`<p class="note"><b>Household-roster categories.</b> Children, spouses and other family members living with a refugee, a naturalised former refugee, a repatriated refugee or an IDP are classified from the roster's relationship and parent-identification variables, not from these questions: a child of a person with <code>fdcat</code> in (11, 12, 25) is a &ldquo;child residing with a refugee parent&rdquo;, and so on. Only parents alive and in the same household can be linked.</p>`;
- h+=`<h2>3. Code</h2><p class="note">Each block assumes a dataset with the variables above and writes <code>fdcat</code> with the codes in section 2.</p>`;
+ h+=`<h2>4. Code</h2><p class="note">Each block assumes a dataset with the variables above and writes <code>fdcat</code> with the codes in section 3.</p>`;
  [["Stata","stata"],["R","r"],["Python (pandas)","py"]].forEach(([nm,lg])=>{ h+=`<h3>${nm}</h3><pre>${esc(derivationCode(R,lg))}</pre>`; });
  h+=stampHTML()+`</body></html>`;
  return h;
@@ -2113,6 +2187,7 @@ table.dv th{text-align:left;padding:4pt 6pt;border-bottom:1pt solid #1d2940;colo
 table.dv td{vertical-align:top;padding:4pt 6pt;border-bottom:0.5pt solid #dde1e8}
 table.dv code,p.note code{font-family:Consolas,Menlo,monospace;font-size:9pt;color:#14234c}
 p.note,div.note{font-size:9pt;color:#5a6884;margin:3pt 0 8pt}
+.fwref{font-size:8pt;color:#3b71b9;font-weight:700;white-space:nowrap}
 h3{font-family:Georgia,serif;color:#14234c;font-size:11pt;margin:12pt 0 4pt}
 pre{font-family:Consolas,Menlo,monospace;font-size:8.5pt;line-height:1.4;background:#f4f7fc;border:0.5pt solid #c9d6ea;padding:8pt 10pt;white-space:pre-wrap;word-break:break-word}
 `;
@@ -2124,6 +2199,8 @@ const WK_PRESETS=[
  {k:"as",label:"Asylum seeker, pending",a:{frcfl:1,fleeloc:2,locliv:1,fleecross:1,mnths12:2,apply:1,outcome:3,legal:12}},
  {k:"pros",label:"Fled abroad, plans to apply",a:{frcfl:1,fleeloc:2,locliv:1,fleecross:1,mnths12:1,apply:2,intapply:1,legal:1}},
  {k:"nat",label:"Former refugee, now a citizen",a:{frcfl:1,fleeloc:2,locliv:1,fleecross:1,mnths12:2,apply:1,outcome:1,legal:10}},
+ {k:"tp",label:"Temporary protection holder",a:{frcfl:1,fleeloc:2,locliv:1,fleecross:1,mnths12:2,apply:2,intapply:2,legal:16}},
+ {k:"reflike",label:"Fled, here on a visa, never applied",a:{frcfl:1,fleeloc:2,locliv:1,fleecross:1,mnths12:2,apply:2,intapply:2,legal:4}},
  {k:"idp",label:"IDP, still displaced",a:{frcfl:1,fleeloc:1,locliv:1,fleecross:2,curloc:"post",legal:10}},
  {k:"idpret",label:"IDP who returned home",a:{frcfl:1,fleeloc:1,locliv:1,fleecross:2,curloc:"pre",legal:10}},
  {k:"idpbrief",label:"Fled abroad briefly, came back",a:{frcfl:1,fleeloc:1,locliv:1,fleecross:1,mnths12:1,apply:2,curloc:"other",legal:10}},
