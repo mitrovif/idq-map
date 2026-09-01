@@ -664,6 +664,33 @@ select{min-width:250px}
  color:var(--m);font-weight:680;min-width:172px}
 @media(max-width:700px){.bar span.grp{min-width:0;width:100%}}
 .bar+.bar{margin-top:2px}
+/* ---- country picker: a searchable list with a coloured localisation badge and a
+   specimen tag per row (a native <select> can't colour its options) ---- */
+.cpick{position:relative;min-width:320px;flex:1 1 320px;max-width:520px}
+.cpick-btn{font:inherit;font-size:13.5px;width:100%;text-align:left;padding:8px 12px;border-radius:8px;
+ border:1px solid var(--g);background:var(--s);color:var(--i);cursor:pointer;display:flex;align-items:center;gap:8px}
+.cpick-btn .loc,.cpick-btn .spec{margin-left:auto}
+.cpick-btn .loc+.spec{margin-left:0}
+.cpick-caret{color:var(--m);margin-left:6px}
+.cpick-menu{position:absolute;z-index:30;top:calc(100% + 4px);left:0;width:min(560px,92vw);
+ background:var(--s);border:1px solid var(--g);border-radius:10px;box-shadow:0 12px 32px rgba(20,35,76,.16);padding:8px}
+.cpick-menu[hidden]{display:none}
+#cpickSearch{font:inherit;font-size:13.5px;width:100%;padding:8px 11px;border-radius:7px;border:1px solid var(--g);
+ background:var(--s);color:var(--i);box-sizing:border-box}
+#cpickSearch:focus{outline:2px solid var(--a);outline-offset:-1px}
+.cpick-key{display:flex;gap:6px;flex-wrap:wrap;align-items:center;font-size:11px;color:var(--m);padding:7px 2px 4px}
+.cpick-list{max-height:340px;overflow:auto;margin-top:2px}
+.cpick-row{display:flex;align-items:center;gap:8px;padding:7px 9px;border-radius:7px;cursor:pointer;font-size:13.5px}
+.cpick-row:hover,.cpick-row.sel{background:color-mix(in srgb,var(--a) 8%,transparent)}
+.cpick-row.on{font-weight:600}
+.cpick-name{flex:1 1 auto}
+.loc{font-size:10.5px;font-weight:700;letter-spacing:.03em;padding:2px 7px;border-radius:20px;white-space:nowrap}
+.loc-hi{background:color-mix(in srgb,#0ca30c 16%,transparent);color:#0a7d0a}
+.loc-mid{background:color-mix(in srgb,var(--w) 26%,transparent);color:#8a6100}
+.loc-lo{background:transparent;color:var(--m);border:1px solid var(--g)}
+.spec{font-size:10.5px;font-weight:700;letter-spacing:.03em;padding:2px 7px;border-radius:4px;white-space:nowrap;
+ background:color-mix(in srgb,var(--a) 14%,transparent);color:var(--a)}
+.spec.spec-links{background:transparent;border:1px dashed color-mix(in srgb,var(--a) 40%,var(--g))}
 /* ---- the form itself ---- */
 .form{background:var(--paper);border:1px solid var(--g);border-radius:4px;
  padding:34px 38px 30px;margin-top:14px;
@@ -787,6 +814,21 @@ h2{font-size:15px;margin:28px 0 2px;font-weight:640}
  padding:12px 15px 14px;margin:0 0 16px}
 .modpicker .sectitle{font-family:ui-sans-serif,-apple-system,sans-serif;font-size:11px;
  text-transform:uppercase;letter-spacing:.06em;color:var(--m);font-weight:680;margin:0 0 8px}
+.modpresets{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:0 0 12px;
+ font-family:ui-sans-serif,-apple-system,sans-serif}
+.preset{font:inherit;font-size:12.5px;padding:6px 11px;border-radius:20px;border:1px solid var(--g);
+ background:var(--s);color:var(--i2);cursor:pointer}
+.preset.on{background:var(--i);color:var(--p);border-color:var(--i)}
+.modsummary{font-size:12px;color:var(--i2);margin-left:auto}
+.modgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px}
+.modcard{background:var(--s);border:1px solid var(--g);border-radius:8px;padding:10px 12px 8px;
+ font-family:ui-sans-serif,-apple-system,sans-serif}
+.modcard.off{background:transparent;border-style:dashed}
+.modtoggle{display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:700;color:var(--i);
+ cursor:pointer;margin-bottom:8px;padding-bottom:6px;border-bottom:1px dotted var(--g)}
+.modcoretext{font-size:11.5px;color:var(--i2);margin:0 0 8px;line-height:1.45}
+.modoff{font-size:12px;color:var(--m);margin:0}
+.modlabel{flex:1 1 auto}
 .modfw{display:flex;gap:18px;flex-wrap:wrap;margin-bottom:8px;
  font-family:ui-sans-serif,-apple-system,sans-serif;font-size:13.5px}
 .modfw label{display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:600}
@@ -794,10 +836,12 @@ h2{font-size:15px;margin:28px 0 2px;font-weight:640}
  text-transform:uppercase;letter-spacing:.05em;color:var(--a);font-weight:680;
  margin:10px 0 4px}
 .moditem{display:flex;align-items:baseline;gap:7px;cursor:pointer;
- font-family:ui-sans-serif,-apple-system,sans-serif;font-size:13px;margin:3px 0;
- flex-wrap:wrap}
+ font-family:ui-sans-serif,-apple-system,sans-serif;font-size:12.5px;margin:0;padding:4px 0;
+ border-bottom:1px dotted color-mix(in srgb,var(--g) 60%,transparent)}
+.moditem:last-child{border-bottom:0}
+.moditem input{margin-top:2px}
 .modwhy{font-size:11.5px;color:var(--m);flex-basis:100%;margin-left:22px}
-.modadds{font-size:10.5px;color:var(--a);font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-left:4px}
+.modadds{font-size:10px;color:var(--a);font-weight:700;letter-spacing:.02em;white-space:nowrap}
 .modcore,.modresult{font-family:ui-sans-serif,-apple-system,sans-serif;font-size:12.5px;color:var(--i2);margin:0 0 8px;max-width:76ch}
 .modresult{margin:10px 0 0;padding-top:8px;border-top:1px dotted var(--g)}
 .modquick{margin:0 0 4px}
@@ -826,8 +870,7 @@ h2{font-size:15px;margin:28px 0 2px;font-weight:640}
 .dlbar button:disabled{opacity:.5;cursor:default}
 .dlbar button.secondary{background:var(--s);color:var(--a)}
 .dlstatus{font-size:12.5px;color:var(--m);max-width:60ch}
-.dlbar-compact{margin:4px 0 12px}
-.dlbar-compact button{font-size:12.5px;padding:6px 11px}
+.regcard .dlbar{margin:0 0 14px}
 .dlstatus.err{color:#d03b3b}
 /* ---- document specimens ("what it looks like") ----------------------------
    A pilot feature: images are hotlinked to their original publisher (gov.uk,
@@ -901,17 +944,19 @@ shown in <span class="eg">blue</span>. <b>The questions and response options nev
 change.</b> Below the two customised cards sits the full questionnaire, in the
 version you choose, with the same customisations carried through.</p>
 
-<div class="dlbar">
-  <button id="docxBtn">Download questionnaire &amp; instructions (.docx)</button>
-  <button id="pdfBtn" class="secondary">Download as PDF</button>
-  <span class="dlstatus" id="dlStatus">Downloads the full questionnaire &mdash; the customised
-  cards and the module below, in the version, language and settings currently shown &mdash;
-  opening with a summary of every customisation.</span>
-</div>
-
 <div class="bar">
   <span class="grp">Country &amp; area</span>
-  <select id="pick"></select>
+  <select id="pick" hidden></select>
+  <div class="cpick" id="cpick">
+    <button type="button" class="cpick-btn" id="cpickBtn" aria-haspopup="listbox" aria-expanded="false">
+      <span id="cpickLabel">Choose a country</span><span class="cpick-caret">&#9662;</span></button>
+    <div class="cpick-menu" id="cpickMenu" hidden>
+      <input type="search" id="cpickSearch" placeholder="Type a country&hellip;" autocomplete="off" spellcheck="false">
+      <div class="cpick-key"><span class="loc loc-hi">5&ndash;7 localised</span><span class="loc loc-mid">3&ndash;4</span>
+        <span class="loc loc-lo">0&ndash;2</span><span class="spec">&#9646; specimen</span></div>
+      <div class="cpick-list" id="cpickList" role="listbox"></div>
+    </div>
+  </div>
   <span class="lbl">Level</span>
   <select id="lvl"></select>
 </div>
@@ -963,24 +1008,22 @@ customisations from the two cards above carried into it. A handful of items &mda
 to flee, Location of displacement, Whether ever crossed a border, Applied for protection,
 Outcome &mdash; are always needed for baseline classification and always shown; everything
 else is added by the populations you choose to identify.</p>
-<div class="dlbar dlbar-compact">
-  <button class="dl-again" data-for="docxBtn">Download this questionnaire (.docx)</button>
-  <button class="dl-again secondary" data-for="pdfBtn">PDF</button>
-  <span class="dlstatus">Same download as at the top of the page.</span>
+<div class="dlbar">
+  <button id="docxBtn">Download questionnaire &amp; instructions (.docx)</button>
+  <button id="pdfBtn" class="secondary">Download as PDF</button>
+  <span class="dlstatus" id="dlStatus">The two customised cards above, the full questionnaire
+  below and a summary of every customisation, in the version, language and settings shown.</span>
 </div>
-<button class="help" id="modpickerbtn">Customise which items are included</button>
-<div class="modpicker" id="modpicker" hidden>
+<div class="modpicker" id="modpicker">
  <p class="sectitle">Which populations do you need to identify?</p>
- <p class="modcore" style="margin-top:-2px">Short version: the core items alone. Longer versions: tick each
- further sub-category you need and the questions it requires are added.</p>
- <div class="modfw">
-  <label><input type="checkbox" id="fwIdp" checked> Identify IDPs (IRIS framework)</label>
-  <label><input type="checkbox" id="fwRef" checked> Identify refugees (IRRS framework)</label>
+ <div class="modpresets" id="modpresets">
+  <button class="preset" data-p="core">Short &mdash; core only</button>
+  <button class="preset" data-p="refugee">Refugees (IRRS)</button>
+  <button class="preset" data-p="idp">IDPs (IRIS)</button>
+  <button class="preset on" data-p="both">Refugees and IDPs &mdash; full</button>
+  <span class="modsummary" id="modsummary"></span>
  </div>
  <div id="moditems"></div>
- <p class="modhint">Sub-categories and conditions are the paper&rsquo;s own (Classification
- Table and Table X of the revised module). The questionnaire below and the download follow
- whatever is ticked here.</p>
 </div>
 <span class="badges" id="regbadges"></span>
 <div class="regform" id="regform"></div>
@@ -1096,12 +1139,38 @@ function fmtN(n){
  if(n>=1000000)return (n/1000000).toFixed(1).replace(/\.0$/,"")+"M";
  if(n>=1000)return (n/1000).toFixed(1).replace(/\.0$/,"")+"k";
  return String(n);}
-Object.entries(Q).sort((a,b)=>a[1].name.localeCompare(b[1].name))
- .forEach(([k,v])=>{const o=document.createElement('option');
-  const sp=SPEC[k], nImg=(sp&&sp.images)?sp.images.length:0;
-  o.value=k;o.textContent=`${v.name} — ${v.n_localised}/7 options localised`+
-   (nImg?`  ▪ ${nImg===1?"document specimen":nImg+" document specimens"}`:"");
-  sel.appendChild(o);});
+const COUNTRY_ROWS=Object.entries(Q).sort((a,b)=>a[1].name.localeCompare(b[1].name)).map(([k,v])=>{
+ const sp=SPEC[k], nImg=(sp&&sp.images)?sp.images.length:0, nLinks=(sp&&sp.links)?sp.links.length:0;
+ const o=document.createElement('option'); o.value=k; o.textContent=v.name; sel.appendChild(o);
+ return {iso:k,name:v.name,n:v.n_localised,nImg,nLinks};});
+function locBadge(n){ return `<span class="loc ${n>=5?"loc-hi":n>=3?"loc-mid":"loc-lo"}">${n}/7 localised</span>`; }
+function specBadge(r){
+ if(r.nImg) return `<span class="spec">&#9646; ${r.nImg===1?"specimen":r.nImg+" specimens"}</span>`;
+ if(r.nLinks) return `<span class="spec spec-links">&#9646; reference only</span>`;
+ return ""; }
+function cpickRender(q){
+ q=(q||"").trim().toLowerCase();
+ const rows=COUNTRY_ROWS.filter(r=>!q||r.name.toLowerCase().includes(q)||r.iso.toLowerCase()===q);
+ document.getElementById('cpickList').innerHTML=rows.map((r,i)=>
+  `<div class="cpick-row${r.iso===sel.value?" on":""}${i===0&&q?" sel":""}" data-iso="${r.iso}" role="option">`+
+  `<span class="cpick-name">${esc(r.name)}</span>${locBadge(r.n)}${specBadge(r)}</div>`).join("")||
+  `<div class="cpick-row" style="color:var(--m)">No country matches</div>`;
+ document.querySelectorAll('.cpick-row[data-iso]').forEach(el=>el.addEventListener('click',()=>cpickChoose(el.dataset.iso)));}
+function cpickLabel(){
+ const r=COUNTRY_ROWS.find(x=>x.iso===sel.value); if(!r) return;
+ document.getElementById('cpickLabel').innerHTML=`${esc(r.name)} ${locBadge(r.n)}${specBadge(r)}`;}
+function cpickOpen(open){
+ const m=document.getElementById('cpickMenu'), b=document.getElementById('cpickBtn');
+ m.hidden=!open; b.setAttribute('aria-expanded',open?"true":"false");
+ if(open){const i=document.getElementById('cpickSearch'); i.value=""; cpickRender(""); i.focus();
+  const on=m.querySelector('.cpick-row.on'); if(on) on.scrollIntoView({block:"center"});}}
+function cpickChoose(iso){ sel.value=iso; cpickOpen(false); cpickLabel(); pickCountry(); }
+document.getElementById('cpickBtn').addEventListener('click',e=>{e.stopPropagation(); cpickOpen(document.getElementById('cpickMenu').hidden);});
+document.getElementById('cpickSearch').addEventListener('input',e=>cpickRender(e.target.value));
+document.getElementById('cpickSearch').addEventListener('keydown',e=>{
+ if(e.key==="Escape"){cpickOpen(false);}
+ if(e.key==="Enter"){const first=document.querySelector('.cpick-row.sel[data-iso],.cpick-row[data-iso]'); if(first) cpickChoose(first.dataset.iso);}});
+document.addEventListener('click',e=>{ if(!document.getElementById('cpick').contains(e.target)) cpickOpen(false); });
 function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;");}
 
 function buildLangs(){
@@ -1386,38 +1455,52 @@ function itemActive(key){
 function activeItemNames(){
  return Object.keys(OPT_ITEMS).filter(itemActive).map(k=>OPT_ITEMS[k].name);
 }
-function setAllSubs(on){ SUBCATS.forEach(c=>SUB[c.key]=on); buildModPicker(); renderReg(sel.value); }
+function setAllSubs(on){ SUBCATS.forEach(c=>SUB[c.key]=on); }
+// Presets: one click sets both the frameworks and the sub-categories.
+function applyPreset(p){
+ if(p==="core"){ FW.idp=true; FW.refugee=true; setAllSubs(false); }
+ else if(p==="refugee"){ FW.idp=false; FW.refugee=true; setAllSubs(true); }
+ else if(p==="idp"){ FW.idp=true; FW.refugee=false; setAllSubs(true); }
+ else { FW.idp=true; FW.refugee=true; setAllSubs(true); }
+ buildModPicker(); renderReg(sel.value);
+}
+function currentPreset(){
+ const all=SUBCATS.every(c=>SUB[c.key]), none=SUBCATS.every(c=>!SUB[c.key]);
+ if(FW.idp&&FW.refugee&&none) return "core";
+ if(FW.idp&&FW.refugee&&all) return "both";
+ if(FW.refugee&&!FW.idp&&all) return "refugee";
+ if(FW.idp&&!FW.refugee&&all) return "idp";
+ return null;
+}
 
 function buildModPicker(){
- const groups=[["refugee","Refugees (IRRS) — tick the sub-categories you need"],
-               ["idp","IDPs (IRIS) — tick the sub-categories you need"],
-               ["shared","Either framework"]];
- let h=`<p class="modcore"><b>Core items, always asked:</b> ${CORE_ITEMS}. On their own they identify `+
-  CORE_IDENTIFIES.join("; ")+`. Everything below adds one item for one further sub-category.</p>`+
-  `<p class="modquick"><button class="help" id="subsNone">Core only (short version)</button> `+
-  `<button class="help" id="subsAll">Every sub-category (full version)</button></p>`;
- groups.forEach(([g,title])=>{
-  if(g==="idp"&&!FW.idp)return;
-  if(g==="refugee"&&!FW.refugee)return;
-  const cats=SUBCATS.filter(c=>c.group===g);
-  h+=`<p class="modgrouptitle">${title}</p>`+cats.map(c=>
-   `<label class="moditem"><input type="checkbox" class="moditem-cb" data-k="${c.key}" `+
-   `${SUB[c.key]?"checked":""}> ${c.label} <span class="modadds">adds ${c.items.map(k=>OPT_ITEMS[k].name).join(" + ")}</span>`+
-   `<span class="modwhy">${c.cond}</span></label>`).join("");
- });
- if(!FW.idp&&!FW.refugee) h+=`<p class="modhint" style="margin-top:2px">Pick a framework above to see its sub-categories.</p>`;
+ const cur=currentPreset();
+ document.querySelectorAll('.preset').forEach(b=>b.classList.toggle('on',b.dataset.p===cur));
  const names=activeItemNames();
- h+=`<p class="modresult"><b>Items this adds to the core:</b> ${names.length?names.join(", "):"none — core questionnaire only"}.</p>`;
+ document.getElementById('modsummary').innerHTML=
+  `<b>${5+names.length} items</b>: core${names.length?" + "+names.join(", "):" only"}`;
+ const card=(key,title,on,cats,coreText)=>{
+  const toggle=key?`<label class="modtoggle"><input type="checkbox" class="fw-cb" data-fw="${key}" ${on?"checked":""}> ${title}</label>`
+                   :`<span class="modtoggle">${title}</span>`;
+  const body=key&&!on?`<p class="modoff">Not being identified. Tick to add its sub-categories.</p>`
+   :(coreText||"")+(cats||[]).map(c=>
+     `<label class="moditem" title="${esc(c.cond)}"><input type="checkbox" class="moditem-cb" data-k="${c.key}" ${SUB[c.key]?"checked":""}>`+
+     `<span class="modlabel">${c.label}</span><span class="modadds">+${c.items.map(k=>OPT_ITEMS[k].name).join(" +")}</span></label>`).join("");
+  return `<div class="modcard${key&&!on?" off":""}">${toggle}${body}</div>`;};
+ const shared=SUBCATS.filter(c=>c.group==="shared");
+ let h=`<div class="modgrid">`+
+  card(null,"Core &mdash; always asked",true,shared,
+   `<p class="modcoretext">${CORE_ITEMS}.<br>Identifies: ${CORE_IDENTIFIES.join("; ")}.</p>`)+
+  card("refugee","Refugees (IRRS)",FW.refugee,SUBCATS.filter(c=>c.group==="refugee"))+
+  card("idp","IDPs (IRIS)",FW.idp,SUBCATS.filter(c=>c.group==="idp"))+
+  `</div><p class="modhint">Each ticked sub-category adds the question it needs (shown as +Item); hover a line for the paper&rsquo;s condition. The questionnaire below and the download follow this.</p>`;
  document.getElementById('moditems').innerHTML=h;
  document.querySelectorAll('.moditem-cb').forEach(cb=>cb.addEventListener('change',()=>{
   SUB[cb.dataset.k]=cb.checked; buildModPicker(); renderReg(sel.value);}));
- document.getElementById('subsNone').addEventListener('click',()=>setAllSubs(false));
- document.getElementById('subsAll').addEventListener('click',()=>setAllSubs(true));
+ document.querySelectorAll('.fw-cb').forEach(cb=>cb.addEventListener('change',()=>{
+  FW[cb.dataset.fw]=cb.checked; buildModPicker(); renderReg(sel.value);}));
 }
-document.getElementById('fwIdp').addEventListener('change',e=>{
- FW.idp=e.target.checked; buildModPicker(); renderReg(sel.value);});
-document.getElementById('fwRef').addEventListener('change',e=>{
- FW.refugee=e.target.checked; buildModPicker(); renderReg(sel.value);});
+document.querySelectorAll('.preset').forEach(b=>b.addEventListener('click',()=>applyPreset(b.dataset.p)));
 
 // ---- the module, generated from module_i18n.py's M[LANG] --------------------
 // Every stem, skip condition, option and note below comes from M, so the Apply
@@ -1638,7 +1721,6 @@ function panelToggle(btnId,panelId,openTxt,shutTxt){
   if(!h.hidden)h.scrollIntoView({behavior:"smooth",block:"nearest"});});}
 panelToggle('notesbtn','notespanel',"Show the full notes","Hide");
 panelToggle('regnotesbtn','regnotespanel',"Read this before using it","Hide");
-panelToggle('modpickerbtn','modpicker',"Customise which items are included","Hide");
 /* ---------------------------------------------------------------------
    Downloadable questionnaire + interviewer instructions — DOCX / PDF,
    built in the browser from the two forms currently on screen (the
@@ -1879,9 +1961,6 @@ document.getElementById('docxBtn').addEventListener('click',async()=>{
  }catch(e){ setDlStatus('Could not build the Word document.',true); }
 });
 
-document.querySelectorAll('.dl-again').forEach(b=>b.addEventListener('click',()=>{
- document.getElementById(b.dataset.for).click();
- document.getElementById('dlStatus').scrollIntoView({behavior:"smooth",block:"center"});}));
 document.getElementById('pdfBtn').addEventListener('click',async()=>{
  const iso=sel.value,v=Q[iso]; if(!v) return;
  setDlStatus('Building the PDF…');
@@ -1901,6 +1980,7 @@ document.getElementById('pdfBtn').addEventListener('click',async()=>{
 buildModPicker();
 const deepC=(new URLSearchParams(location.search).get('c')||"").toUpperCase();
 sel.value = (deepC && Q[deepC]) ? deepC : (Q["NGA"] ? "NGA" : Object.keys(Q)[0]);
+cpickLabel();
 pickCountry();
 </script></body></html>"""
 
