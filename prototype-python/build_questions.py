@@ -1082,7 +1082,7 @@ else is added by the populations you choose to identify.</p>
   <button id="insPdfBtn" class="secondary">PDF</button>
   <span class="dlstatus" id="dlStatus">Two documents, both for the country, version and settings shown:
   the questionnaire (customised cards, full questionnaire, customisation summary) and the
-  question-by-question interviewer instructions in the MICS/DHS format.</span>
+  question-by-question interviewer instructions.</span>
 </div>
 <div class="modpicker" id="modpicker">
  <p class="sectitle">Which populations do you need to identify?</p>
@@ -2217,8 +2217,7 @@ function buildInstructionsHTML(iso){
  let h=`<!DOCTYPE html><html><head><meta charset="utf-8">`+
   `<title>${esc(v.name)} &mdash; interviewer instructions</title><style>${EXPORT_CSS}${INSTR_CSS}</style></head><body>`;
  h+=`<h1>${esc(v.name)} &mdash; interviewer instructions</h1>`+
-  `<p class="lede">Question-by-question instructions for the identification questions, in the format of the `+
-  `MICS6 <i>Instructions for Interviewers</i> and the DHS-8 <i>Interviewer's Manual</i>: for each question, `+
+  `<p class="lede">Question-by-question instructions for the identification questions: for each question, `+
   `its purpose, how to ask it, definitions, probing, recording, and common errors &mdash; followed by a box of `+
   `what is specific to ${esc(v.name)}, drawn from the same sources that customised the questionnaire. `+
   `<b>Draft for review; instructions are in English</b> &mdash; an interviewer manual is normally translated as `+
