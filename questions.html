@@ -236,6 +236,7 @@ h2{font-size:15px;margin:28px 0 2px;font-weight:640}
  border:1px solid var(--a);background:var(--a);color:#fff;cursor:pointer;font-weight:600}
 .dlbar button:disabled{opacity:.5;cursor:default}
 .dlbar button.secondary{background:var(--s);color:var(--a)}
+.dlsep{width:1px;align-self:stretch;background:var(--g);margin:2px 4px}
 .dlstatus{font-size:12.5px;color:var(--m);max-width:60ch}
 .regcard .dlbar{margin:0 0 14px}
 .dlstatus.err{color:#d03b3b}
@@ -376,10 +377,14 @@ to flee, Location of displacement, Whether ever crossed a border, Applied for pr
 Outcome &mdash; are always needed for baseline classification and always shown; everything
 else is added by the populations you choose to identify.</p>
 <div class="dlbar">
-  <button id="docxBtn">Download questionnaire &amp; instructions (.docx)</button>
-  <button id="pdfBtn" class="secondary">Download as PDF</button>
-  <span class="dlstatus" id="dlStatus">The two customised cards above, the full questionnaire
-  below and a summary of every customisation, in the version, language and settings shown.</span>
+  <button id="docxBtn">Questionnaire (.docx)</button>
+  <button id="pdfBtn" class="secondary">PDF</button>
+  <span class="dlsep"></span>
+  <button id="insDocxBtn">Interviewer instructions (.docx)</button>
+  <button id="insPdfBtn" class="secondary">PDF</button>
+  <span class="dlstatus" id="dlStatus">Two documents, both for the country, version and settings shown:
+  the questionnaire (customised cards, full questionnaire, customisation summary) and the
+  question-by-question interviewer instructions in the MICS/DHS format.</span>
 </div>
 <div class="modpicker" id="modpicker">
  <p class="sectitle">Which populations do you need to identify?</p>
@@ -1344,6 +1349,218 @@ function customisationHTML(iso){
  return h;
 }
 
+// ---------------------------------------------------------------------
+// Interviewer instructions - a second, richer document beside the
+// questionnaire, modelled on the question-by-question format of the MICS6
+// Instructions for Interviewers and the DHS-8 Interviewer's Manual:
+// each item gets its purpose, how to ask it, definitions, probing rules,
+// recording rules and common errors, and then a country box built from the
+// same databases that customise the questionnaire (event provenance, the
+// office and document record, DTM reasons, the survey overlay's history).
+// English only for now - interviewer manuals are normally translated as a
+// separate, reviewed exercise.
+const INSTR={
+ frcfl:{name:"FrcFl", title:"Forced to flee",
+  purpose:"The module's screening question: it establishes whether the respondent has EVER had to flee a home, and from which causes. Every later question depends on it, so an error here travels through the whole module.",
+  how:"Read the two introductory sentences first, slowly - they define what &ldquo;flee a home&rdquo; means. Then read the lead-in and each response option WITH its example. The examples are part of the question: cognitive testing found that when they were withheld, respondents failed to recognise events that qualify. Read up to three examples per option at an even pace.",
+  defs:["<b>Flee a home</b> means leaving a home, or land, because of events that threatened the respondent's or their family's safety. It does NOT require panic or a sudden escape: packing over several days, or leaving after a threat rather than during an attack, still counts.",
+        "<b>A home</b> includes land the respondent lived on.",
+        "<b>In your lifetime</b> - the question is about the whole life, not recent years. If the respondent answers only about the current crisis, remind them: &ldquo;at any time in your life&rdquo;."],
+  probe:"If the respondent hesitates over whether their situation &ldquo;counts&rdquo;, re-read the option and its examples and let THEM decide - never decide for them. If they describe leaving for work or family reasons with no threat, do not code an option; &ldquo;None of the above&rdquo; exists for exactly that answer, and the follow-up question (FrcOth) will catch reasons the list misses.",
+  record:"Tick EVERY option the respondent confirms - multiple answers are expected. &ldquo;None of the above&rdquo; is an exclusive code: if it is ticked, nothing else may be.",
+  errors:["Skipping the examples to save time - the single most damaging shortcut in testing.",
+          "Treating the question as being about the most recent move only.",
+          "Coding economic hardship as a threat. Hardship without a safety threat belongs at FrcOth, where it is recorded and then classified as valid or not under this country's rules."]},
+ frcoth:{name:"FrcOth", title:"Other reasons for fleeing",
+  purpose:"Catches valid reasons the main list misses, and screens OUT answers that do not qualify - it is the module's main protection against false positives.",
+  how:"Read the question and then STOP. Do not read the list below it - it is a back-coding list for you and the office, not response options.",
+  defs:["An answer is recorded here whenever the respondent chose &ldquo;a different threat&rdquo; at FrcFl."],
+  probe:"Neutral probes only: &ldquo;Can you tell me a little more about that?&rdquo; Do not suggest any of the listed reasons.",
+  record:"Write the answer VERBATIM, in the respondent's own words. Coding against the list happens afterwards. Two soft checks while you write: risk of conscription or forced recruitment belongs at FrcFl under armed conflict or widespread violence - re-ask FrcFl if that is what you heard; mass evictions for infrastructure projects belong at FrcFl under man-made events, while a one-off eviction by a landlord stays here.",
+  errors:["Reading the back-coding list aloud.","Summarising instead of recording verbatim."]},
+ fleeloc:{name:"FleeLoc", title:"Location of displacement",
+  purpose:"Separates displacement that began inside the survey country from displacement that began abroad - the fork between the IDP track and the refugee track.",
+  how:"Read as written. If the respondent fled more than once, the question is about the FIRST home they had to flee.",
+  defs:[],
+  probe:"If the respondent starts describing several displacements, bring them back to the first one: &ldquo;the first home you ever had to flee&rdquo;.",
+  record:"One answer only. For &ldquo;Other country&rdquo;, write the country's name.",
+  errors:["Recording the most recent displacement instead of the first."]},
+ idploc:{name:"IDPLoc", title:"Location before displacement",
+  purpose:"Lets IDPs be sub-categorised by comparing where they lived before displacement with where they live now (location of return vs elsewhere).",
+  how:"Open question. Record as much geographic detail as the respondent can give.",
+  defs:[],
+  probe:"If they give only a village or town, ask for the district and province too.",
+  record:"Write village or town, then county/district, then province - all that are known.",
+  errors:["Accepting a single place-name when more detail was available."]},
+ locliv:{name:"LocLiv / CitLoc", title:"Always lived there / citizenship",
+  purpose:"IRIS's condition for counting someone as an IDP: a person displaced inside a country they were only passing through, and whose citizenship lies elsewhere, is not an IDP of that country. If citizenship at the time of displacement is captured elsewhere in your survey, these two questions may be dropped.",
+  how:"Read as written. &ldquo;Always lived&rdquo; ignores short or temporary absences - holidays, seasonal work, study.",
+  defs:["<b>Always lived</b>: their usual residence was there; short absences do not break it."],
+  probe:"If the respondent lists periods abroad, ask whether those were temporary stays or moves.",
+  record:"Yes/No each. CitLoc is asked only when LocLiv = No.",
+  errors:["Treating a season of work abroad as breaking &ldquo;always lived&rdquo;."]},
+ fleecross:{name:"FleeCross", title:"Moved to another country",
+  purpose:"Routing and classification: it separates those who stayed inside the country (IDP track) from those who crossed a border (refugee track), and in the IDP-only version it is the exclusion condition for people who established residence abroad.",
+  how:"Read as written, including &ldquo;even if this was only temporary&rdquo; - those words do real work.",
+  defs:["Any move to another country counts, however short, including a stay in a border town or a camp just across the border."],
+  probe:"Respondents often omit short crossings. If the story mentioned a border area, ask: &ldquo;including any short stay in another country?&rdquo;",
+  record:"Yes/No.",
+  errors:["Letting a respondent answer No because the stay abroad was brief - brief stays are exactly what the 12Mnths question then sorts out."]},
+ idppost:{name:"IDPPost", title:"First place moved to",
+  purpose:"With IDPLoc, sub-categorises IDPs into location of displacement vs other settlement.",
+  how:"The FIRST place they moved to, not where they live now. Stopovers - places passed through in transit, days rather than weeks - do not count.",
+  defs:[],
+  probe:"&ldquo;Where did you first stay for some time?&rdquo;",
+  record:"Village or town, county/district, province.",
+  errors:["Recording the current address.","Recording a transit stop."]},
+ mnths12:{name:"12Mnths", title:"Time abroad",
+  purpose:"Applies the usual-residence rule: 12 months or more abroad establishes a new country of residence. In the IDP-only version, 12 months or more means the respondent is a returning migrant, not an IDP.",
+  how:"Read as written; prompt with the two bands.",
+  defs:["Count the total continuous stay after fleeing, not separate trips added together."],
+  probe:"If unsure, anchor on events: &ldquo;did you spend a full year there - a planting season and a harvest, two winters?&rdquo;",
+  record:"One band.",
+  errors:["Adding up several short stays into one figure."]},
+ apply:{name:"Apply", title:"Applied for international protection",
+  purpose:"The central refugee-track question. IRRS defines an asylum seeker by having LODGED a claim, so this question is about a formal application - not about receiving help.",
+  how:"Read the question as written, then ONE of the two localisation versions - A names the office where a claim is lodged, B names the document the claim produces. Version B is often recalled better; where a specimen image is provided, show it while asking.",
+  defs:["<b>International protection</b> covers refugee status, asylum, and this country's equivalents. Cognitive interviews found the bare phrase poorly understood - the example carries the question.",
+        "<b>Applied</b> means the respondent (or their household for them) lodged a claim - registering for assistance is NOT applying."],
+  probe:"If the respondent says they &ldquo;registered&rdquo;, establish what for: registration for aid or a ration card is not an application for protection. Ask what office it was and what document they received - the country box below tells you what the right answers look like here.",
+  record:"Yes/No. Yes routes to Outcome; No routes to IntApply where that question is included.",
+  errors:["Counting registration for assistance as an application - the main false-positive risk, especially where UNHCR registers people in parallel to the government procedure.",
+          "Respondents who applied YEARS ago under a different office or organisation answering No because the named office did not exist then - the country box lists the older names to listen for."]},
+ intapply:{name:"IntApply", title:"Intended to apply",
+  purpose:"Identifies prospective asylum seekers - people who have not lodged a claim but plan to.",
+  how:"Read as written.",defs:["Intention is enough; no step needs to have been taken."],
+  probe:"None beyond a neutral repeat.",record:"Yes/No.",errors:[]},
+ outcome:{name:"Outcome", title:"Outcome of the application",
+  purpose:"Separates recognised refugees, pending asylum seekers, and failed or withdrawn applications.",
+  how:"Read all four options before accepting an answer.",
+  defs:["<b>Still being decided</b> includes appeals.","<b>Withdrew</b> is the respondent's own decision to stop - different from denied."],
+  probe:"If the respondent holds a renewable card but never heard a decision, that is usually &ldquo;still being decided&rdquo; - probe for whether a decision was ever communicated.",
+  record:"One answer.",errors:["Coding an expired or unrenewed document as &ldquo;denied&rdquo;."]},
+ legal:{name:"Legal", title:"Main document held",
+  purpose:"Distinguishes types of protection (temporary, complementary, permanent), identifies naturalised former refugees, and quality-assures the answers above.",
+  how:"Read the question, then work through the category headers; read the options under a header only when the header fits. One MAIN document - the one that allows them to stay.",
+  defs:["If the respondent holds several documents, the main one is the one that gives the right to stay - not a ration card or appointment slip."],
+  probe:"Ask to see the document if the respondent is willing - never insist. The country box lists what the documents are called here, including everyday names.",
+  record:"One answer.",errors:["Recording an assistance or enrolment token as the main stay document when a status document exists."]},
+};
+
+// The country box for one item: everything the databases know that an
+// interviewer in this country should have in hand.
+function instrCountryBox(key,iso,v,r,mode){
+ const bits=[];
+ const cu=(v&&v.cust)||{};
+ if(key==="frcfl"){
+  const rows=P.filter(x=>x.iso3===iso&&x.localised);
+  if(rows.length){
+   bits.push(`<b>Where the examples come from.</b> The examples in this questionnaire were drafted from recorded events, so you can answer &ldquo;why that example?&rdquo;:`);
+   bits.push(`<ul>`+rows.slice(0,10).map(x=>`<li><i>${esc(x.example)}</i> &mdash; ${esc(x.source)}${x.evidence?`; ${esc(x.evidence)}`:""}</li>`).join("")+`</ul>`);
+  }
+ }
+ if(key==="frcoth"&&cu.dtm&&cu.dtm.length){
+  bits.push(`<b>What people here actually answer.</b> Among displaced people IOM DTM interviewed in this country, reasons given outside the FrcFl codes: `+
+   cu.dtm.map(([x,pc])=>`${esc(x)} (${pc}%)`).join(", ")+`. Expect these; record them verbatim.`);
+ }
+ if(key==="fleeloc"&&cu.origins&&cu.origins.length){
+  bits.push(`<b>Likely &ldquo;other country&rdquo; answers here:</b> ${cu.origins.map(esc).join(", ")} &mdash; the largest displaced populations hosted in this country (UNHCR).`);
+ }
+ if((key==="idploc"||key==="idppost")&&cu.adm&&cu.adm.length){
+  bits.push(`<b>Areas you will hear most often:</b> ${cu.adm.map(esc).join(", ")} &mdash; the areas with the most recorded displacement events (UCDP, IDMC).`);
+ }
+ if(key==="fleecross"&&cu.dest&&cu.dest.length){
+  bits.push(`<b>Likely destinations named here:</b> ${cu.dest.map(esc).join(", ")} &mdash; where this country's nationals are registered as refugees or asylum seekers (UNHCR).`);
+ }
+ if(key==="apply"&&r){
+  if(r.reg==="NONE"){ bits.push(`No registration or protection procedure exists in this country; this sequence is not asked.`); }
+  else{
+   const who={GOVERNMENT:"the Government",UNHCR:"UNHCR",BOTH:"both the Government and UNHCR"}[r.reg]||r.reg;
+   bits.push(`<b>Who registers claims here:</b> ${who} (source confidence ${esc(r.cf)}).`);
+   if(r.org) bits.push(`<b>The office (Version A):</b> ${esc(r.org)}${r.orgL?` &mdash; <i>${esc(r.orgL)}</i> in the local language`:""}${r.alt&&r.alt.length?`; also heard as: ${esc(r.alt.join("; "))}`:""}.${r.ow?` ${esc(r.ow)}.`:""}`);
+   const dn=r.da||r.dr;
+   if(dn) bits.push(`<b>The document (Version B):</b> ${esc(dn)}${(r.da?r.daC:r.drC)?` &mdash; people call it &ldquo;${esc(r.da?r.daC:r.drC)}&rdquo;`:""}${r.da&&r.dr&&r.dr!==r.da?`; on recognition it becomes ${esc(r.dr)}${r.drC?` (&ldquo;${esc(r.drC)}&rdquo;)`:""}`:""}.${r.dw?` ${esc(r.dw)}.`:""}`);
+   if(r.cols&&r.cols.length) bits.push(`<b>Colour names in use:</b> ${esc(r.cols.join(", "))} &mdash; respondents often know the document by its colour; accept these answers.`);
+   if(r.mis) bits.push(`<b>Warning &mdash; the office framing misfires here.</b> ${esc(r.how)}. Prefer Version B.`);
+   if(r.cav) bits.push(`<b>Background and history to listen for.</b> ${esc(r.cav)}`);
+   const sp=SPEC[iso];
+   if(sp&&sp.images&&sp.images.length) bits.push(`<b>Show card:</b> a specimen of the document is included in the questionnaire download &mdash; show it while asking.`);
+  }
+ }
+ if(key==="legal"&&r&&r.reg!=="NONE"){
+  const l=[];
+  if(r.da) l.push(`asylum applicant document = <b>${esc(r.da)}</b>`);
+  if(r.dr) l.push(`refugee = <b>${esc(r.dr)}</b>`);
+  if(r.svd&&r.svd.length) l.push(`UNHCR itself issues: ${r.svd.map(x=>x.toLowerCase()).join(", ")}`);
+  if(l.length) bits.push(`<b>What the protected-status options are called here:</b> ${l.join("; ")}.`);
+  if(r.cols&&r.cols.length) bits.push(`<b>Everyday colour names:</b> ${esc(r.cols.join(", "))}.`);
+ }
+ if(key==="fleecross"&&mode==="idp") bits.push(`<b>In the IDP-only version</b> this question exists to exclude people who established residence abroad; it is asked only when the home fled was in the survey country.`);
+ if(key==="apply"&&mode==="idp") bits.push(`<b>In the IDP-only version</b> this is a screening question: Yes means the respondent is a repatriated refugee or asylum seeker, not an IDP, and the module ends.`);
+ return bits.length?`<div class="ibox"><div class="ibox-h">In ${esc((Q[iso]&&Q[iso].name)||iso)}</div>${bits.map(b=>`<p>${b}</p>`).join("")}</div>`:"";
+}
+
+function instrSection(key,iso,v,r,mode){
+ const d=INSTR[key]; if(!d) return "";
+ let h=`<h2>${d.name} &mdash; ${d.title}</h2>`;
+ h+=`<p><b>Purpose.</b> ${d.purpose}</p>`;
+ h+=`<p><b>How to ask.</b> ${d.how}</p>`;
+ if(d.defs.length) h+=`<p><b>Definitions.</b></p><ul>`+d.defs.map(x=>`<li>${x}</li>`).join("")+`</ul>`;
+ if(d.probe) h+=`<p><b>Probing.</b> ${d.probe}</p>`;
+ if(d.record) h+=`<p><b>Recording.</b> ${d.record}</p>`;
+ if(d.errors.length) h+=`<p><b>Common errors.</b></p><ul>`+d.errors.map(x=>`<li>${x}</li>`).join("")+`</ul>`;
+ h+=instrCountryBox(key,iso,v,r,mode);
+ return h;
+}
+
+function buildInstructionsHTML(iso){
+ const v=Q[iso], r=REG[iso], mode=fwMode();
+ const langName=(LANGS[LANG]&&LANGS[LANG][0])||LANG;
+ let h=`<!DOCTYPE html><html><head><meta charset="utf-8">`+
+  `<title>${esc(v.name)} &mdash; interviewer instructions</title><style>${EXPORT_CSS}${INSTR_CSS}</style></head><body>`;
+ h+=`<h1>${esc(v.name)} &mdash; interviewer instructions</h1>`+
+  `<p class="lede">Question-by-question instructions for the identification questions, in the format of the `+
+  `MICS6 <i>Instructions for Interviewers</i> and the DHS-8 <i>Interviewer's Manual</i>: for each question, `+
+  `its purpose, how to ask it, definitions, probing, recording, and common errors &mdash; followed by a box of `+
+  `what is specific to ${esc(v.name)}, drawn from the same sources that customised the questionnaire. `+
+  `<b>Draft for review; instructions are in English</b> &mdash; an interviewer manual is normally translated as `+
+  `its own reviewed exercise. Questionnaire settings when this file was generated: ${esc(VERSION_DEFS[VER]?VERSION_DEFS[VER].label:"Long")} version, `+
+  `${LEN==="showcard"?"showcard":"read-aloud"} length, ${esc(langName)}, `+
+  `${mode==="idp"?"IDP-only (IRIS)":mode==="ref"?"refugee-only (IRRS)":"combined refugee and IDP"} questionnaire.</p>`;
+ h+=`<h2>General rules</h2><ul>`+
+  `<li><b>Read every question exactly as written.</b> The parts in blue are also read as written &mdash; they are not yours to improvise; they were drafted for this country and are listed with their sources below.</li>`+
+  `<li><b>Anything in CAPITAL LETTERS or brackets is never read aloud</b> &mdash; it is an instruction to you.</li>`+
+  `<li><b>The italic line above each question is its skip rule</b>: it says who gets the question. Follow the arrows after response options.</li>`+
+  `<li><b>Never suggest an answer.</b> Probe neutrally: repeat the question, or ask &ldquo;can you tell me more?&rdquo;.</li>`+
+  `<li><b>Read the examples.</b> They are part of the question: testing found respondents fail to recognise qualifying events without them.</li>`+
+  `<li><b>Record immediately</b>, and verbatim where the question is open.</li></ul>`;
+ const items=["frcfl"];
+ if(itemActive("frcoth")) items.push("frcoth");
+ items.push("fleeloc");
+ if(itemActive("idploc")) items.push("idploc");
+ if(itemActive("locliv")) items.push("locliv");
+ items.push("fleecross");
+ if(itemActive("idppost")) items.push("idppost");
+ if(itemActive("mnths12")) items.push("mnths12");
+ if(FW.refugee||mode==="idp") items.push("apply");
+ if(itemActive("intapply")) items.push("intapply");
+ if(mode!=="idp"&&FW.refugee) items.push("outcome");
+ if(itemActive("legal")) items.push("legal");
+ items.forEach(k=>{h+=instrSection(k,iso,v,r,mode);});
+ h+=`<p><small class="gen-note">Generated ${new Date().toISOString().slice(0,10)} from the EGRISS identification-questions `+
+  `dataset, for the settings above. Sources per example: UCDP GED, IDMC, ACLED (kinds of event), IOM DTM, UNHCR population `+
+  `statistics, help.unhcr.org/RIMAP (offices and documents), and UNHCR's Registration Baseline Survey. Review before fielding.</small></p>`;
+ h+=`</body></html>`;
+ return h;
+}
+const INSTR_CSS=`
+.ibox{background:#f4f7fc;border:1pt solid #c9d6ea;border-radius:6pt;padding:8pt 11pt;margin:8pt 0 14pt}
+.ibox-h{font-size:8.5pt;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#3b71b9;margin-bottom:4pt}
+.ibox p{margin:0 0 6pt;font-size:10pt}
+.ibox ul{margin:2pt 0 6pt;padding-left:14pt;font-size:9.5pt}
+h2{page-break-inside:avoid}
+`;
+
 function safeFileStem(name){
  return (name||'country').replace(/[^\w\-]+/g,'_').replace(/^_+|_+$/g,'')||'country';
 }
@@ -1403,30 +1620,27 @@ async function generatePdfBytesQ(htmlStr){
  return doc.output('arraybuffer');
 }
 
-document.getElementById('docxBtn').addEventListener('click',async()=>{
- const iso=sel.value,v=Q[iso]; if(!v) return;
- setDlStatus('Building the Word document…');
- try{
-  const html=buildExportHTML(iso);
-  if(!window.htmlDocx){setDlStatus('The Word-export library did not load — try again in a moment.',true);return;}
-  const blob=window.htmlDocx.asBlob(html);
-  const fn=safeFileStem(v.name)+'_questionnaire.docx';
-  saveBlob(fn,blob);
-  setDlStatus('Downloaded '+fn);
- }catch(e){ setDlStatus('Could not build the Word document.',true); }
-});
-
-document.getElementById('pdfBtn').addEventListener('click',async()=>{
- const iso=sel.value,v=Q[iso]; if(!v) return;
- setDlStatus('Building the PDF…');
- try{
-  const html=buildExportHTML(iso);
-  const arrbuf=await generatePdfBytesQ(html);
-  const fn=safeFileStem(v.name)+'_questionnaire.pdf';
-  saveBlob(fn,new Blob([arrbuf],{type:'application/pdf'}));
-  setDlStatus('Downloaded '+fn);
- }catch(e){ setDlStatus('Could not build the PDF.',true); }
-});
+function wireDownload(btnId,builder,suffix,asPdf){
+ document.getElementById(btnId).addEventListener('click',async()=>{
+  const iso=sel.value,v=Q[iso]; if(!v) return;
+  setDlStatus(asPdf?'Building the PDF…':'Building the Word document…');
+  try{
+   const html=builder(iso);
+   const fn=safeFileStem(v.name)+suffix+(asPdf?'.pdf':'.docx');
+   if(asPdf){
+    const arrbuf=await generatePdfBytesQ(html);
+    saveBlob(fn,new Blob([arrbuf],{type:'application/pdf'}));
+   }else{
+    if(!window.htmlDocx){setDlStatus('The Word-export library did not load — try again in a moment.',true);return;}
+    saveBlob(fn,window.htmlDocx.asBlob(html));
+   }
+   setDlStatus('Downloaded '+fn);
+  }catch(e){ setDlStatus(asPdf?'Could not build the PDF.':'Could not build the Word document.',true); }
+ });}
+wireDownload('docxBtn',buildExportHTML,'_questionnaire',false);
+wireDownload('pdfBtn',buildExportHTML,'_questionnaire',true);
+wireDownload('insDocxBtn',buildInstructionsHTML,'_interviewer_instructions',false);
+wireDownload('insPdfBtn',buildInstructionsHTML,'_interviewer_instructions',true);
 
 // Deep link from map.html's country panel ("View the full drafted question
 // for X" -> questions.html?c=ISO3) -- preselects that country in place of the
