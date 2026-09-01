@@ -1814,7 +1814,7 @@ function drawProtection(){
   `<b>A different question item</b> — where a protection claim is lodged and `+
   `what document it produces, not why anyone was displaced.`;
  document.getElementById('modenote').innerHTML="<b>What you are looking at.</b> "+
-  `Drafted from public sources for 151 countries — see `+
+  `${MP.source_note||"Drafted from public sources for 151 countries"} — see `+
   `<a href="questions.html" target="_blank" rel="noopener">questions.html</a> for the full `+
   `wording, country by country, or click a country here to jump straight to it.`;
  document.getElementById('tbl').innerHTML="";

@@ -892,7 +892,7 @@ office a respondent would visit &mdash; those are flagged above with the actual
 channel, so the wording can be adapted rather than asked as written.<br><br>
 <b>Confidence is HIGH/MEDIUM/LOW per country.</b> LOW rows are almost entirely
 small Pacific and Caribbean states; check MEDIUM and LOW against a country
-source before fielding.<br><br>
+source before fielding.<br><br>__SURVEYNOTE__
 <b>Internal displacement is deliberately absent.</b> Of the major contexts
 checked, only a handful have a verifiable IDP status document; most have none at
 all, which is a finding about the instruments, not a gap in the search.
@@ -1444,7 +1444,8 @@ function renderReg(iso){
   `<div class="modq-skip">Ask if any valid reason to flee was coded and FleeCross = Yes</div>`+
   `<div class="modq-stem">Did you ever apply for international protection, such as refugee status?</div>`+
   (example?`<div class="modq-example">${esc(example)}</div>${support}`
-          :`<div class="pmiss">&mdash; no localisation example can be drafted for this country.</div>`)+
+          :`<div class="pmiss">&mdash; no localisation example can be drafted for this country.</div>`+
+           (v.ow?`<div class="why">${esc(v.ow)}</div>`:"")+(v.dw?`<div class="why">${esc(v.dw)}</div>`:""))+
   `<div class="modq-opts">`+
    `<div class="modq-opt"><span class="box"></span>1. Yes<span class="modq-arrow">&rarr; go to Outcome</span></div>`+
    `<div class="modq-opt"><span class="box"></span>2. No<span class="modq-arrow">${itemActive("intapply")?"&rarr; go to IntApply":""}</span></div>`+
@@ -1738,6 +1739,26 @@ pickCountry();
 </script></body></html>"""
 
 
+def survey_note():
+    """Extra paragraph for the notes panel, only when the UNHCR Registration
+    Baseline Survey overlay is present (see protection.py's load())."""
+    try:
+        from protection import SURVEY
+    except Exception:
+        return ""
+    if not SURVEY.exists():
+        return ""
+    return ("<b>Cross-checked against UNHCR&rsquo;s internal Registration Baseline "
+            "Survey (2024/25).</b> Where the operation itself answered, the note under "
+            "the module records what it said &mdash; joint, parallel or split "
+            "registration, the year registration was handed over to the Government, "
+            "which document types UNHCR issues &mdash; and flags the handful of "
+            "countries where its answer doesn&rsquo;t match the office named here. "
+            "It also adds 29 countries the public scrape never covered, with the "
+            "registrar known but no office or document named yet (LOW confidence)."
+            "<br><br>")
+
+
 def write_page(out, rows, reg=None, spec=None):
     reg = reg or {}
     spec = spec or {}
@@ -1747,7 +1768,8 @@ def write_page(out, rows, reg=None, spec=None):
                 .replace("__LANGS__", json.dumps(LANGS, separators=(",", ":")))
                 .replace("__REG__", json.dumps(reg, separators=(",", ":")))
                 .replace("__REGLABEL__", json.dumps(REGISTRAR_LABEL, separators=(",", ":")))
-                .replace("__SPEC__", json.dumps(spec, separators=(",", ":"))))
+                .replace("__SPEC__", json.dumps(spec, separators=(",", ":")))
+                .replace("__SURVEYNOTE__", survey_note()))
     open(f"{OUT}/idq_localised_questions.html", "w").write(html)
     print(f"\nwrote idq_localised_questions.html "
           f"({len(html)/1e6:.2f} MB, {len(out)} countries)")

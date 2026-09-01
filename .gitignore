@@ -34,3 +34,11 @@ venv/
 # IOM DTM pulls, fetched with a personal subscription key. IOM's terms require
 # the key to stay private; the data itself is also not ours to redistribute.
 data/raw/dtm/
+
+# UNHCR's internal Registration Baseline Survey and the overlay derived from it
+# (prototype-python/merge_registration_survey.py). Internal data: keep it out
+# of the public repository until the task team clears what may be published.
+# protection.py applies the overlay automatically when the file is present.
+config/protection_survey.json
+config/protection_survey_log.csv
+*Registration_Baseline_Survey*.xlsx

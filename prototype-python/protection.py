@@ -39,9 +39,24 @@ THREE THINGS THAT MAKE THIS A DRAFT AND NOT A DELIVERABLE
      `reword_v1` and `channel`. Peru grants complementary protection
      automatically and Denmark's appeal to the Refugee Appeals Board is
      automatic: there, no "did you do something" question works at all.
-  3. Confidence is HIGH for 55 countries, MEDIUM for 59, LOW for 37. The LOW rows
-     are almost entirely small Pacific and Caribbean states. Check MEDIUM and LOW
+  3. Confidence is HIGH for 55 countries, MEDIUM for 59, LOW for 66. The LOW rows
+     are small Pacific and Caribbean states plus 29 countries known only from
+     the UNHCR Registration Baseline Survey (see below). Check MEDIUM and LOW
      against a country source before fielding.
+
+CROSS-CHECKED AGAINST UNHCR'S OWN REGISTRATION BASELINE SURVEY (Sept 2026)
+106 country operations answered UNHCR's internal 2024/25 registration survey.
+Each such record carries a `survey` block with the operation's own answers
+(who registers, joint/parallel/split arrangement, handover history, which
+document types UNHCR issues, refugee-law status, IDP and stateless enrolment)
+and a `registrar_reconciliation` note. Where the two sources disagree the
+rule is: joint or split registration -> BOTH; parallel registration -> keep
+the government office (the claim is still lodged there, but the caveat now
+warns that UNHCR-registered respondents may say "yes" without a claim);
+survey UNHCR vs scrape NONE -> UNHCR; anything else is kept and flagged for
+review in the caveat. 29 countries the scrape never covered (mostly West and
+Central Africa) are added from the survey alone: registrar known, nothing
+named, confidence LOW.
 
 WHAT IS DELIBERATELY ABSENT
 Internal displacement. Of 29 major contexts checked, only Ukraine, Colombia,
@@ -75,10 +90,39 @@ REGISTRAR_LABEL = {"GOVERNMENT": "Government", "UNHCR": "UNHCR",
                    "BOTH": "Both", "NONE": "Nobody"}
 
 
+SURVEY = ROOT / "config" / "protection_survey.json"
+
+
 def load():
-    """The curated record for every country, keyed by ISO3."""
+    """The curated record for every country, keyed by ISO3.
+
+    If config/protection_survey.json is present (it is gitignored - see
+    merge_registration_survey.py), the UNHCR Registration Baseline Survey
+    overlay is applied on top: registrar corrections, a survey note appended
+    to the caveat, a `survey` block with the operation's own answers, and new
+    records for countries the scrape never covered. Without the file, this is
+    exactly the public-source scrape.
+    """
     with open(DATA, encoding="utf-8") as fh:
-        return json.load(fh)["countries"]
+        recs = json.load(fh)["countries"]
+    if not SURVEY.exists():
+        return recs
+    with open(SURVEY, encoding="utf-8") as fh:
+        overlay = json.load(fh)["countries"]
+    for iso, o in overlay.items():
+        if "new_record" in o:
+            recs[iso] = o["new_record"]
+            continue
+        r = recs[iso]
+        if o.get("registrar"):
+            r["registrar"] = o["registrar"]
+        if o.get("caveat_add"):
+            old = r["caveat"].rstrip()
+            if old and old[-1] not in ".!?":
+                old += "."
+            r["caveat"] = (old + " " if old else "") + o["caveat_add"]
+        r["survey"] = o["survey"]
+    return recs
 
 
 def probes(rec):
@@ -114,6 +158,15 @@ def question_payload():
     return out
 
 
+def source_note():
+    """One sentence on where the records come from, for the pages to print."""
+    base = "Drafted from public sources (help.unhcr.org, RIMAP) for 151 countries"
+    if not SURVEY.exists():
+        return base
+    return (base + ", cross-checked against UNHCR's internal Registration Baseline "
+            "Survey (106 operations), which also supplies the registrar for 29 more")
+
+
 def map_payload():
     """Three layers for the existing world map, in the shape draw() expects.
 
@@ -131,6 +184,7 @@ def map_payload():
         if r["colours"]:
             colours[iso] = r["colours"]
     return {"office": office, "doc": doc, "ask": ask, "colours": colours,
+            "source_note": source_note(),
             "names": {iso: r["country"] for iso, r in recs.items()},
             "docnames": {iso: [r["doc_pending_colloquial"] or r["doc_pending"],
                                r["doc_recognised_colloquial"] or r["doc_recognised"]]
@@ -140,7 +194,10 @@ def map_payload():
 
 def _selfcheck():
     recs = load()
-    assert len(recs) == 151, f"expected 151 countries, got {len(recs)}"
+    # 151 from the help.unhcr.org scrape; 180 when the survey overlay adds the
+    # 29 countries known only from the UNHCR Registration Baseline Survey.
+    want = 180 if SURVEY.exists() else 151
+    assert len(recs) == want, f"expected {want} countries, got {len(recs)}"
     for iso, r in recs.items():
         assert len(iso) == 3, f"bad ISO3 {iso!r}"
         assert r["registrar"] in REGISTRAR_LABEL, f"{iso}: bad registrar"
