@@ -151,6 +151,10 @@ h2{font-size:15px;margin:28px 0 2px;font-weight:640}
  font-family:ui-sans-serif,-apple-system,sans-serif;font-size:13px;margin:3px 0;
  flex-wrap:wrap}
 .modwhy{font-size:11.5px;color:var(--m);flex-basis:100%;margin-left:22px}
+.modadds{font-size:10.5px;color:var(--a);font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-left:4px}
+.modcore,.modresult{font-family:ui-sans-serif,-apple-system,sans-serif;font-size:12.5px;color:var(--i2);margin:0 0 8px;max-width:76ch}
+.modresult{margin:10px 0 0;padding-top:8px;border-top:1px dotted var(--g)}
+.modquick{margin:0 0 4px}
 .modhint{font-size:12px;color:var(--m);margin:10px 0 0;max-width:72ch}
 /* ---- Apply card: two localisation versions on the FrcFl form styling ---- */
 .applysec{margin-top:18px}
@@ -185,13 +189,13 @@ h2{font-size:15px;margin:28px 0 2px;font-weight:640}
    rather than an empty gap, matching .pmiss elsewhere on this page. */
 .spec-head{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;
  color:var(--m);margin:16px 0 8px;font-family:ui-sans-serif,-apple-system,sans-serif}
-.spec-grid{display:flex;flex-wrap:wrap;gap:14px;margin:0}
-.spec-item{margin:0;flex:0 1 210px;font-family:ui-sans-serif,-apple-system,sans-serif}
-.spec-item img{width:100%;height:auto;max-height:150px;object-fit:contain;
+.spec-grid{display:flex;flex-wrap:wrap;gap:18px;margin:0}
+.spec-item{margin:0;flex:1 1 380px;max-width:520px;font-family:ui-sans-serif,-apple-system,sans-serif}
+.spec-item img{width:100%;height:auto;max-height:340px;object-fit:contain;
  border:1px solid var(--g);border-radius:6px;background:var(--s);display:block}
 .spec-item.broken img{display:none}
 .spec-item.broken figure,.spec-item.broken{position:relative}
-.spec-item.broken::before{content:"Image unavailable";display:block;padding:34px 10px;
+.spec-item.broken::before{content:"Image unavailable";display:block;padding:60px 10px;
  text-align:center;border:1px dashed var(--g);border-radius:6px;color:var(--m);font-size:12px}
 .spec-item figcaption{font-size:11.5px;color:var(--i2);margin-top:6px;line-height:1.4}
 .spec-item figcaption a{color:var(--a)}
@@ -311,15 +315,16 @@ sub-category and can be switched on or off.</p>
 <button class="help" id="modpickerbtn">Customise which items are included</button>
 <div class="modpicker" id="modpicker" hidden>
  <p class="sectitle">Which populations do you need to identify?</p>
+ <p class="modcore" style="margin-top:-2px">Short version: the core items alone. Longer versions: tick each
+ further sub-category you need and the questions it requires are added.</p>
  <div class="modfw">
   <label><input type="checkbox" id="fwIdp" checked> Identify IDPs (IRIS framework)</label>
   <label><input type="checkbox" id="fwRef" checked> Identify refugees (IRRS framework)</label>
  </div>
  <div id="moditems"></div>
- <p class="modhint">Core items &mdash; Forced to flee, Location of displacement, Whether
- ever crossed a border, Applied for protection, Outcome &mdash; are always included below;
- they're needed either way. Each item above adds one specific sub-category, named the way
- the paper names it, with its own rationale for review.</p>
+ <p class="modhint">Sub-categories and conditions are the paper&rsquo;s own (Classification
+ Table and Table X of the revised module). The questionnaire below and the download follow
+ whatever is ticked here.</p>
 </div>
 <span class="badges" id="regbadges"></span>
 <div class="regform" id="regform"></div>
@@ -437,7 +442,9 @@ function fmtN(n){
  return String(n);}
 Object.entries(Q).sort((a,b)=>a[1].name.localeCompare(b[1].name))
  .forEach(([k,v])=>{const o=document.createElement('option');
-  o.value=k;o.textContent=`${v.name} — ${v.n_localised}/7 options localised`;
+  const sp=SPEC[k], nImg=(sp&&sp.images)?sp.images.length:0;
+  o.value=k;o.textContent=`${v.name} — ${v.n_localised}/7 options localised`+
+   (nImg?`  ▪ ${nImg===1?"document specimen":nImg+" document specimens"}`:"");
   sel.appendChild(o);});
 function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;");}
 
@@ -653,49 +660,103 @@ function render(){
 // own checkbox, grouped under whichever framework(s) it unlocks a sub-category
 // for. None of these carry country-specific localisation the way Apply does —
 // the wording is fixed, so they render identically for every country.
-const OPT_ITEMS=[
- {key:"frcoth", group:"shared", label:"Other/uncoded reasons for fleeing (FrcOth)",
-  why:"More detailed reasons for fleeing, more room to localise examples and valid "+
-      "codes, and a check against false positives."},
- {key:"idploc", group:"idp", label:"Location of displacement vs. return (IDPLoc)",
+// The optional items, named as the paper names them, with Table X's rationale.
+const OPT_ITEMS={
+ frcoth:{name:"FrcOth", label:"Other reasons for fleeing",
+  why:"More detailed reasons for fleeing, more room to localise examples and valid codes, and a check against false positives."},
+ idploc:{name:"IDPLoc", label:"Location of IDP displacement",
   why:"Sub-categorises IDPs into location of displacement and location of return."},
- {key:"idppost", group:"idp", label:"Location of displacement vs. other settlement (IDPPost)",
+ idppost:{name:"IDPPost", label:"IDP first location post fleeing",
   why:"Sub-categorises IDPs into location of displacement or location of other settlement."},
- {key:"locliv", group:"idp", label:"Citizenship at time of displacement (LocLiv / CitLoc)",
-  why:"Needed in some form to classify IDP stocks &mdash; can be dropped if citizenship "+
-      "is already captured elsewhere in the survey."},
- {key:"mnths12", group:"shared", label:"Length of time stayed abroad (12Mnths)",
-  why:"Sub-categorises IDPs into a returning-migrant category, and distinguishes "+
-      "citizens returning post-migration from refugees."},
- {key:"intapply", group:"refugee", label:"Prospective asylum seekers (IntApply)",
-  why:"Needed for the refugee sub-category &lsquo;prospective asylum seeker.&rsquo;"},
- {key:"legal", group:"refugee", label:"Type of protection / naturalised former refugees (Legal)",
-  why:"Distinguishes temporary, complementary and permanent protection, and identifies "+
-      "naturalised former refugees (those who now hold citizenship)."},
+ locliv:{name:"LocLiv / CitLoc", label:"Whether had always lived in, or was a citizen of, the country of displacement",
+  why:"Must be captured in some way to classify IDP stocks; need not be asked here if citizenship is captured elsewhere in the survey."},
+ mnths12:{name:"12Mnths", label:"Whether stayed abroad for at least 12 months",
+  why:"Sub-categorises IDPs into a returning-migrant category."},
+ intapply:{name:"IntApply", label:"Whether intended to apply for international protection",
+  why:"Needed for the refugee sub-category ‘prospective asylum seeker’."},
+ legal:{name:"Legal", label:"Main document allowing the respondent to stay",
+  why:"Distinguishes temporary, complementary and permanent protection; identifies naturalised former refugees and people with protected status but no displacement history."},
+};
+const CORE_ITEMS="FrcFl, FleeLoc, FleeCross, Apply, Outcome";
+// What the core items alone can already identify, per the Classification Table.
+const CORE_IDENTIFIES=[
+ "any history of forced displacement",
+ "whether the first displacement was inside or outside the survey country",
+ "refugees (status granted), asylum seekers (pending), failed or withdrawn applications",
+ "repatriated refugees and asylum seekers",
 ];
-let ITEMS={frcoth:true, idploc:true, idppost:true, locliv:true, mnths12:true,
-           intapply:true, legal:true};
+// Sub-categories from the paper's Classification Table that need an item beyond
+// the core, each with the condition the paper gives and the item(s) it adds.
+// Ticking a sub-category is what switches its items on; the items themselves
+// are never picked directly, so the questionnaire always follows from a
+// population someone actually wants to identify.
+const SUBCATS=[
+ {key:"prospective", group:"refugee", label:"Prospective asylum seekers",
+  cond:"Apply = No and IntApply = Yes", items:["intapply"]},
+ {key:"nointent", group:"refugee", label:"Displaced abroad with no intention to seek asylum",
+  cond:"Apply = No and IntApply = No", items:["intapply"]},
+ {key:"naturalised", group:"refugee", label:"Naturalised former refugees",
+  cond:"Apply = Yes, Outcome = granted, Legal = permanent residence or citizenship", items:["legal"]},
+ {key:"proctype", group:"refugee", label:"Refugees by type of protection (temporary, complementary, permanent)",
+  cond:"Outcome = granted, read against the Legal protected-status categories", items:["legal"]},
+ {key:"protnoflee", group:"refugee", label:"Protected status without a forced-displacement history",
+  cond:"FrcFl = none of the above and Legal = protected status", items:["legal"]},
+ {key:"idpcit", group:"idp", label:"IDP stock with the citizenship condition asked here",
+  cond:"LocLiv = Yes or CitLoc = Yes; skip if citizenship at displacement is captured elsewhere in the survey",
+  items:["locliv"]},
+ {key:"idpdisp", group:"idp", label:"IDPs in location of displacement",
+  cond:"current location = the first location moved to (IDPPost)", items:["idppost"]},
+ {key:"idpret", group:"idp", label:"IDPs in location of return",
+  cond:"current location = the location fled from (IDPLoc)", items:["idploc"]},
+ {key:"idpother", group:"idp", label:"IDPs in other settlement locations",
+  cond:"current location is neither IDPLoc nor IDPPost", items:["idploc","idppost"]},
+ {key:"retmig", group:"idp", label:"Citizens returning after 12 months or more abroad (not IDPs)",
+  cond:"FleeCross = Yes, 12Mnths = 12 months or more, Apply = No", items:["mnths12"]},
+ {key:"frcoth", group:"shared", label:"Other or locally-defined reasons for fleeing",
+  cond:"FrcOth coded to a locally valid reason; also screens out false positives", items:["frcoth"]},
+];
+let SUB={}; SUBCATS.forEach(c=>SUB[c.key]=true);
 let FW={idp:true, refugee:true};
 
+function subActive(c){
+ if(!SUB[c.key]) return false;
+ if(c.group==="idp"&&!FW.idp) return false;
+ if(c.group==="refugee"&&!FW.refugee) return false;
+ return true;
+}
+function itemActive(key){
+ return SUBCATS.some(c=>subActive(c)&&c.items.includes(key));
+}
+function activeItemNames(){
+ return Object.keys(OPT_ITEMS).filter(itemActive).map(k=>OPT_ITEMS[k].name);
+}
+function setAllSubs(on){ SUBCATS.forEach(c=>SUB[c.key]=on); buildModPicker(); renderReg(sel.value); }
+
 function buildModPicker(){
- const groups=[["shared","Applies either way"],
-               ["idp","IDP identification (IRIS)"],
-               ["refugee","Refugee identification (IRRS)"]];
- let h="";
+ const groups=[["refugee","Refugees (IRRS) — tick the sub-categories you need"],
+               ["idp","IDPs (IRIS) — tick the sub-categories you need"],
+               ["shared","Either framework"]];
+ let h=`<p class="modcore"><b>Core items, always asked:</b> ${CORE_ITEMS}. On their own they identify `+
+  CORE_IDENTIFIES.join("; ")+`. Everything below adds one item for one further sub-category.</p>`+
+  `<p class="modquick"><button class="help" id="subsNone">Core only (short version)</button> `+
+  `<button class="help" id="subsAll">Every sub-category (full version)</button></p>`;
  groups.forEach(([g,title])=>{
   if(g==="idp"&&!FW.idp)return;
   if(g==="refugee"&&!FW.refugee)return;
-  const items=OPT_ITEMS.filter(it=>it.group===g);
-  if(!items.length)return;
-  h+=`<p class="modgrouptitle">${title}</p>`+items.map(it=>
-   `<label class="moditem"><input type="checkbox" class="moditem-cb" data-k="${it.key}" `+
-   `${ITEMS[it.key]?"checked":""}> ${it.label}<span class="modwhy">${it.why}</span></label>`
-  ).join("");
+  const cats=SUBCATS.filter(c=>c.group===g);
+  h+=`<p class="modgrouptitle">${title}</p>`+cats.map(c=>
+   `<label class="moditem"><input type="checkbox" class="moditem-cb" data-k="${c.key}" `+
+   `${SUB[c.key]?"checked":""}> ${c.label} <span class="modadds">adds ${c.items.map(k=>OPT_ITEMS[k].name).join(" + ")}</span>`+
+   `<span class="modwhy">${c.cond}</span></label>`).join("");
  });
- document.getElementById('moditems').innerHTML=h||
-  `<p class="modhint" style="margin-top:2px">Pick a framework above to see what it unlocks.</p>`;
+ if(!FW.idp&&!FW.refugee) h+=`<p class="modhint" style="margin-top:2px">Pick a framework above to see its sub-categories.</p>`;
+ const names=activeItemNames();
+ h+=`<p class="modresult"><b>Items this adds to the core:</b> ${names.length?names.join(", "):"none — core questionnaire only"}.</p>`;
+ document.getElementById('moditems').innerHTML=h;
  document.querySelectorAll('.moditem-cb').forEach(cb=>cb.addEventListener('change',()=>{
-  ITEMS[cb.dataset.k]=cb.checked; renderReg(sel.value);}));
+  SUB[cb.dataset.k]=cb.checked; buildModPicker(); renderReg(sel.value);}));
+ document.getElementById('subsNone').addEventListener('click',()=>setAllSubs(false));
+ document.getElementById('subsAll').addEventListener('click',()=>setAllSubs(true));
 }
 document.getElementById('fwIdp').addEventListener('change',e=>{
  FW.idp=e.target.checked; buildModPicker(); renderReg(sel.value);});
@@ -809,13 +870,6 @@ const CORE_FLEECROSS=`<div class="modq"><div class="modq-name">FleeCross</div>`+
 // framework hides that group's checkboxes in the picker (buildModPicker), but
 // without this check their last checked state would silently keep rendering
 // them anyway.
-function itemActive(key){
- const it=OPT_ITEMS.find(x=>x.key===key);
- if(!it||!ITEMS[key]) return false;
- if(it.group==="idp"&&!FW.idp) return false;
- if(it.group==="refugee"&&!FW.refugee) return false;
- return true;
-}
 
 // Assembles the fixed-wording part of the chain (everything except Apply/
 // IntApply/Outcome/Legal, which need REG[iso]'s data or are appended after)
@@ -1131,6 +1185,11 @@ ol.opts li{padding:4pt 0;border-bottom:0.5pt dotted #dde1e8}
 .aprobe .eg{font-style:normal;font-weight:700}
 .ainstr{font-size:9.5pt;color:#5a6884;border-top:0.5pt dotted #dde1e8;margin-top:12pt;padding-top:8pt}
 .aopts{margin-top:10pt}
+table.cust{border-collapse:collapse;width:100%;font-size:9.5pt;margin:0 0 6pt}
+table.cust th{text-align:left;vertical-align:top;width:120pt;padding:4pt 8pt 4pt 0;color:#5a6884;font-weight:700;border-bottom:0.5pt solid #dde1e8}
+table.cust td{vertical-align:top;padding:4pt 0;border-bottom:0.5pt solid #dde1e8}
+table.cust ul{margin:2pt 0 0;padding-left:14pt}
+table.cust small{color:#8b93a8}
 `;
 
 function buildExportHTML(iso){
@@ -1154,6 +1213,7 @@ function buildExportHTML(iso){
   `<p class="lede">Forced-to-flee question, ${esc(lenName)} length, ${esc(langName)}. `+
   `The response options never change &mdash; only the examples, localised for this country. `+
   `The Apply item follows with its two localisation versions, then the rest of the module.</p>`;
+ h+=customisationHTML(iso);
  h+=`<h2>Forced to flee</h2><div class="fform">${formHTML}</div>`;
  if(warnHTML) h+=`<div class="warn">${warnHTML}</div>`;
  if(applyHTML){
@@ -1171,6 +1231,44 @@ function buildExportHTML(iso){
   `identification-questions dataset. Translations are unreviewed drafts; a specimen document `+
   `listed above has not been visually verified &mdash; confirm before fielding.</small></p>`;
  h+=`</body></html>`;
+ return h;
+}
+
+// "How this questionnaire was customised" - every choice made on the page,
+// in one place at the top of the download, so whoever receives the file can
+// see what was localised, which version of each item they hold, and which
+// populations the item set can identify. This is the instructions half of
+// "questionnaire & instructions".
+function customisationHTML(iso){
+ const v=Q[iso], r=REG[iso];
+ const langName=(LANGS[LANG]&&LANGS[LANG][0])||LANG;
+ const region=(ADM>=0&&v.adm1)?v.adm1[ADM]:null;
+ const pop=(POP!=null)?(v.populations||[])[POP]:null;
+ const fw=[FW.idp?"IDPs (IRIS)":null,FW.refugee?"refugees (IRRS)":null].filter(Boolean);
+ const subs=SUBCATS.filter(subActive);
+ const items=Object.keys(OPT_ITEMS).filter(itemActive);
+ const row=(k,val)=>`<tr><th>${k}</th><td>${val}</td></tr>`;
+ let h=`<h2>How this questionnaire was customised</h2><table class="cust">`;
+ h+=row("Country",esc(v.name)+(region?` &middot; ${esc(region.name)} (subnational example set)`:``));
+ if(pop) h+=row("Population previewed",esc(pop.name)+` &mdash; the forced-to-flee examples shown are `+
+   `${pop.kind==="national"?"the host country's own":"this population's own, in place of the host country's"}`);
+ h+=row("Forced to flee, version",`${esc(VERSION_DEFS[VER]?VERSION_DEFS[VER].label:"Long")} `+
+   (VER===3?`&mdash; the full item, 8 response codes plus none`:`&mdash; official variant from the question-testing document, drafted in English only`));
+ h+=row("Length",LEN==="showcard"?"Showcard &mdash; all recorded examples":"Read aloud &mdash; up to three examples per option");
+ h+=row("Language",esc(langName)+(LANG!=="en"?" (unreviewed draft translation)":""));
+ h+=row("Frameworks",fw.length?fw.join(" and "):"none selected");
+ h+=row("Core items, always asked",CORE_ITEMS+`. These alone identify: ${CORE_IDENTIFIES.join("; ")}.`);
+ h+=row("Sub-categories selected",subs.length?`<ul>`+subs.map(c=>`<li>${c.label} <small>(${esc(c.cond)}; adds ${c.items.map(k=>OPT_ITEMS[k].name).join(" + ")})</small></li>`).join("")+`</ul>`:"none &mdash; core questionnaire only (short version)");
+ h+=row("Items added beyond the core",items.length?`<ul>`+items.map(k=>`<li><b>${OPT_ITEMS[k].name}</b> &mdash; ${OPT_ITEMS[k].label}. <small>${OPT_ITEMS[k].why}</small></li>`).join("")+`</ul>`:"none");
+ if(r&&r.reg!=="NONE"&&FW.refugee){
+  h+=row("Apply localisation",`Version A (office): ${r.org?"<b>"+esc(r.org)+"</b>":"cannot be worded here"} &middot; `+
+    `Version B (document): ${(r.da||r.dr)?"<b>"+esc(r.da||r.dr)+"</b>":"cannot be worded here"}`+
+    (r.mis?` &middot; the office framing is flagged as likely to misfire in this country`:``)+
+    ` &middot; source confidence ${esc(r.cf)}`);
+ }else if(r&&r.reg==="NONE"){
+  h+=row("Apply localisation","No registration or protection procedure exists in this country; the Apply sequence does not apply.");
+ }
+ h+=`</table>`;
  return h;
 }
 
