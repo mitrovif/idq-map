@@ -1591,6 +1591,14 @@ function yesno(t,arrows){ return optRows([t.ui.yes,t.ui.no],arrows); }
 //   cust     origins hosted (UNHCR) / destinations abroad (UNHCR) / subnational
 //            areas with most events (UCDP, IDMC) / DTM reasons outside the codes
 //   v        protection record: document names for Legal, UNHCR-issued types
+// Which framework version is being built: "idp" (IRIS only), "ref" (IRRS
+// only) or "both". The paper's Classification Table drives what each version
+// keeps: in the IDP-only version FleeCross/12Mnths/Apply survive only as the
+// IRIS exclusion conditions (established residence abroad, sought protection
+// abroad) and Outcome/IntApply/Legal are dropped; in the refugee-only version
+// a purely internal displacement ends the module.
+function fwMode(){ return FW.idp&&!FW.refugee?"idp":FW.refugee&&!FW.idp?"ref":"both"; }
+
 function chainCtx(iso){
  const q=Q[iso]||{}, v=REG[iso]||null;
  return {c:q.name||(v&&v.c)||iso, cust:q.cust||{}, v};
@@ -1608,17 +1616,25 @@ function itemHTML(key,ctx){
    `</ul>`+(cu.dtm&&cu.dtm.length?`<div class="modq-custom">${u.cust_dtm.replace("{c}",EG(ctx.c))
      .replace("{list}",cu.dtm.map(([r,pc])=>EG(`${r} (${pc}%)`)).join(", "))}</div>`:""));
   case "fleeloc": return modq("FleeLoc",t.fleeloc.skip,t.fleeloc.stem,
-   optRows([t.fleeloc.opts[0]+" &mdash; "+EG(ctx.c), t.fleeloc.opts[1]])+
+   optRows([t.fleeloc.opts[0]+" &mdash; "+EG(ctx.c), t.fleeloc.opts[1]],
+           [null, fwMode()==="idp"?u.oos_idp:null])+
    (cu.origins&&cu.origins.length?custLine(u.cust_other,cu.origins):""));
   case "idploc": return modq("IDPLoc",t.idploc.skip,t.idploc.stem,`<div class="modq-note">${u.open}</div>`+
    (cu.adm&&cu.adm.length?custLine(u.cust_adm,cu.adm):""));
   case "locliv": return modq("LocLiv",t.locliv.skip,fillC(t.locliv.stem,ctx),yesno(t,[null,goto("CitLoc")]))+
                         modq("CitLoc",t.citloc.skip,fillC(t.citloc.stem,ctx),yesno(t));
-  case "fleecross": return modq("FleeCross",t.fleecross.skip,t.fleecross.stem,
-   (cu.dest&&cu.dest.length?custLine(u.cust_to,cu.dest):"")+yesno(t));
+  case "fleecross": {
+   const m=fwMode();
+   const skip=m==="idp"?u.skip_fleeloc1:t.fleecross.skip;
+   const note=m==="idp"?`<div class="modq-note">${u.note_fleecross_idp}</div>`
+             :m==="ref"?`<div class="modq-note">${fillC(u.note_fleecross_ref,ctx)}</div>`:"";
+   return modq("FleeCross",skip,t.fleecross.stem,
+    (cu.dest&&cu.dest.length?custLine(u.cust_to,cu.dest):"")+yesno(t)+note);
+  }
   case "idppost": return modq("IDPPost",t.idppost.skip,t.idppost.stem,`<div class="modq-note">${t.idppost.note}</div>`+
    (cu.adm&&cu.adm.length?custLine(u.cust_adm,cu.adm):""));
-  case "mnths12": return modq("12Mnths",t.mnths12.skip,t.mnths12.stem,optRows(t.mnths12.opts));
+  case "mnths12": return modq("12Mnths",t.mnths12.skip,t.mnths12.stem,
+   optRows(t.mnths12.opts,[null, fwMode()==="idp"?u.notidp_m12:null]));
   case "intapply": return modq("IntApply",t.intapply.skip,t.intapply.stem,yesno(t));
   case "outcome": return modq("Outcome",t.outcome.skip,t.outcome.stem,optRows(t.outcome.opts));
   case "legal": {
@@ -1739,10 +1755,16 @@ function renderReg(iso){
  renderApply(iso,v);
  form.setAttribute('dir',RTL()?"rtl":"ltr");
  miss.style.display="none";form.style.display="";
- const ctx=chainCtx(iso);
+ const ctx=chainCtx(iso), mode=fwMode();
  const legalHTML=itemActive("legal")?itemHTML("legal",ctx):"";
- const tail=()=>(itemActive("intapply")?itemHTML("intapply",ctx):"")+itemHTML("outcome",ctx)+legalHTML;
- const applyOpts=yesno(t,[goto("Outcome"),itemActive("intapply")?goto("IntApply"):null]);
+ // IDP-only version: Outcome serves no IDP classification (the Classification
+ // Table uses only Apply = No as the exclusion), so it is dropped with
+ // IntApply and Legal, and Apply becomes a screening item.
+ const tail=()=>(itemActive("intapply")?itemHTML("intapply",ctx):"")+
+   (mode==="idp"?"":itemHTML("outcome",ctx))+legalHTML;
+ const applyOpts=mode==="idp"
+  ? yesno(t,[u.notidp_apply,null])+`<div class="modq-note">${u.note_apply_idp}</div>`
+  : yesno(t,[goto("Outcome"),itemActive("intapply")?goto("IntApply"):null]);
  if(!v){
   badges.innerHTML="";
   form.innerHTML=buildFrontChain(ctx)+modq("Apply",t.apply.skip,t.apply.stem,
@@ -1995,6 +2017,8 @@ function customisationHTML(iso){
  h+=row("Language",esc(langName)+(LANG!=="en"?" (unreviewed draft translation)":""));
  h+=row("Frameworks",fw.length?fw.join(" and "):"none selected");
  h+=row("Core items, always asked",CORE_ITEMS+`. These alone identify: ${CORE_IDENTIFIES.join("; ")}.`);
+ if(FW.idp&&!FW.refugee) h+=row("IDP-only version (IRIS)","FleeCross, 12Mnths and Apply are kept only as IRIS's exclusion conditions (established residence abroad; sought protection abroad); Outcome, IntApply and Legal are dropped; a home fled in another country is out of scope.");
+ if(FW.refugee&&!FW.idp) h+=row("Refugee-only version (IRRS)","The IDP location items are dropped; a respondent who fled within the survey country and never crossed a border is out of scope and the module can end at FleeCross.");
  h+=row("Sub-categories selected",subs.length?`<ul>`+subs.map(c=>`<li>${c.label} <small>(${esc(c.cond)}; adds ${c.items.map(k=>OPT_ITEMS[k].name).join(" + ")})</small></li>`).join("")+`</ul>`:"none &mdash; core questionnaire only (short version)");
  h+=row("Items added beyond the core",items.length?`<ul>`+items.map(k=>`<li><b>${OPT_ITEMS[k].name}</b> &mdash; ${OPT_ITEMS[k].label}. <small>${OPT_ITEMS[k].why}</small></li>`).join("")+`</ul>`:"none");
  const cu=v.cust||{};

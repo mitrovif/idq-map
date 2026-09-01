@@ -27,6 +27,13 @@ M = {
 # --------------------------------------------------------------------- EN
 "en": {
  "ui": {
+  "skip_fleeloc1": "Ask if FleeLoc = Survey country",
+  "oos_idp": "&rarr; out of scope &mdash; the home fled was in another country",
+  "notidp_apply": "&rarr; not counted as an IDP (repatriated refugee or asylum seeker)",
+  "notidp_m12": "&rarr; established residence abroad &mdash; not counted as an IDP",
+  "note_apply_idp": "In the IDP-only version this is a screening question: anyone who sought international protection abroad is classified as a repatriated refugee or asylum seeker, not an IDP, and the module ends there.",
+  "note_fleecross_idp": "Asked to exclude people who established residence abroad: under IRIS a person remains an IDP only if they never moved to another country, or stayed abroad for less than 12 months and did not seek protection there.",
+  "note_fleecross_ref": "A respondent who fled a home in {country} and never moved to another country is internally displaced &mdash; out of scope for refugee identification; the module can end there.",
   "eg": "e.g.", "cust_to": "e.g. to {list}", "cust_other": "e.g. {list}", "cust_adm": "e.g. {list}",
   "cust_dtm": "Among displaced people IOM DTM interviewed in {c}, reasons given outside the codes above: {list}",
   "cust_docs": "In {c}: {list}",
@@ -146,6 +153,13 @@ M = {
 # --------------------------------------------------------------------- FR
 "fr": {
  "ui": {
+  "skip_fleeloc1": "Poser si FleeLoc = Pays de l'enquête",
+  "oos_idp": "&rarr; hors champ &mdash; le domicile quitté se trouvait dans un autre pays",
+  "notidp_apply": "&rarr; non compté comme PDI (réfugié rapatrié ou demandeur d'asile)",
+  "notidp_m12": "&rarr; résidence établie à l'étranger &mdash; non compté comme PDI",
+  "note_apply_idp": "Dans la version PDI uniquement, c'est une question de filtrage&nbsp;: toute personne ayant demandé une protection internationale à l'étranger est classée réfugié rapatrié ou demandeur d'asile, non PDI, et le module s'arrête là.",
+  "note_fleecross_idp": "Posée pour exclure les personnes ayant établi leur résidence à l'étranger&nbsp;: selon l'IRIS, une personne reste PDI seulement si elle n'est jamais partie dans un autre pays, ou y est restée moins de 12 mois sans y demander de protection.",
+  "note_fleecross_ref": "Une personne qui a quitté un domicile situé {country} sans jamais partir dans un autre pays est déplacée interne &mdash; hors champ pour l'identification des réfugiés&nbsp;; le module peut s'arrêter là.",
   "eg": "p. ex.", "cust_to": "p. ex. vers {list}", "cust_other": "p. ex. {list}", "cust_adm": "p. ex. {list}",
   "cust_dtm": "Parmi les personnes déplacées interrogées par l'OIM (DTM) en {c}, motifs cités hors des codes ci-dessus&nbsp;: {list}",
   "cust_docs": "En {c}&nbsp;: {list}",
@@ -265,6 +279,13 @@ M = {
 # --------------------------------------------------------------------- ES
 "es": {
  "ui": {
+  "skip_fleeloc1": "Preguntar si FleeLoc = País de la encuesta",
+  "oos_idp": "&rarr; fuera de alcance &mdash; el hogar abandonado estaba en otro país",
+  "notidp_apply": "&rarr; no se cuenta como desplazado interno (refugiado repatriado o solicitante de asilo)",
+  "notidp_m12": "&rarr; estableció residencia en el extranjero &mdash; no se cuenta como desplazado interno",
+  "note_apply_idp": "En la versión solo de desplazados internos esta es una pregunta de filtro: quien solicitó protección internacional en el extranjero se clasifica como refugiado repatriado o solicitante de asilo, no como desplazado interno, y el módulo termina ahí.",
+  "note_fleecross_idp": "Se pregunta para excluir a quienes establecieron residencia en el extranjero: según las IRIS, una persona sigue siendo desplazada interna solo si nunca se trasladó a otro país, o permaneció fuera menos de 12 meses sin solicitar protección allí.",
+  "note_fleecross_ref": "Quien abandonó un hogar en {country} y nunca se trasladó a otro país es desplazado interno &mdash; fuera de alcance para la identificación de refugiados; el módulo puede terminar ahí.",
   "eg": "p. ej.", "cust_to": "p. ej. a {list}", "cust_other": "p. ej. {list}", "cust_adm": "p. ej. {list}",
   "cust_dtm": "Entre las personas desplazadas entrevistadas por la OIM (DTM) en {c}, motivos citados fuera de los códigos anteriores: {list}",
   "cust_docs": "En {c}: {list}",
@@ -384,6 +405,13 @@ M = {
 # --------------------------------------------------------------------- AR
 "ar": {
  "ui": {
+  "skip_fleeloc1": "تُطرح إذا كان FleeLoc = بلد المسح",
+  "oos_idp": "&larr; خارج النطاق &mdash; المسكن الذي غادره كان في بلد آخر",
+  "notidp_apply": "&larr; لا يُحتسب نازحاً داخلياً (لاجئ عائد أو طالب لجوء)",
+  "notidp_m12": "&larr; أقام إقامة في الخارج &mdash; لا يُحتسب نازحاً داخلياً",
+  "note_apply_idp": "في نسخة النازحين داخلياً فقط، هذا سؤال فرز: من طلب الحماية الدولية في الخارج يُصنَّف لاجئاً عائداً أو طالب لجوء، لا نازحاً داخلياً، وينتهي النموذج عنده.",
+  "note_fleecross_idp": "يُطرح لاستبعاد من أقاموا في الخارج: وفق التوصيات الدولية بشأن إحصاءات النازحين داخلياً، يبقى الشخص نازحاً داخلياً فقط إذا لم ينتقل قط إلى بلد آخر، أو بقي في الخارج أقل من 12 شهراً ولم يطلب الحماية هناك.",
+  "note_fleecross_ref": "من غادر مسكناً في {country} ولم ينتقل قط إلى بلد آخر فهو نازح داخلياً &mdash; خارج نطاق تحديد اللاجئين؛ ويمكن أن ينتهي النموذج عنده.",
   "eg": "مثلاً", "cust_to": "مثلاً إلى {list}", "cust_other": "مثلاً {list}", "cust_adm": "مثلاً {list}",
   "cust_dtm": "من بين النازحين الذين قابلتهم المنظمة الدولية للهجرة (DTM) في {c}، أسباب ذُكرت خارج الرموز أعلاه: {list}",
   "cust_docs": "في {c}: {list}",
@@ -498,6 +526,13 @@ M = {
 # --------------------------------------------------------------------- RU
 "ru": {
  "ui": {
+  "skip_fleeloc1": "Задавать, если FleeLoc = Страна обследования",
+  "oos_idp": "&rarr; вне охвата &mdash; покинутое жильё находилось в другой стране",
+  "notidp_apply": "&rarr; не учитывается как ВПЛ (репатриированный беженец или проситель убежища)",
+  "notidp_m12": "&rarr; обосновался за границей &mdash; не учитывается как ВПЛ",
+  "note_apply_idp": "В версии только для ВПЛ это отсеивающий вопрос: тот, кто обращался за международной защитой за границей, классифицируется как репатриированный беженец или проситель убежища, а не как ВПЛ, и модуль на этом завершается.",
+  "note_fleecross_idp": "Задаётся, чтобы исключить обосновавшихся за границей: согласно IRIS человек остаётся ВПЛ, только если никогда не переезжал в другую страну или находился за границей менее 12 месяцев и не обращался там за защитой.",
+  "note_fleecross_ref": "Тот, кто покинул жильё в стране {country} и никогда не переезжал в другую страну, является внутренне перемещённым лицом &mdash; вне охвата идентификации беженцев; модуль может на этом завершиться.",
   "eg": "напр.", "cust_to": "напр. в {list}", "cust_other": "напр. {list}", "cust_adm": "напр. {list}",
   "cust_dtm": "Среди перемещённых лиц, опрошенных МОМ (DTM) в стране {c}, причины, названные вне приведённых выше кодов: {list}",
   "cust_docs": "В стране {c}: {list}",
@@ -616,6 +651,13 @@ M = {
 # --------------------------------------------------------------------- ZH
 "zh": {
  "ui": {
+  "skip_fleeloc1": "如 FleeLoc = 调查所在国，则询问",
+  "oos_idp": "&rarr; 不在范围内 &mdash; 离开的住所在另一个国家",
+  "notidp_apply": "&rarr; 不计为境内流离失所者（回返难民或寻求庇护者）",
+  "notidp_m12": "&rarr; 已在国外定居 &mdash; 不计为境内流离失所者",
+  "note_apply_idp": "在仅识别境内流离失所者的版本中，这是一道筛选题：凡在国外申请过国际保护者归类为回返难民或寻求庇护者，而非境内流离失所者，问卷到此结束。",
+  "note_fleecross_idp": "此题用于排除已在国外定居者：按照IRIS，只有从未迁往他国、或在国外停留不足12个月且未在当地寻求保护的人，才仍算境内流离失所者。",
+  "note_fleecross_ref": "在{country}离开住所且从未迁往他国者属于境内流离失所 &mdash; 不在难民识别范围内；问卷可到此结束。",
   "eg": "例如", "cust_to": "例如前往{list}", "cust_other": "例如{list}", "cust_adm": "例如{list}",
   "cust_dtm": "在国际移民组织（DTM）于{c}访谈的流离失所者中，所述的上述编码之外的原因：{list}",
   "cust_docs": "在{c}：{list}",

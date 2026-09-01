@@ -574,15 +574,7 @@
    "note": "Round 5. The Commons file page was opened in a real browser from Filip's laptop and confirmed: 1,409×1,390 px scan of the statutory form, public domain as a German official work. The current plastic eAT card issued on recognition was not found as an image."
   },
   "PAN": {
-   "images": [
-    {
-     "label": "An applicant holding her ONPAR identification card (news photo; the card face may not be legible)",
-     "img": "https://www.acnur.org/sites/default/files/styles/standard_08/public/2025-05/panama_13_05_2025.jpg",
-     "source": "https://www.acnur.org/noticias/avisos/acnur-fortalece-la-identificacion-y-proteccion-de-personas-solicitantes-en-panama",
-     "source_name": "ACNUR Panamá",
-     "license": "news photo © ACNUR — check before use"
-    }
-   ],
+   "images": [],
    "links": [
     {
      "label": "ONPAR — Guía informativa para refugiados: specimens of the recognised-refugee and admitted-applicant cards on p. 11 (PDF)",
@@ -593,7 +585,7 @@
      "url": "https://www.mingob.gob.pa/onpar-reactiva-entrega-de-carne-a-solicitantes-a-refugio/"
     }
    ],
-   "note": "Round 5. ONPAR's own guide shows labelled specimens of both cards on page 11 (inside a PDF). The ACNUR photo shows a real card in hand but is not a close-up; neither was visually inspected from this build."
+   "note": "Round 5, revised after Filip's review: the ACNUR news photo showed people, not the document, and was removed. ONPAR's own guide (PDF link below) carries labelled specimens of both cards on page 11 — a screenshot of that page, embedded like Bosnia's Form 9, is the way to close this one."
   },
   "PER": {
    "images": [
