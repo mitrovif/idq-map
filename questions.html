@@ -151,6 +151,10 @@ h2{font-size:15px;margin:28px 0 2px;font-weight:640}
  line-height:1.5;color:var(--i2);margin:6px 0 2px}
 .modq-example{font-style:italic}
 .modq-example .eg{font-style:normal;font-weight:600;color:var(--a)}
+.modq-form{font-family:ui-serif,Georgia,"Times New Roman",serif;font-size:15.5px;line-height:1.62;margin-top:6px}
+.modq-form[dir="rtl"]{direction:rtl;text-align:right}
+.modq-form .fhead{margin-top:2px}
+.specimens-chain{margin-top:6px}
 .modq-custom{font-family:ui-serif,Georgia,"Times New Roman",serif;font-style:italic;font-size:13.5px;
  color:var(--i2);margin:5px 0 2px}
 .modq-custom-inline{font-family:ui-serif,Georgia,"Times New Roman",serif;font-style:italic;font-size:12.5px;color:var(--i2)}
@@ -702,6 +706,7 @@ function render(){
  const verResult=VER===3?null:versionOptsHTML(data, lim, region);
  h+=VER===3?optsListHTML(data, LANG, t, lim, region):verResult.html;
  f.innerHTML=h;
+ syncChainFrcFl();
 
  const provIso=usingPop?dataIso:iso;
  const rows=P.filter(r=>r.iso3===provIso);
@@ -940,7 +945,7 @@ function itemHTML(key,ctx){
 // Assembles the fixed-wording part of the chain (everything before Apply) in
 // item order, honouring the sub-category picker.
 function buildFrontChain(ctx){
- let h="";
+ let h=chainFrcFlHTML();
  if(itemActive("frcoth")) h+=itemHTML("frcoth",ctx);
  h+=itemHTML("fleeloc",ctx);
  if(itemActive("idploc")) h+=itemHTML("idploc",ctx);
@@ -1013,6 +1018,21 @@ function renderApply(iso,v){
  f.innerHTML=head+`<p class="lead">${u.loc_two}</p>`+a+b+opts+instr;
 }
 
+// The full questionnaire opens with FrcFl itself - the same customised form
+// as the card at the top, copied in so the module is complete on its own and
+// in the download. render() calls this after every re-render of the card, so
+// version, length, language, level and population changes flow through.
+function syncChainFrcFl(){
+ const el=document.getElementById('chainFrcFl'), src=document.getElementById('form');
+ if(!el||!src) return;
+ el.innerHTML=`<div class="modq-name">FrcFl</div><div class="modq-form" dir="${src.getAttribute('dir')||'ltr'}">${src.innerHTML}</div>`;
+}
+function chainFrcFlHTML(){
+ const src=document.getElementById('form');
+ return `<div class="modq modq-frcfl" id="chainFrcFl"><div class="modq-name">FrcFl</div>`+
+  `<div class="modq-form" dir="${src.getAttribute('dir')||'ltr'}">${src.innerHTML}</div></div>`;
+}
+
 function renderReg(iso){
  const v=REG[iso], t=MT(), u=t.ui, goto=x=>u.goto.replace("{x}",x);
  const badges=document.getElementById('regbadges'), form=document.getElementById('regform'),
@@ -1047,7 +1067,8 @@ function renderReg(iso){
  const n=applyNames(iso,v);
  let ex="";
  if(n.office) ex+=`<div class="modq-example"><span class="modq-vtag">A</span> ${probeHTML(t.apply.probe_office,n.office)}</div>`;
- if(n.doc) ex+=`<div class="modq-example"><span class="modq-vtag">B</span> ${probeHTML(t.apply.probe_doc,n.doc)}</div>`;
+ if(n.doc) ex+=`<div class="modq-example"><span class="modq-vtag">B</span> ${probeHTML(t.apply.probe_doc,n.doc)}</div>`+
+   `<div class="specimens specimens-chain">${renderSpecimenHTML(iso,v)}</div>`;
  if(!ex) ex=`<div class="pmiss">${u.no_example_short}</div>`+
    (v.ow?`<div class="why">${esc(v.ow)}</div>`:"")+(v.dw?`<div class="why">${esc(v.dw)}</div>`:"");
  let h=buildFrontChain(ctx)+modq("Apply",t.apply.skip,t.apply.stem,ex+applyOpts)+tail();
@@ -1133,7 +1154,7 @@ panelToggle('regnotesbtn','regnotespanel',"Read this before using it","Hide");
 
 function stripImgs(html){
  const tmp=document.createElement('div'); tmp.innerHTML=html;
- tmp.querySelectorAll('img').forEach(im=>im.remove());
+ tmp.querySelectorAll('img').forEach(im=>{ if(!/^data:/.test(im.getAttribute('src')||'')) im.remove(); });
  tmp.querySelectorAll('.spec-item').forEach(el=>el.classList.remove('broken'));
  return tmp.innerHTML;
 }
@@ -1182,6 +1203,8 @@ ol.opts li{padding:4pt 0;border-bottom:0.5pt dotted #dde1e8}
 .cav{background:#eef3fa;padding:8pt 10pt;margin-top:10pt;font-size:9.5pt}
 .spec-head{font-size:8.5pt;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#5a6884;margin-top:10pt}
 .spec-item{margin:4pt 0}
+.spec-item img{max-width:360pt;max-height:260pt;border:0.5pt solid #dde1e8}
+.modq-form{font-family:Georgia,serif;font-size:11pt}
 .spec-item figcaption{font-size:9pt;color:#5a6884}
 .spec-note{font-size:9.5pt;color:#5a6884}
 .spec-links a{font-size:9pt;color:#3b71b9;margin-right:10pt}
