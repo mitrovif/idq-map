@@ -27,6 +27,9 @@ M = {
 # --------------------------------------------------------------------- EN
 "en": {
  "ui": {
+  "eg": "e.g.", "cust_to": "e.g. to {list}", "cust_other": "e.g. {list}", "cust_adm": "e.g. {list}",
+  "cust_dtm": "Among displaced people IOM DTM interviewed in {c}, reasons given outside the codes above: {list}",
+  "cust_docs": "In {c}: {list}",
   "formal": "formal name: {n}",
   "ask_all": "Ask all",
   "yes": "Yes", "no": "No",
@@ -102,11 +105,11 @@ M = {
  },
  "locliv": {
   "skip": "Ask if any valid reason to flee was coded",
-  "stem": "Before you fled this home, had you always lived in the country you fled from?",
+  "stem": "Before you fled this home, had you always lived in {country}?",
  },
  "citloc": {
   "skip": "Ask if LocLiv = No",
-  "stem": "Were you a citizen of that country when you fled your home there?",
+  "stem": "Were you a citizen of {country} when you fled your home there?",
  },
  "fleecross": {
   "skip": "Ask if any valid reason to flee was coded",
@@ -124,15 +127,15 @@ M = {
  },
  "legal": {
   "skip": "Ask all",
-  "stem": "Thinking about your current situation, what is the main document that allows you to stay in the survey country?",
+  "stem": "Thinking about your current situation, what is the main document that allows you to stay in {country}?",
   "note": "Higher-order categories are fixed; the response options under each are localisable "
-          "to the country's own visa/status categories &mdash; not yet drafted per country here.",
+          "to the country's own visa/status categories; the protected-status lines carry this country's document names where they are known.",
   "cats": [
    ["No documents", ["No documents"]],
    ["Visas", ["Tourist visa", "Student visa", "Work visa", "Humanitarian visa", "Family visa", "Other visa (specify)"]],
    ["International agreements", ["Regional free movement agreement (e.g. Mercosur, EU, SADC, EAC, ECOWAS)"]],
-   ["Permanent residency and citizenship", ["Permanent resident document", "[Survey country] passport",
-                                            "Other document certifying [survey country] citizenship"]],
+   ["Permanent residency and citizenship", ["Permanent resident document", "{country} passport",
+                                            "Other document certifying {country} citizenship"]],
    ["Protected status", ["Asylum applicant document", "Refugee", "Recognized stateless person document",
                          "Complementary and subsidiary protection", "Temporary protection"]],
    ["Enrolment document", ["Enrolment document"]],
@@ -143,6 +146,9 @@ M = {
 # --------------------------------------------------------------------- FR
 "fr": {
  "ui": {
+  "eg": "p. ex.", "cust_to": "p. ex. vers {list}", "cust_other": "p. ex. {list}", "cust_adm": "p. ex. {list}",
+  "cust_dtm": "Parmi les personnes déplacées interrogées par l'OIM (DTM) en {c}, motifs cités hors des codes ci-dessus&nbsp;: {list}",
+  "cust_docs": "En {c}&nbsp;: {list}",
   "formal": "nom officiel&nbsp;: {n}",
   "ask_all": "Poser à tous",
   "yes": "Oui", "no": "Non",
@@ -218,11 +224,11 @@ M = {
  },
  "locliv": {
   "skip": "Poser si un motif valable de départ a été codé",
-  "stem": "Avant de quitter ce domicile, aviez-vous toujours vécu dans le pays que vous avez quitté&nbsp;?",
+  "stem": "Avant de quitter ce domicile, aviez-vous toujours vécu {country}&nbsp;?",
  },
  "citloc": {
   "skip": "Poser si LocLiv = Non",
-  "stem": "Étiez-vous citoyen(ne) de ce pays lorsque vous avez quitté votre domicile là-bas&nbsp;?",
+  "stem": "Étiez-vous citoyen(ne) de {country} lorsque vous avez quitté votre domicile là-bas&nbsp;?",
  },
  "fleecross": {
   "skip": "Poser si un motif valable de départ a été codé",
@@ -240,15 +246,15 @@ M = {
  },
  "legal": {
   "skip": "Poser à tous",
-  "stem": "En pensant à votre situation actuelle, quel est le principal document qui vous permet de rester dans le pays de l'enquête&nbsp;?",
+  "stem": "En pensant à votre situation actuelle, quel est le principal document qui vous permet de rester {country}&nbsp;?",
   "note": "Les catégories de niveau supérieur sont fixes&nbsp;; les modalités sous chacune peuvent être "
-          "adaptées aux catégories de visa et de statut du pays &mdash; pas encore rédigées pays par pays ici.",
+          "adaptées aux catégories de visa et de statut du pays&nbsp;; les lignes du statut protégé portent les noms des documents de ce pays lorsqu'ils sont connus.",
   "cats": [
    ["Aucun document", ["Aucun document"]],
    ["Visas", ["Visa de tourisme", "Visa d'études", "Visa de travail", "Visa humanitaire", "Visa familial", "Autre visa (préciser)"]],
    ["Accords internationaux", ["Accord régional de libre circulation (p. ex. Mercosur, UE, SADC, CAE, CEDEAO)"]],
-   ["Résidence permanente et citoyenneté", ["Titre de résident permanent", "Passeport du [pays de l'enquête]",
-                                            "Autre document attestant la citoyenneté du [pays de l'enquête]"]],
+   ["Résidence permanente et citoyenneté", ["Titre de résident permanent", "Passeport de {country}",
+                                            "Autre document attestant la citoyenneté de {country}"]],
    ["Statut protégé", ["Document de demandeur d'asile", "Réfugié", "Document de personne apatride reconnue",
                        "Protection complémentaire et subsidiaire", "Protection temporaire"]],
    ["Document d'enregistrement", ["Document d'enregistrement"]],
@@ -259,6 +265,9 @@ M = {
 # --------------------------------------------------------------------- ES
 "es": {
  "ui": {
+  "eg": "p. ej.", "cust_to": "p. ej. a {list}", "cust_other": "p. ej. {list}", "cust_adm": "p. ej. {list}",
+  "cust_dtm": "Entre las personas desplazadas entrevistadas por la OIM (DTM) en {c}, motivos citados fuera de los códigos anteriores: {list}",
+  "cust_docs": "En {c}: {list}",
   "formal": "nombre oficial: {n}",
   "ask_all": "Preguntar a todos",
   "yes": "Sí", "no": "No",
@@ -334,11 +343,11 @@ M = {
  },
  "locliv": {
   "skip": "Preguntar si se codificó un motivo válido de huida",
-  "stem": "Antes de abandonar ese hogar, ¿había vivido siempre en el país del que salió?",
+  "stem": "Antes de abandonar ese hogar, ¿había vivido siempre en {country}?",
  },
  "citloc": {
   "skip": "Preguntar si LocLiv = No",
-  "stem": "¿Era ciudadano de ese país cuando abandonó su hogar allí?",
+  "stem": "¿Era ciudadano de {country} cuando abandonó su hogar allí?",
  },
  "fleecross": {
   "skip": "Preguntar si se codificó un motivo válido de huida",
@@ -356,15 +365,15 @@ M = {
  },
  "legal": {
   "skip": "Preguntar a todos",
-  "stem": "Pensando en su situación actual, ¿cuál es el documento principal que le permite permanecer en el país de la encuesta?",
+  "stem": "Pensando en su situación actual, ¿cuál es el documento principal que le permite permanecer en {country}?",
   "note": "Las categorías de nivel superior son fijas; las opciones bajo cada una pueden adaptarse a las "
-          "categorías de visado y estatus del país &mdash; todavía no redactadas país por país aquí.",
+          "categorías de visado y estatus del país; las líneas de estatus de protección llevan los nombres de los documentos de este país cuando se conocen.",
   "cats": [
    ["Sin documentos", ["Sin documentos"]],
    ["Visados", ["Visado de turista", "Visado de estudiante", "Visado de trabajo", "Visado humanitario", "Visado familiar", "Otro visado (especificar)"]],
    ["Acuerdos internacionales", ["Acuerdo regional de libre circulación (p. ej. Mercosur, UE, SADC, CAO, CEDEAO)"]],
-   ["Residencia permanente y ciudadanía", ["Documento de residente permanente", "Pasaporte del [país de la encuesta]",
-                                            "Otro documento que acredite la ciudadanía del [país de la encuesta]"]],
+   ["Residencia permanente y ciudadanía", ["Documento de residente permanente", "Pasaporte de {country}",
+                                            "Otro documento que acredite la ciudadanía de {country}"]],
    ["Estatus de protección", ["Documento de solicitante de asilo", "Refugiado", "Documento de persona apátrida reconocida",
                               "Protección complementaria y subsidiaria", "Protección temporal"]],
    ["Documento de inscripción", ["Documento de inscripción"]],
@@ -375,6 +384,9 @@ M = {
 # --------------------------------------------------------------------- AR
 "ar": {
  "ui": {
+  "eg": "مثلاً", "cust_to": "مثلاً إلى {list}", "cust_other": "مثلاً {list}", "cust_adm": "مثلاً {list}",
+  "cust_dtm": "من بين النازحين الذين قابلتهم المنظمة الدولية للهجرة (DTM) في {c}، أسباب ذُكرت خارج الرموز أعلاه: {list}",
+  "cust_docs": "في {c}: {list}",
   "formal": "الاسم الرسمي: {n}",
   "ask_all": "تُطرح على الجميع",
   "yes": "نعم", "no": "لا",
@@ -447,11 +459,11 @@ M = {
  },
  "locliv": {
   "skip": "تُطرح إذا سُجِّل سبب صحيح للمغادرة",
-  "stem": "قبل مغادرة هذا المسكن، هل كنت تعيش دائماً في البلد الذي غادرته؟",
+  "stem": "قبل مغادرة هذا المسكن، هل كنت تعيش دائماً في {country}؟",
  },
  "citloc": {
   "skip": "تُطرح إذا كان LocLiv = لا",
-  "stem": "هل كنت من مواطني ذلك البلد عندما غادرت مسكنك هناك؟",
+  "stem": "هل كنت من مواطني {country} عندما غادرت مسكنك هناك؟",
  },
  "fleecross": {
   "skip": "تُطرح إذا سُجِّل سبب صحيح للمغادرة",
@@ -469,14 +481,14 @@ M = {
  },
  "legal": {
   "skip": "تُطرح على الجميع",
-  "stem": "بالنظر إلى وضعك الحالي، ما الوثيقة الرئيسية التي تسمح لك بالبقاء في بلد المسح؟",
+  "stem": "بالنظر إلى وضعك الحالي، ما الوثيقة الرئيسية التي تسمح لك بالبقاء في {country}؟",
   "note": "الفئات العليا ثابتة؛ ويمكن تكييف الخيارات تحت كل فئة وفق فئات التأشيرات والأوضاع القانونية في البلد "
-          "&mdash; لم تُصَغ بعد لكل بلد هنا.",
+          "؛ وتحمل بنود وضع الحماية أسماء وثائق هذا البلد حيثما كانت معروفة.",
   "cats": [
    ["لا وثائق", ["لا وثائق"]],
    ["التأشيرات", ["تأشيرة سياحية", "تأشيرة دراسة", "تأشيرة عمل", "تأشيرة إنسانية", "تأشيرة لمّ شمل الأسرة", "تأشيرة أخرى (حدِّد)"]],
    ["الاتفاقيات الدولية", ["اتفاقية إقليمية لحرية التنقل (مثل ميركوسور، الاتحاد الأوروبي، سادك، جماعة شرق أفريقيا، إيكواس)"]],
-   ["الإقامة الدائمة والجنسية", ["وثيقة إقامة دائمة", "جواز سفر [بلد المسح]", "وثيقة أخرى تثبت جنسية [بلد المسح]"]],
+   ["الإقامة الدائمة والجنسية", ["وثيقة إقامة دائمة", "جواز سفر {country}", "وثيقة أخرى تثبت جنسية {country}"]],
    ["وضع الحماية", ["وثيقة طالب لجوء", "لاجئ", "وثيقة شخص عديم الجنسية معترف به", "الحماية التكميلية والفرعية", "الحماية المؤقتة"]],
    ["وثيقة تسجيل", ["وثيقة تسجيل"]],
    ["أخرى", ["أخرى (حدِّد)"]],
@@ -486,6 +498,9 @@ M = {
 # --------------------------------------------------------------------- RU
 "ru": {
  "ui": {
+  "eg": "напр.", "cust_to": "напр. в {list}", "cust_other": "напр. {list}", "cust_adm": "напр. {list}",
+  "cust_dtm": "Среди перемещённых лиц, опрошенных МОМ (DTM) в стране {c}, причины, названные вне приведённых выше кодов: {list}",
+  "cust_docs": "В стране {c}: {list}",
   "formal": "официальное название: {n}",
   "ask_all": "Задавать всем",
   "yes": "Да", "no": "Нет",
@@ -560,11 +575,11 @@ M = {
  },
  "locliv": {
   "skip": "Задавать, если закодирована допустимая причина вынужденного выезда",
-  "stem": "До того как покинуть это жильё, жили ли Вы всегда в стране, которую покинули?",
+  "stem": "До того как покинуть это жильё, жили ли Вы всегда в стране {country}?",
  },
  "citloc": {
   "skip": "Задавать, если LocLiv = Нет",
-  "stem": "Были ли Вы гражданином этой страны, когда покинули там своё жильё?",
+  "stem": "Были ли Вы гражданином страны {country}, когда покинули там своё жильё?",
  },
  "fleecross": {
   "skip": "Задавать, если закодирована допустимая причина вынужденного выезда",
@@ -582,15 +597,15 @@ M = {
  },
  "legal": {
   "skip": "Задавать всем",
-  "stem": "Если говорить о Вашем нынешнем положении, какой основной документ позволяет Вам находиться в стране обследования?",
+  "stem": "Если говорить о Вашем нынешнем положении, какой основной документ позволяет Вам находиться в стране {country}?",
   "note": "Категории верхнего уровня фиксированы; варианты внутри каждой могут быть адаптированы к категориям виз "
-          "и статусов данной страны &mdash; здесь по странам ещё не подготовлены.",
+          "и статусов данной страны; строки защищённого статуса содержат названия документов этой страны, если они известны.",
   "cats": [
    ["Нет документов", ["Нет документов"]],
    ["Визы", ["Туристическая виза", "Учебная виза", "Рабочая виза", "Гуманитарная виза", "Семейная виза", "Иная виза (уточнить)"]],
    ["Международные соглашения", ["Региональное соглашение о свободе передвижения (например, МЕРКОСУР, ЕС, САДК, ВАС, ЭКОВАС)"]],
-   ["Постоянное проживание и гражданство", ["Документ постоянного жителя", "Паспорт [страны обследования]",
-                                            "Иной документ, подтверждающий гражданство [страны обследования]"]],
+   ["Постоянное проживание и гражданство", ["Документ постоянного жителя", "Паспорт страны {country}",
+                                            "Иной документ, подтверждающий гражданство страны {country}"]],
    ["Защищённый статус", ["Документ ходатайствующего об убежище", "Беженец", "Документ признанного лица без гражданства",
                           "Дополнительная и вспомогательная защита", "Временная защита"]],
    ["Регистрационный документ", ["Регистрационный документ"]],
@@ -601,6 +616,9 @@ M = {
 # --------------------------------------------------------------------- ZH
 "zh": {
  "ui": {
+  "eg": "例如", "cust_to": "例如前往{list}", "cust_other": "例如{list}", "cust_adm": "例如{list}",
+  "cust_dtm": "在国际移民组织（DTM）于{c}访谈的流离失所者中，所述的上述编码之外的原因：{list}",
+  "cust_docs": "在{c}：{list}",
   "formal": "正式名称：{n}",
   "ask_all": "询问所有人",
   "yes": "是", "no": "否",
@@ -670,11 +688,11 @@ M = {
  },
  "locliv": {
   "skip": "如已记录有效的被迫离开原因，则询问",
-  "stem": "在离开那个住所之前，您是否一直居住在您离开的那个国家？",
+  "stem": "在离开那个住所之前，您是否一直居住在{country}？",
  },
  "citloc": {
   "skip": "如 LocLiv = 否，则询问",
-  "stem": "当您在那里离开住所时，您是否是该国公民？",
+  "stem": "当您在那里离开住所时，您是否是{country}公民？",
  },
  "fleecross": {
   "skip": "如已记录有效的被迫离开原因，则询问",
@@ -692,13 +710,13 @@ M = {
  },
  "legal": {
   "skip": "询问所有人",
-  "stem": "就您目前的情况而言，允许您留在调查所在国的主要证件是什么？",
-  "note": "上级类别固定不变；各类别下的选项可按该国自身的签证/身份类别进行本地化 &mdash; 此处尚未按国家拟定。",
+  "stem": "就您目前的情况而言，允许您留在{country}的主要证件是什么？",
+  "note": "上级类别固定不变；各类别下的选项可按该国自身的签证/身份类别进行本地化；受保护身份各行在已知时标注该国证件名称。",
   "cats": [
    ["无证件", ["无证件"]],
    ["签证", ["旅游签证", "学生签证", "工作签证", "人道主义签证", "家庭签证", "其他签证（请说明）"]],
    ["国际协定", ["区域自由流动协定（如南方共同市场、欧盟、南部非洲发展共同体、东非共同体、西非国家经济共同体）"]],
-   ["永久居留与公民身份", ["永久居民证件", "[调查所在国]护照", "证明[调查所在国]公民身份的其他证件"]],
+   ["永久居留与公民身份", ["永久居民证件", "{country}护照", "证明{country}公民身份的其他证件"]],
    ["受保护身份", ["寻求庇护者证件", "难民", "获承认的无国籍人士证件", "补充保护和辅助保护", "临时保护"]],
    ["登记证件", ["登记证件"]],
    ["其他", ["其他（请说明）"]],

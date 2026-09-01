@@ -605,6 +605,64 @@ def main():
                              n=rest_n, has_data=False))
         if len(pops) > 1 or idps:
             out[iso]["populations"] = pops
+    # ---- customisation of the rest of the module, from the databases --------
+    # Everything after FrcFl has a slot the instrument lets vary, and the data
+    # already in the pipeline can fill most of them:
+    #   FleeLoc   "Other country [SPECIFY]"  -> the origins actually hosted here
+    #   FleeCross "another country"          -> where this country's own nationals
+    #                                           are registered as refugees (UNHCR)
+    #   IDPLoc / IDPPost "province"          -> the subnational areas with most
+    #                                           displacement events here
+    #   FrcOth                               -> reasons IOM DTM recorded among
+    #                                           displaced people here that fall
+    #                                           outside FrcFl's codes
+    # Legal's document names come from protection.py on the page side.
+    try:
+        upop = pd.read_parquet(f"{TIDY}/unhcr_population.parquet")
+        upop = upop[upop.year == upop.year.max()]
+        upop["n"] = upop["refugees"].fillna(0) + upop["asylum_seekers"].fillna(0)
+        dest = (upop.groupby(["coo_iso", "coa_name"])["n"].sum().reset_index()
+                    .sort_values("n", ascending=False))
+    except Exception:
+        dest = pd.DataFrame(columns=["coo_iso", "coa_name", "n"])
+    try:
+        dtm_det = pd.read_parquet(f"{TIDY}/dtm_reported_detail.parquet")
+        dtm_tot = pd.read_parquet(f"{TIDY}/dtm_reported.parquet")[["iso3", "country_total"]].drop_duplicates("iso3")
+    except Exception:
+        dtm_det = pd.DataFrame(columns=["iso3", "reason", "code_id", "people"]); dtm_tot = pd.DataFrame(columns=["iso3", "country_total"])
+
+    def clean_country(n):
+        n = re.sub(r"\s*\(.*?\)\s*$", "", str(n))
+        return {"Serbia and Kosovo: S/RES/1244": "Serbia", "Iran (Islamic Rep. of)": "Iran",
+                "Dem. Rep. of the Congo": "DR Congo", "United Rep. of Tanzania": "Tanzania",
+                "Syrian Arab Rep.": "Syria", "Venezuela (Bolivarian Republic of)": "Venezuela",
+                "Bolivia (Plurinational State of)": "Bolivia", "Türkiye": "Türkiye",
+                "United States of America": "United States", "Russian Federation": "Russia",
+                "Rep. of Moldova": "Moldova", "Rep. of Korea": "Republic of Korea"}.get(n, n)
+
+    n_cust = 0
+    for iso, v in out.items():
+        cust = {}
+        origins = [clean_country(o["name"]) for o in (v.get("populations") or []) if o.get("kind") == "refugee"][:3]
+        if origins:
+            cust["origins"] = origins
+        d = dest[(dest.coo_iso == iso) & (dest.n >= 500)].head(3)
+        if len(d):
+            cust["dest"] = [clean_country(x) for x in d.coa_name]
+        adm = sorted(v.get("adm1") or [], key=lambda r: -r.get("events", 0))[:3]
+        if adm:
+            cust["adm"] = [r["name"] for r in adm]
+        dd = dtm_det[(dtm_det.iso3 == iso) & (dtm_det.code_id.isna() | (dtm_det.code_id == 8))]
+        tot = dtm_tot.loc[dtm_tot.iso3 == iso, "country_total"]
+        if len(dd) and len(tot) and float(tot.iloc[0]) > 0:
+            g = dd.groupby("reason")["people"].sum().sort_values(ascending=False)
+            g = g[g.index != "no reason for displacement reported"]
+            cust["dtm"] = [[r, round(100 * float(n) / float(tot.iloc[0]), 1)] for r, n in g.head(4).items() if n > 0]
+        if cust:
+            v["cust"] = cust; n_cust += 1
+    print(f"  module customisation from the databases: {n_cust} countries "
+          f"(origins hosted, destinations abroad, subnational names, DTM reasons)")
+
     print(f"  hosted-population previews: {n_pop_previews} refugee-origin "
           f"populations with their own examples, offered across "
           f"{sum(1 for v in out.values() if v.get('populations'))} host-country pages "
@@ -791,6 +849,9 @@ h2{font-size:15px;margin:28px 0 2px;font-weight:640}
  line-height:1.5;color:var(--i2);margin:6px 0 2px}
 .modq-example{font-style:italic}
 .modq-example .eg{font-style:normal;font-weight:600;color:var(--a)}
+.modq-custom{font-family:ui-serif,Georgia,"Times New Roman",serif;font-style:italic;font-size:13.5px;
+ color:var(--i2);margin:5px 0 2px}
+.modq-custom-inline{font-family:ui-serif,Georgia,"Times New Roman",serif;font-style:italic;font-size:12.5px;color:var(--i2)}
 .modq-vtag{font-family:ui-sans-serif,-apple-system,sans-serif;font-style:normal;font-size:10px;
  font-weight:700;color:var(--a);border:1px solid color-mix(in srgb,var(--a) 40%,var(--g));
  border-radius:3px;padding:0 4px;margin-inline-end:4px;vertical-align:middle}
@@ -1518,41 +1579,73 @@ function optRows(opts,arrows){
   (arrows&&arrows[i]?`<span class="modq-arrow">${arrows[i]}</span>`:"")+`</div>`).join("")+`</div>`;}
 function yesno(t,arrows){ return optRows([t.ui.yes,t.ui.no],arrows); }
 
-function itemHTML(key){
- const t=MT(), u=t.ui, goto=x=>u.goto.replace("{x}",x);
+// ctx: what the databases know about the selected country, used to fill the
+// slots the instrument lets vary - always in blue, like the forced-to-flee
+// examples, so a reader sees at a glance what was customised.
+//   c        country name (fills {country} in the stems)
+//   cust     origins hosted (UNHCR) / destinations abroad (UNHCR) / subnational
+//            areas with most events (UCDP, IDMC) / DTM reasons outside the codes
+//   v        protection record: document names for Legal, UNHCR-issued types
+function chainCtx(iso){
+ const q=Q[iso]||{}, v=REG[iso]||null;
+ return {c:q.name||(v&&v.c)||iso, cust:q.cust||{}, v};
+}
+const EG=s=>`<span class="eg">${esc(s)}</span>`;
+const fillC=(str,ctx)=>str.split("{country}").join(EG(ctx.c));
+const custLine=(tpl,list)=>`<div class="modq-custom">${tpl.replace("{list}",list.map(EG).join(", "))}</div>`;
+
+function itemHTML(key,ctx){
+ const t=MT(), u=t.ui, goto=x=>u.goto.replace("{x}",x), cu=ctx.cust||{};
  switch(key){
   case "frcoth": return modq("FrcOth",t.frcoth.skip,t.frcoth.stem,
    `<div class="modq-note">${t.frcoth.note}</div><ul class="modq-list">`+
    t.frcoth.list.map(([txt,soft])=>`<li>${txt}${soft?` <span class="modq-softcheck">${soft}</span>`:""}</li>`).join("")+
-   `</ul>`);
-  case "fleeloc": return modq("FleeLoc",t.fleeloc.skip,t.fleeloc.stem,optRows(t.fleeloc.opts));
-  case "idploc": return modq("IDPLoc",t.idploc.skip,t.idploc.stem,`<div class="modq-note">${u.open}</div>`);
-  case "locliv": return modq("LocLiv",t.locliv.skip,t.locliv.stem,yesno(t,[null,goto("CitLoc")]))+
-                        modq("CitLoc",t.citloc.skip,t.citloc.stem,yesno(t));
-  case "fleecross": return modq("FleeCross",t.fleecross.skip,t.fleecross.stem,yesno(t));
-  case "idppost": return modq("IDPPost",t.idppost.skip,t.idppost.stem,`<div class="modq-note">${t.idppost.note}</div>`);
+   `</ul>`+(cu.dtm&&cu.dtm.length?`<div class="modq-custom">${u.cust_dtm.replace("{c}",EG(ctx.c))
+     .replace("{list}",cu.dtm.map(([r,pc])=>EG(`${r} (${pc}%)`)).join(", "))}</div>`:""));
+  case "fleeloc": return modq("FleeLoc",t.fleeloc.skip,t.fleeloc.stem,
+   optRows([t.fleeloc.opts[0]+" &mdash; "+EG(ctx.c), t.fleeloc.opts[1]])+
+   (cu.origins&&cu.origins.length?custLine(u.cust_other,cu.origins):""));
+  case "idploc": return modq("IDPLoc",t.idploc.skip,t.idploc.stem,`<div class="modq-note">${u.open}</div>`+
+   (cu.adm&&cu.adm.length?custLine(u.cust_adm,cu.adm):""));
+  case "locliv": return modq("LocLiv",t.locliv.skip,fillC(t.locliv.stem,ctx),yesno(t,[null,goto("CitLoc")]))+
+                        modq("CitLoc",t.citloc.skip,fillC(t.citloc.stem,ctx),yesno(t));
+  case "fleecross": return modq("FleeCross",t.fleecross.skip,t.fleecross.stem,
+   (cu.dest&&cu.dest.length?custLine(u.cust_to,cu.dest):"")+yesno(t));
+  case "idppost": return modq("IDPPost",t.idppost.skip,t.idppost.stem,`<div class="modq-note">${t.idppost.note}</div>`+
+   (cu.adm&&cu.adm.length?custLine(u.cust_adm,cu.adm):""));
   case "mnths12": return modq("12Mnths",t.mnths12.skip,t.mnths12.stem,optRows(t.mnths12.opts));
   case "intapply": return modq("IntApply",t.intapply.skip,t.intapply.stem,yesno(t));
   case "outcome": return modq("Outcome",t.outcome.skip,t.outcome.stem,optRows(t.outcome.opts));
-  case "legal": return modq("Legal",t.legal.skip,t.legal.stem,
-   `<div class="modq-note">${t.legal.note}</div><div class="modq-cats">`+
-   t.legal.cats.map(([head,opts])=>`<div class="modq-cathead">${head}</div>`+
-     opts.map(o=>`<div class="modq-catopt">${o}</div>`).join("")).join("")+`</div>`);
+  case "legal": {
+   const v=ctx.v||{};
+   // Protected-status options carry the country's own document names: option 0
+   // (asylum applicant document) = the pending document, option 1 (refugee) =
+   // the recognised one. Category index 4 is "Protected status" in every language.
+   const egFor=(i,j)=>{
+    if(i!==4) return "";
+    const n=j===0?v.da:j===1?v.dr:null;
+    return n?` <span class="modq-custom-inline">${u.eg} ${EG(n)}</span>`:"";};
+   let cats=t.legal.cats.map(([head,opts],i)=>`<div class="modq-cathead">${head}</div>`+
+     opts.map((o,j)=>`<div class="modq-catopt">${fillC(o,ctx)}${egFor(i,j)}</div>`).join("")).join("");
+   if(v.svd&&v.svd.length) cats+=`<div class="modq-custom">${u.cust_docs.replace("{c}",EG(ctx.c))
+     .replace("{list}",EG("UNHCR: "+v.svd.map(x=>x.toLowerCase()).join(", ")))}</div>`;
+   return modq("Legal",t.legal.skip,fillC(t.legal.stem,ctx),`<div class="modq-note">${t.legal.note}</div><div class="modq-cats">${cats}</div>`);
+  }
  }
  return "";
 }
 
 // Assembles the fixed-wording part of the chain (everything before Apply) in
 // item order, honouring the sub-category picker.
-function buildFrontChain(){
+function buildFrontChain(ctx){
  let h="";
- if(itemActive("frcoth")) h+=itemHTML("frcoth");
- h+=itemHTML("fleeloc");
- if(itemActive("idploc")) h+=itemHTML("idploc");
- if(itemActive("locliv")) h+=itemHTML("locliv");
- h+=itemHTML("fleecross");
- if(itemActive("idppost")) h+=itemHTML("idppost");
- if(itemActive("mnths12")) h+=itemHTML("mnths12");
+ if(itemActive("frcoth")) h+=itemHTML("frcoth",ctx);
+ h+=itemHTML("fleeloc",ctx);
+ if(itemActive("idploc")) h+=itemHTML("idploc",ctx);
+ if(itemActive("locliv")) h+=itemHTML("locliv",ctx);
+ h+=itemHTML("fleecross",ctx);
+ if(itemActive("idppost")) h+=itemHTML("idppost",ctx);
+ if(itemActive("mnths12")) h+=itemHTML("mnths12",ctx);
  return h;
 }
 
@@ -1626,12 +1719,13 @@ function renderReg(iso){
  renderApply(iso,v);
  form.setAttribute('dir',RTL()?"rtl":"ltr");
  miss.style.display="none";form.style.display="";
- const legalHTML=itemActive("legal")?itemHTML("legal"):"";
- const tail=()=>(itemActive("intapply")?itemHTML("intapply"):"")+itemHTML("outcome")+legalHTML;
+ const ctx=chainCtx(iso);
+ const legalHTML=itemActive("legal")?itemHTML("legal",ctx):"";
+ const tail=()=>(itemActive("intapply")?itemHTML("intapply",ctx):"")+itemHTML("outcome",ctx)+legalHTML;
  const applyOpts=yesno(t,[goto("Outcome"),itemActive("intapply")?goto("IntApply"):null]);
  if(!v){
   badges.innerHTML="";
-  form.innerHTML=buildFrontChain()+modq("Apply",t.apply.skip,t.apply.stem,
+  form.innerHTML=buildFrontChain(ctx)+modq("Apply",t.apply.skip,t.apply.stem,
    `<div class="pmiss">${u.no_example}</div>`+applyOpts)+tail();
   warn.style.display="none";cav.style.display="none";
   return;
@@ -1640,7 +1734,7 @@ function renderReg(iso){
   `<span class="badge b-reg">${esc(REGLABEL[v.reg]||v.reg)} registers claims</span>`+
   `<span class="badge b-cf-${v.cf}">${v.cf} confidence</span>`;
  if(v.reg==="NONE"){
-  form.innerHTML=buildFrontChain()+modq("Apply",t.apply.skip,t.apply.stem,
+  form.innerHTML=buildFrontChain(ctx)+modq("Apply",t.apply.skip,t.apply.stem,
    `<div class="pmiss">${u.none_proc}</div>`)+legalHTML;
   warn.style.display="none";cav.style.display="none";
   return;
@@ -1654,7 +1748,7 @@ function renderReg(iso){
  if(n.doc) ex+=`<div class="modq-example"><span class="modq-vtag">B</span> ${probeHTML(t.apply.probe_doc,n.doc)}</div>`;
  if(!ex) ex=`<div class="pmiss">${u.no_example_short}</div>`+
    (v.ow?`<div class="why">${esc(v.ow)}</div>`:"")+(v.dw?`<div class="why">${esc(v.dw)}</div>`:"");
- let h=buildFrontChain()+modq("Apply",t.apply.skip,t.apply.stem,ex+applyOpts)+tail();
+ let h=buildFrontChain(ctx)+modq("Apply",t.apply.skip,t.apply.stem,ex+applyOpts)+tail();
  form.innerHTML=h;
  if(v.mis){warn.style.display="";
   warn.innerHTML=`<b>The Apply localisation example likely needs rewording here.</b> ${esc(v.how)}`;
@@ -1772,6 +1866,9 @@ ol.opts li{padding:4pt 0;border-bottom:0.5pt dotted #dde1e8}
 .modq-stem{font-family:Georgia,serif;font-size:11.5pt;margin:4pt 0}
 .modq-example{font-family:Georgia,serif;font-style:italic;font-size:10.5pt;color:#1d2940;margin:2pt 0 6pt}
 .modq-example .eg{font-style:normal;font-weight:700;color:#3b71b9}
+.modq-custom{font-family:Georgia,serif;font-style:italic;font-size:10pt;color:#5a6884;margin:3pt 0 2pt}
+.modq-custom-inline{font-family:Georgia,serif;font-style:italic;font-size:9.5pt;color:#5a6884}
+.modq-custom .eg,.modq-custom-inline .eg,.modq-catopt .eg,.modq-opt .eg,.modq-stem .eg{color:#3b71b9;font-style:normal;font-weight:700}
 .modq-vtag{font-family:Calibri,Arial,sans-serif;font-style:normal;font-size:8pt;font-weight:700;color:#3b71b9;border:0.5pt solid #b9c9e4;padding:0 3pt;margin-right:3pt}
 .modq-opts{margin:7pt 0 0}
 .modq-opt{padding:2pt 0;font-size:10pt}
@@ -1877,6 +1974,15 @@ function customisationHTML(iso){
  h+=row("Core items, always asked",CORE_ITEMS+`. These alone identify: ${CORE_IDENTIFIES.join("; ")}.`);
  h+=row("Sub-categories selected",subs.length?`<ul>`+subs.map(c=>`<li>${c.label} <small>(${esc(c.cond)}; adds ${c.items.map(k=>OPT_ITEMS[k].name).join(" + ")})</small></li>`).join("")+`</ul>`:"none &mdash; core questionnaire only (short version)");
  h+=row("Items added beyond the core",items.length?`<ul>`+items.map(k=>`<li><b>${OPT_ITEMS[k].name}</b> &mdash; ${OPT_ITEMS[k].label}. <small>${OPT_ITEMS[k].why}</small></li>`).join("")+`</ul>`:"none");
+ const cu=v.cust||{};
+ if(cu.origins) h+=row("FleeLoc &mdash; other-country examples",`${cu.origins.join(", ")} <small>(largest refugee populations hosted in ${esc(v.name)}, UNHCR)</small>`);
+ if(cu.dest) h+=row("FleeCross &mdash; destination examples",`${cu.dest.join(", ")} <small>(where nationals of ${esc(v.name)} are registered as refugees or asylum seekers, UNHCR)</small>`);
+ if(cu.adm) h+=row("IDPLoc / IDPPost &mdash; subnational examples",`${cu.adm.join(", ")} <small>(areas with the most recorded displacement events, UCDP and IDMC)</small>`);
+ if(cu.dtm) h+=row("FrcOth &mdash; reasons from IOM DTM",cu.dtm.map(([x,pc])=>`${esc(x)} (${pc}%)`).join(", ")+` <small>(share of displaced people interviewed who gave a reason outside the FrcFl codes)</small>`);
+ if(r&&(r.da||r.dr||(r.svd&&r.svd.length))) h+=row("Legal &mdash; document names",
+   [r.da?`asylum applicant document: <b>${esc(r.da)}</b>`:null, r.dr?`refugee: <b>${esc(r.dr)}</b>`:null,
+    (r.svd&&r.svd.length)?`UNHCR issues: ${r.svd.map(x=>x.toLowerCase()).join(", ")}`:null].filter(Boolean).join(" &middot; ")+
+   `; passport and citizenship lines name ${esc(v.name)}`);
  if(r&&r.reg!=="NONE"&&FW.refugee){
   h+=row("Apply localisation",`Version A (office): ${r.org?"<b>"+esc(r.org)+"</b>":"cannot be worded here"} &middot; `+
     `Version B (document): ${(r.da||r.dr)?"<b>"+esc(r.da||r.dr)+"</b>":"cannot be worded here"}`+

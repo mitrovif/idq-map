@@ -154,6 +154,9 @@ def question_payload():
             "dw": r["doc_why"], "cav": r["caveat"], "cf": r["confidence"],
             "mis": r["reword_v1"], "cols": r["colours"],
             "v1": p["office"], "v2": p["document"],
+            # UNHCR-issued document types the operation itself reported (survey
+            # overlay), for the Legal item's protected-status examples.
+            "svd": [t for t in (r.get("survey", {}) or {}).get("unhcr_document_types", []) if t != "Other"],
         }
     return out
 
