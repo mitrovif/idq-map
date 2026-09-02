@@ -1,0 +1,433 @@
+{
+  "_readme": "Pilot data for the 'What it looks like' panel on questions.html. Hand-curated, not scraped: each image URL is hotlinked to its original publisher (never re-hosted) and was checked for reachability but not visually verified inside the build sandbox, which has no general internet access. Spot-check before wider use. Add countries incrementally -- the front end already shows a graceful 'no specimen found yet' note for every country with no entry here, so an empty entry set is a valid, honest starting state, not a bug.",
+  "countries": {
+    "GBR": {
+      "images": [
+        {
+          "label": "Asylum Registration Card (ARC) — front (specimen)",
+          "img": "https://assets.publishing.service.gov.uk/media/66e41242bfc2fdc964131719/Front_ARC.svg",
+          "source": "https://www.gov.uk/government/publications/application-registration-card-and-standard-acknowledgment-letter/arc-process-accessible",
+          "source_name": "UK Home Office (gov.uk)",
+          "license": "Open Government Licence"
+        },
+        {
+          "label": "ARC — reverse (specimen)",
+          "img": "https://assets.publishing.service.gov.uk/media/66e41249bfc2fdc96413171a/Reverse_ARC.svg",
+          "source": "https://www.gov.uk/government/publications/application-registration-card-and-standard-acknowledgment-letter/arc-process-accessible",
+          "source_name": "UK Home Office (gov.uk)",
+          "license": "Open Government Licence"
+        },
+        {
+          "label": "Biometric Residence Permit (BRP) — front (specimen)",
+          "img": "https://assets.publishing.service.gov.uk/media/61fbc19ad3bf7f78eab1593f/s960_2_BRP_numbered.png",
+          "source": "https://www.gov.uk/government/publications/biometric-residence-permits-applicant-and-sponsor-information/biometric-residence-permits-general-information-for-applicants-employers-and-sponsors-accessible-version",
+          "source_name": "UK Home Office (gov.uk)",
+          "license": "Open Government Licence"
+        },
+        {
+          "label": "BRP — reverse (specimen)",
+          "img": "https://assets.publishing.service.gov.uk/media/61fbc19ae90e07689d61c0b4/s960_3_BRP_numbered.png",
+          "source": "https://www.gov.uk/government/publications/biometric-residence-permits-applicant-and-sponsor-information/biometric-residence-permits-general-information-for-applicants-employers-and-sponsors-accessible-version",
+          "source_name": "UK Home Office (gov.uk)",
+          "license": "Open Government Licence"
+        }
+      ]
+    },
+    "TUR": {
+      "images": [
+        {
+          "label": "Temporary Protection ID (Kimlik) — sample, watermarked “ÖRNEKTİR” (Turkish for “this is a sample”)",
+          "img": "https://multeci.org.tr/wp-content/uploads/2023/06/ORNEKTIR.png",
+          "source": "https://multeci.org.tr/2023/06/22/test-belge-2/",
+          "source_name": "Mülteci-Der (Turkish refugee-rights NGO)",
+          "license": "Published specimen, for reference use"
+        }
+      ]
+    },
+    "USA": {
+      "note": "No document exists for this item in the US system — there is nothing to show here. Form I-94 and the Employment Authorization Document (EAD) are real US immigration documents, but the curated note above is explicit that they must NOT be introduced as a stand-in: neither is issued specifically for an asylum claim (I-94 is a general entry record, the EAD is issued for many immigration categories besides asylum), so showing either risks a false positive rather than helping a respondent recognise their situation."
+    },
+    "CHE": {
+      "images": [
+        {
+          "label": "Asylum seeker's permit (Permit N) — specimen",
+          "img": "https://www.sem.admin.ch/sem/en/home/themen/aufenthalt/nicht_eu_efta/ausweis_n__asylsuchende/_jcr_content/par/textimage/image.imagespooler.jpg/1662737302686/1024.2000/aa19-asyl-n-front.png",
+          "source": "https://www.sem.admin.ch/sem/en/home/themen/aufenthalt/nicht_eu_efta/ausweis_n__asylsuchende.html",
+          "source_name": "Swiss State Secretariat for Migration (SEM)",
+          "license": "Official government specimen"
+        },
+        {
+          "label": "Permit B — general specimen (same physical card format issued to recognised refugees; this example is not itself captioned as refugee-specific)",
+          "img": "https://www.consilium.europa.eu/prado/images/CHE-HO-04021/325007_thumb.jpg",
+          "source": "https://www.consilium.europa.eu/prado/en/CHE-HO-04021/index.html",
+          "source_name": "PRADO (Council of the EU)",
+          "license": "Official public register of authentic documents"
+        }
+      ]
+    },
+    "SWE": {
+      "images": [
+        {
+          "label": "Asylum-seeker card (LMA-kort) — specimen",
+          "img": "https://www.migrationsverket.se/images/200.7e7ff7f619e5ace55a7996/1780904231791/Specimen_LMA-kort.webp",
+          "source": "https://www.migrationsverket.se/en/you-are-waiting-for-a-decision/asylum/you-have-applied-for-asylum/asylum-seeker-card-lma-card.html",
+          "source_name": "Swedish Migration Agency (Migrationsverket)",
+          "license": "Official government specimen"
+        },
+        {
+          "label": "Residence permit card (issued to recognised refugees) — specimen",
+          "img": "https://www.migrationsverket.se/images/200.f09188f19bb7cf3a2ab5b/1771424750016/Specimen_UT-kort.webp",
+          "source": "https://www.migrationsverket.se/ordforklaringar/uppehallstillstandskort.html",
+          "source_name": "Swedish Migration Agency (Migrationsverket)",
+          "license": "Official government specimen"
+        }
+      ]
+    },
+    "GRC": {
+      "images": [
+        {
+          "label": "International Protection Applicant's Card — specimen",
+          "img": "https://migration.gov.gr/wp-content/uploads/2020/08/deltio_aitountos.png",
+          "source": "https://migration.gov.gr/neo-deltio-aitoyntos-diethni-prostasia/",
+          "source_name": "Greek Ministry of Migration and Asylum",
+          "license": "Official government specimen"
+        }
+      ]
+    },
+    "ZAF": {
+      "note": "No image confirmed yet — these are unverified leads, not embeddable images: an NGO-published PDF appears (by its own filename) to contain a Section 22 specimen, and a legal-aid guide captions a Section 24 example on p.38. Neither could be visually confirmed from this build (scanned, image-only PDFs).",
+      "links": [
+        {
+          "label": "Section 22 permit — likely specimen scan (Scalabrini Centre, unverified)",
+          "url": "https://scalabrini.org.za/wp-content/uploads/2020/07/Document-Example_Asylum-Seeker-Permit.pdf"
+        },
+        {
+          "label": "Section 24 permit example, p.38 (Lawyers for Human Rights guide)",
+          "url": "https://lawyersforhumanrights.b-cdn.net/wp-content/uploads/2025/10/EN-Seeking-Refuge-In-RSA.pdf"
+        }
+      ]
+    },
+    "BRA": {
+      "note": "No standalone image file — the specimen is a labelled diagram embedded inside an official government PDF (would need a screenshot/crop to show inline).",
+      "links": [
+        {
+          "label": "DPRNM specimen diagram (official UNHCR/Polícia Federal folder, Portuguese)",
+          "url": "https://help.unhcr.org/brazil/wp-content/uploads/sites/8/2022/07/Folder_DPRNM_WEB_PT.pdf"
+        }
+      ]
+    },
+    "URY": {
+      "images": [
+        {
+          "label": "Constancia de Solicitante de Refugio (CORE) — specimen",
+          "img": "https://help.unhcr.org/uruguay/wp-content/uploads/sites/30/2026/03/Constancia-CORE-217x300.jpg",
+          "source": "https://help.unhcr.org/uruguay/como-solicitar-la-condicion-de-refugiado/",
+          "source_name": "UNHCR/ACNUR Uruguay",
+          "license": "Official UNHCR country information page"
+        }
+      ]
+    },
+    "AUT": {
+      "images": [
+        {
+          "label": "Residence Entitlement Card (asylum seeker) — specimen",
+          "img": "https://www.consilium.europa.eu/prado/images/AUT-HP-02003/243658_thumb.jpg",
+          "source": "https://www.consilium.europa.eu/prado/en/AUT-HP-02003/index.html",
+          "source_name": "PRADO (Council of the EU)",
+          "license": "Official public register of authentic documents"
+        },
+        {
+          "label": "Residence Permit (on recognition) — general specimen, same physical format (not itself captioned refugee-specific)",
+          "img": "https://www.consilium.europa.eu/prado/images/AUT-HO-11001/145893_thumb.JPG",
+          "source": "https://www.consilium.europa.eu/prado/en/AUT-HO-11001/index.html",
+          "source_name": "PRADO (Council of the EU)",
+          "license": "Official public register of authentic documents"
+        }
+      ]
+    },
+    "BGR": {
+      "images": [
+        {
+          "label": "Registration card (asylum seeker) — specimen",
+          "img": "https://asylum.bg/sites/default/files/innode/regcard_0.png",
+          "source": "https://asylum.bg/document-registration-card",
+          "source_name": "asylum.bg (Bulgarian Helsinki Committee, UNHCR-supported legal-aid resource)",
+          "license": "Published for public reference; site disclaims exclusive copyright"
+        },
+        {
+          "label": "Refugee card (on recognition) — specimen",
+          "img": "https://asylum.bg/sites/default/files/innode/id1.png",
+          "source": "https://asylum.bg/documents-after-receiving-status",
+          "source_name": "asylum.bg (Bulgarian Helsinki Committee, UNHCR-supported legal-aid resource)",
+          "license": "Published for public reference; site disclaims exclusive copyright"
+        }
+      ]
+    },
+    "HRV": {
+      "note": "No standalone image — Croatia's official gazette publishes both cards as blank statutory form templates inside PDFs (2004 vintage; the design may since have been revised, e.g. after 2013 EU accession).",
+      "links": [
+        {
+          "label": "Asylum seeker's identity card — official form template (Narodne novine)",
+          "url": "https://narodne-novine.nn.hr/clanci/sluzbeni/full/dodatni/314045.pdf"
+        },
+        {
+          "label": "Residence permit / identity card, on recognition — official form template (Narodne novine)",
+          "url": "https://narodne-novine.nn.hr/clanci/sluzbeni/full/dodatni/314047.pdf"
+        }
+      ]
+    },
+    "DNK": {
+      "images": [
+        {
+          "label": "Temporary residence permit (on recognition) — general specimen (Denmark's standard residence-card format; PRADO's example is not refugee-specific)",
+          "img": "https://www.consilium.europa.eu/prado/images/DNK-HO-08001/324352_thumb.jpg",
+          "source": "https://www.consilium.europa.eu/prado/en/DNK-HO-08001/index.html",
+          "source_name": "PRADO (Council of the EU)",
+          "license": "Official public register of authentic documents"
+        }
+      ]
+    },
+    "EST": {
+      "images": [
+        {
+          "label": "International Protection Applicant Certificate — specimen",
+          "img": "https://www.consilium.europa.eu/prado/images/EST-HO-06002/271865_thumb.jpg",
+          "source": "https://www.consilium.europa.eu/prado/en/EST-HO-06002/index.html",
+          "source_name": "PRADO (Council of the EU)",
+          "license": "Official public register of authentic documents"
+        },
+        {
+          "label": "Temporary residence permit (on recognition) — general specimen (standard Estonian format; refugees receive a specific annotation on this same card)",
+          "img": "https://www.consilium.europa.eu/prado/images/EST-HO-08001/383212_thumb.jpg",
+          "source": "https://www.consilium.europa.eu/prado/en/EST-HO-08001/index.html",
+          "source_name": "PRADO (Council of the EU)",
+          "license": "Official public register of authentic documents"
+        }
+      ]
+    },
+    "FIN": {
+      "images": [
+        {
+          "label": "Temporary residence permit, “A-lupa” (on recognition) — specimen",
+          "img": "https://migri.fi/documents/5202425/5207396/A-lupa%20etu.png/f3cbe869-85d9-cf04-21e0-366d9d0da6d9?t=1756905080356",
+          "source": "https://migri.fi/en/residence-permit-card",
+          "source_name": "Finnish Immigration Service (Migri)",
+          "license": "Official government specimen"
+        }
+      ]
+    },
+    "HUN": {
+      "images": [
+        {
+          "label": "Humanitarian residence permit (asylum seeker) — specimen",
+          "img": "https://www.consilium.europa.eu/prado/images/HUN-HO-07003/205777_thumb.jpg",
+          "source": "https://www.consilium.europa.eu/prado/en/HUN-HO-07003/index.html",
+          "source_name": "PRADO (Council of the EU)",
+          "license": "Official public register of authentic documents"
+        },
+        {
+          "label": "Temporary Protection residence permit (on recognition) — specimen",
+          "img": "https://www.consilium.europa.eu/prado/images/HUN-HO-06002/137407_thumb.JPG",
+          "source": "https://www.consilium.europa.eu/prado/en/HUN-HO-06002/index.html",
+          "source_name": "PRADO (Council of the EU)",
+          "license": "Official public register of authentic documents"
+        }
+      ]
+    },
+    "IRL": {
+      "images": [
+        {
+          "label": "Residence permit (on recognition) — general specimen (Irish Residence Permit card format; PRADO's text doesn't name asylum/IPO specifically)",
+          "img": "https://www.consilium.europa.eu/prado/images/IRL-HO-04001/359413_thumb.jpg",
+          "source": "https://www.consilium.europa.eu/prado/en/IRL-HO-04001/index.html",
+          "source_name": "PRADO (Council of the EU)",
+          "license": "Official public register of authentic documents"
+        }
+      ]
+    },
+    "LVA": {
+      "images": [
+        {
+          "label": "Permanent residence permit (on recognition) — general specimen (standard Latvian format; PRADO's example is for a different category)",
+          "img": "https://www.consilium.europa.eu/prado/images/LVA-HO-07001/347298_thumb.jpg",
+          "source": "https://www.consilium.europa.eu/prado/en/LVA-HO-07001/index.html",
+          "source_name": "PRADO (Council of the EU)",
+          "license": "Official public register of authentic documents"
+        }
+      ]
+    },
+    "LTU": {
+      "images": [
+        {
+          "label": "Permanent residence permit (on recognition) — general specimen (standard Lithuanian card format for third-country nationals)",
+          "img": "https://www.consilium.europa.eu/prado/images/LTU-HO-03001/354593_thumb.jpg",
+          "source": "https://www.consilium.europa.eu/prado/en/LTU-HO-03001/index.html",
+          "source_name": "PRADO (Council of the EU)",
+          "license": "Official public register of authentic documents"
+        }
+      ]
+    },
+    "MLT": {
+      "images": [
+        {
+          "label": "Asylum Seekers' Document — specimen (booklet-style identification document, not a card)",
+          "img": "https://www.consilium.europa.eu/prado/images/MLT-HP-06001/269608_thumb.jpg",
+          "source": "https://www.consilium.europa.eu/prado/en/MLT-HP-06001/index.html",
+          "source_name": "PRADO (Council of the EU)",
+          "license": "Official public register of authentic documents"
+        }
+      ]
+    },
+    "NOR": {
+      "images": [
+        {
+          "label": "Registration Certificate for Asylum Seekers — specimen (booklet format; design may since have been revised)",
+          "img": "https://www.consilium.europa.eu/prado/images/NOR-HP-01001/221935_thumb.JPG",
+          "source": "https://www.consilium.europa.eu/prado/en/NOR-HP-01001/index.html",
+          "source_name": "PRADO (Council of the EU)",
+          "license": "Official public register of authentic documents"
+        }
+      ]
+    },
+    "POL": {
+      "images": [
+        {
+          "label": "Temporary Certificate of Foreigner's Identity — specimen",
+          "img": "https://www.consilium.europa.eu/prado/images/POL-HO-19001/387871_thumb.jpg",
+          "source": "https://www.consilium.europa.eu/prado/en/POL-HO-19001/index.html",
+          "source_name": "PRADO (Council of the EU)",
+          "license": "Official public register of authentic documents"
+        }
+      ]
+    },
+    "PRT": {
+      "images": [
+        {
+          "label": "Título de Residência (on recognition) — specimen (PRADO confirms this format/category covers refugee and humanitarian-protection permits)",
+          "img": "https://www.consilium.europa.eu/prado/images/PRT-HO-02001/77795_thumb.JPG",
+          "source": "https://www.consilium.europa.eu/prado/en/PRT-HO-02001/index.html",
+          "source_name": "PRADO (Council of the EU)",
+          "license": "Official public register of authentic documents"
+        }
+      ]
+    },
+    "ROU": {
+      "images": [
+        {
+          "label": "Document temporar de identitate (temporary identification document) — specimen",
+          "img": "https://igi.mai.gov.ro/wp-content/uploads/2022/01/Document-temporar-de-identitate1.jpg",
+          "source": "https://igi.mai.gov.ro/en/identity-and-travel-documents/",
+          "source_name": "Romanian General Inspectorate for Immigration (IGI)",
+          "license": "Official government specimen"
+        }
+      ]
+    },
+    "ARM": {
+      "images": [
+        {
+          "label": "Asylum-seeker Identification Document (ID card) — specimen",
+          "img": "https://help.unhcr.org/armenia/wp-content/uploads/sites/63/2025/08/Asylum-seekers-ID-card.png",
+          "source": "https://help.unhcr.org/armenia/seeking-asylum-in-armenia/asylum-seeker-identification-document/",
+          "source_name": "UNHCR Armenia (illustrating the government-issued MCS document)",
+          "license": "Official UNHCR country information page"
+        }
+      ]
+    },
+    "ISR": {
+      "images": [
+        {
+          "label": "2(a)(5) Conditional Release Visa — specimen",
+          "img": "https://help.unhcr.org/israel/wp-content/uploads/sites/98/2024/11/S2_A5_visa_sample1-1-220x300.png",
+          "source": "https://help.unhcr.org/israel/documentation-visas/visas/",
+          "source_name": "UNHCR Israel (illustrating the government-issued Ministry of Interior document)",
+          "license": "Official UNHCR country information page"
+        },
+        {
+          "label": "A/5 Visa (on recognition) — specimen",
+          "img": "https://help.unhcr.org/israel/wp-content/uploads/sites/98/2024/11/ID-card_sample_2-300x183.png",
+          "source": "https://help.unhcr.org/israel/documentation-visas/visas/",
+          "source_name": "UNHCR Israel (illustrating the government-issued Ministry of Interior document)",
+          "license": "Official UNHCR country information page"
+        }
+      ]
+    },
+    "CAN": {
+      "images": [
+        {
+          "label": "Confirmation of Permanent Residence (COPR, on recognition) — specimen",
+          "img": "https://www.canada.ca/content/dam/ircc/images/services/new-immigrants/copr-en.jpg",
+          "source": "https://www.canada.ca/en/immigration-refugees-citizenship/services/permanent-residents/status/copr.html",
+          "source_name": "Immigration, Refugees and Citizenship Canada (IRCC)",
+          "license": "Official government specimen"
+        }
+      ]
+    },
+    "KEN": {
+      "note": "No photographic specimen found — the 2024 refugee regulations publish blank statutory form templates (fields plus a \"PHOTOGRAPH\" placeholder box), not an illustrated example of a filled/finished document.",
+      "links": [
+        {
+          "label": "Refugees (General) Regulations 2024, Kenya Gazette Supplement No. 25 — Forms 2 (Asylum Seeker Pass), 9 (Refugee Certificate), 13 (1951 Convention Travel Document), 14 (Movement Pass)",
+          "url": "https://www.refworld.org/sites/default/files/2024-04/kenya_regulation_2024.pdf"
+        }
+      ]
+    },
+    "UGA": {
+      "note": "No photographic specimen found — the 2010 refugee regulations publish a blank statutory form template (Form H) with a \"PHOTOGRAPH\" placeholder box, not an illustrated example of a filled/finished document.",
+      "links": [
+        {
+          "label": "Refugees Regulations 2010, Third Schedule, Form H (refugee identity card)",
+          "url": "https://www.ecoi.net/en/file/local/1237978/1930_1414507514_544e4f154.pdf"
+        }
+      ]
+    },
+    "SRB": {
+      "note": "Reference only, content unverified — this is the correct official regulation (its exact title matches on the government's own page) but the PDF could not be fetched from this sandbox to confirm the card's visual design (colour, layout).",
+      "links": [
+        {
+          "label": "Rule on the content and appearance of asylum request forms and ID cards for asylum seekers and recognised persons — via the Serbian Commissariat for Refugees and Migration (KIRS), \"Pravilnici — Azil\" page; look for the \"Pravilnik o sadržini i izgledu obrazaca zahteva za azil i lične karte...\" PDF",
+          "url": "https://kirs.gov.rs/lat/azil/pravilnici-azil"
+        }
+      ]
+    },
+    "BIH": {
+      "note": "Text/typeset specification, not a photograph — describes each card's exact colour, dimensions and security-element count rather than showing an illustration.",
+      "links": [
+        {
+          "label": "Bylaw on Asylum (Pravilnik o azilu), Official Gazette of BiH 69/16 (English translation) — Form 5 Asylum Seeker Card (yellow, 125×88mm), Form 9 Refugee Card (white), Form 10 Subsidiary Protection Card (white)",
+          "url": "https://www.refworld.org/sites/default/files/legacy-pdf/en/2016-9/5ecfdaef4.pdf"
+        }
+      ]
+    },
+    "SVN": {
+      "note": "The clearest specimen found in this round — a 2-page annex showing the international-protection applicant's ID card front and back — but it is inside a PDF rather than a standalone image file, so it cannot be embedded directly here.",
+      "links": [
+        {
+          "label": "International protection applicant's ID card ('izkaznica prosilca za mednarodno zaščito') — front & back specimen, Uradni list RS 27/2017, Priloga 8",
+          "url": "https://www.uradni-list.si/files/RS_-2017-027-01504-OB~P008-0000.PDF"
+        }
+      ]
+    },
+    "RUS": {
+      "note": "Text/table specification, not a photograph — Russian government orders define the refugee certificate's exact dimensions, page layout and machine-readable-zone character positions in tabular form rather than showing a picture of the document.",
+      "links": [
+        {
+          "label": "Government Decree No. 1227 (1995), \"On the refugee certificate\" — dimensions and page layout",
+          "url": "https://base.garant.ru/5425989/"
+        },
+        {
+          "label": "FMS Order No. 234 (2012) — field-by-character-position tables for the certificate's printed form and machine-readable zone",
+          "url": "https://base.garant.ru/70214132/53f89421bbdaf741eb2d1ecc4ddb4c33/"
+        }
+      ]
+    },
+    "KOR": {
+      "note": "A near-complete lead, not yet resolved: the Refugee Act Enforcement Rule's Annex Form No. 8 (별지 제8호서식, Certificate of Refugee Status Recognition) is very likely the right specimen, but its download link is rendered by JavaScript and the exact file ID could not be resolved by automated search — a person can likely retrieve it in one click from the page below.",
+      "links": [
+        {
+          "label": "난민법 시행규칙 (Refugee Act Enforcement Rule) on law.go.kr — open and look for the 별지 제8호서식 download link",
+          "url": "https://www.law.go.kr/LSW/lsInfoP.do?lsiSeq=141701"
+        }
+      ]
+    }
+  }
+}

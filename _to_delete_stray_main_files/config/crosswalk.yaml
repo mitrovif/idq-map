@@ -1,0 +1,327 @@
+# =============================================================================
+# EGRISS Identification Questions - causing-event crosswalk
+# =============================================================================
+# Maps each response option in the "reasons for fleeing" item (long variant,
+# 8 codes) to the observable evidence available in global event and
+# displacement datasets.
+#
+# evidence_strength values:
+#   strong      - the source measures close to what the code describes
+#   partial     - the source measures a subset of what the code describes
+#   indirect    - the source is a proxy, inference required
+#   none        - no global dataset measures this; code is residual by design
+#
+# The `evidence_strength` field is NOT decoration. It propagates into the
+# outputs: a country showing zero for a code with strength "none" or
+# "indirect" must be reported as UNEVIDENCED, never as "cause absent".
+# Conflating those two is the main way this analysis could mislead.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# DECISION LOG - calls put to the team and settled, 3 Aug 2026
+# -----------------------------------------------------------------------------
+decisions:
+  - id: unattributed_band
+    question: "IDMC 'Unclear/Unknown' violence type - 2.0m people, 3.15% of all
+               displacement. Conflict-caused, kind unrecorded."
+    decision: "Report as its own UNATTRIBUTED band (pseudo-code 0), not defaulted
+               into code 1."
+    consequence: "Stays in every denominator, so country shares are shares of ALL
+                  displacement and no longer sum to 100% across the eight options.
+                  Maps carry a fifth, neutral class. Code 1 loses ~2m people it was
+                  previously credited with."
+  - id: human_triggered_hazards
+    question: "Wildfire, dam release flood and sinkhole are filed by IDMC under
+               Disaster but have human triggers."
+    decision: "All three reassigned to code 7 (man-made events)."
+    consequence: "Code 7 goes from zero evidence anywhere to 695,595 people - but
+                  WILDFIRE IS 99.8% OF THAT TOTAL (694,217 people; dam releases and
+                  sinkholes contribute 1,378 between them). Any statement about
+                  code 7 is in practice a statement about wildfire, and outputs must
+                  show the composition rather than the bare figure. Wildfire's
+                  inclusion rests on the reading that most ignition is human, which
+                  is contestable and should be stated wherever the number appears."
+  - id: acled_attack
+    question: "ACLED 'Attack' - 33,085 events, 37,299 fatalities, no actor column."
+    decision: "Stays in code 5 (other threats of violence)."
+    consequence: "Keeps targeted violence against civilians out of the war category,
+                  avoiding the same conflation that already hides persecution inside
+                  code 1. Code 5 is otherwise treated as uncountable, so this is the
+                  one residual code carrying real volume."
+  - id: acled_looting
+    question: "ACLED 'Looting/property destruction' - 23,750 events. Code 4
+               explicitly names 'confiscation of property'."
+    decision: "DEFERRED. Left in code 2 until ACLED credentials allow a split by
+               perpetrator."
+    consequence: "Blocked on the full ACLED event API, which carries the actor
+                  column the free aggregated export lacks. Flagged 'pending' in the
+                  crosswalk explorer so it is not mistaken for a settled mapping."
+
+meta:
+  question_variant: "Version 3 (long) - Question Variants for Cognitive Interviewing"
+  window_start: 1989          # UCDP GED coverage begins 1989
+  window_end: null            # null = latest available year in each source
+  # Lifetime recall framing means historical events matter: a 55-year-old
+  # respondent in Bosnia was displaced in 1992. Do not truncate to recent years.
+
+codes:
+
+  - id: 1
+    label: "Threat of armed conflict or war"
+    evidence_strength: strong
+    sources:
+      ucdp_ged:
+        filter: "type_of_violence == 1"     # state-based armed conflict
+        measure: [event_count, best_deaths]
+      ucdp_acd:
+        filter: "type_of_conflict %in% c('interstate','intrastate','internationalised intrastate','extrasystemic')"
+        measure: [conflict_years, max_intensity]
+      idmc:
+        filter: "displacement_type == 'Conflict'"
+        measure: [new_displacements, stock]
+      acled:                                 # dormant until credentials supplied
+        filter: "event_type %in% c('Battles','Explosions/Remote violence')"
+        measure: [event_count, fatalities]
+    notes: >
+      Best-measured code. UCDP GED state-based events are the direct referent.
+      IDMC conflict displacement confirms the events actually displaced people,
+      which is what matters for the showcard - a low-intensity conflict that
+      displaced nobody is weak grounds for including the option.
+
+  - id: 2
+    label: "Widespread violence or breakdown of public order"
+    evidence_strength: partial
+    sources:
+      ucdp_ged:
+        filter: "type_of_violence == 2"     # non-state conflict
+        measure: [event_count, best_deaths]
+      acled:
+        filter: "event_type %in% c('Riots','Protests','Violence against civilians')
+                 & sub_event_type != 'Peaceful protest'"
+        measure: [event_count, fatalities]
+    notes: >
+      UCDP non-state conflict captures communal, militia and gang violence but
+      only above a 25-battle-death threshold, so urban criminal violence that
+      displaces people (Central America, Brazil, Haiti) is systematically
+      under-counted. ACLED is materially better here and this code is the
+      strongest argument for obtaining ACLED credentials.
+
+  - id: 3
+    label: "Discrimination or persecution (ethnicity, nationality, religion, political belief, sexual orientation, other group membership)"
+    evidence_strength: indirect
+    sources:
+      unhcr_asylum_decisions:
+        # Recognition rate by country of origin: the share of asylum claims
+        # accepted is, definitionally, the share judged to constitute a
+        # well-founded fear of persecution. High recognition with low conflict
+        # intensity implicates persecution rather than war.
+        measure: [recognition_rate_by_coo, decisions_total]
+        derived: "dec_recognized / (dec_recognized + dec_rejected)"
+      ucdp_ged:
+        filter: "type_of_violence == 3"     # one-sided violence
+        measure: [event_count, best_deaths]
+    notes: >
+      NO global dataset directly measures displacement caused by discrimination
+      or persecution short of lethal violence. The recognition-rate proxy is
+      defensible but confounded by destination-country asylum policy, not just
+      origin-country conditions. SOGI-based persecution in particular is
+      invisible in every source used here.
+      RECOMMENDATION: report as indirect, and treat cognitive interview
+      evidence - not this map - as the primary basis for retaining this code.
+
+  - id: 4
+    label: "Threat of human rights violations by authorities (detention, torture, confiscation of property)"
+    evidence_strength: partial
+    sources:
+      ucdp_ged:
+        filter: "type_of_violence == 3 & side_a_is_government == TRUE"
+        measure: [event_count, best_deaths]
+    notes: >
+      UCDP one-sided violence with a state perpetrator captures state killing of
+      civilians. It does NOT capture detention, torture, or property
+      confiscation - i.e. most of what this code actually describes, and
+      precisely the forms of repression that displace people without killing
+      them. Coverage is therefore biased toward lethal repression.
+      OPTIONAL EXTENSION (not currently enabled - see optional_sources below):
+      V-Dem v2cltort (freedom from torture), v2clkill (freedom from political
+      killings), v2clprptym/f (property rights) would close most of this gap.
+
+  - id: 5
+    label: "Other threats of violence against you"
+    evidence_strength: none
+    sources: {}
+    residual: true
+    notes: >
+      Catch-all for interpersonal, criminal or targeted violence not captured
+      by codes 1-4. No event dataset operationalises it. Retain on every
+      showcard regardless of what the map shows; its value is absorbing
+      responses that would otherwise be miscoded into 1-4 or lost to "other".
+
+  - id: 6
+    label: "Natural disasters (floods, droughts, landslides, earthquakes, hurricanes)"
+    evidence_strength: strong
+    sources:
+      idmc_gidd:
+        filter: "displacement_type == 'Disaster'"
+        measure: [new_displacements]
+        disaggregate_by: hazard_type
+        hazard_map:
+          Flood:                  ["Flood", "Wet mass movement"]
+          Drought:                ["Drought"]
+          Storm:                  ["Storm", "Tropical cyclone", "Hurricane", "Typhoon"]
+          Earthquake:             ["Earthquake", "Volcanic eruption", "Dry mass movement"]
+          Wildfire:               ["Wildfire"]
+          Extreme_temperature:    ["Extreme temperature"]
+      idmc_idu:
+        filter: "displacement_type == 'Disaster'"
+        measure: [figure]
+        disaggregate_by: [hazard_type, hazard_sub_type]
+        geocoded: true            # drives the admin1 layer
+    notes: >
+      IDMC is the only source and it is a good one. Note the asymmetry worth
+      flagging in the paper: IDMC counts disaster displacement events that are
+      overwhelmingly short-duration and return-oriented, whereas the
+      identification questions ask about lifetime displacement. A respondent
+      evacuated for a week in a 2011 flood is in IDMC's numbers but may not
+      consider themselves to have "fled a home".
+
+  - id: 7
+    label: "Man-made events (eviction for infrastructure projects, pollution events)"
+    evidence_strength: indirect
+    sources:
+      idmc_gidd:
+        filter: "displacement_type %in% c('Other', 'Development')"
+        measure: [new_displacements]
+    notes: >
+      The weakest code in the entire crosswalk. IDMC's "other" category is
+      small, inconsistently populated across countries, and development-induced
+      displacement (dams, mining, urban clearance) is largely absent from every
+      global dataset because no agency has a mandate to count it. Expect near-
+      universal zeros. Report as UNEVIDENCED.
+      This is itself a finding: if the map cannot justify code 7 anywhere, the
+      case for retaining it rests entirely on cognitive interviews and on the
+      IRIS/IRRS conceptual framework, not on displacement statistics.
+
+  - id: 8
+    label: "A different threat to you or your family's safety"
+    evidence_strength: none
+    sources: {}
+    residual: true
+    notes: >
+      Residual by design, with [SPECIFY] open text. Retain on every showcard.
+      The desk review recommends collecting the open text to inform future code
+      formation - this map cannot substitute for that.
+
+# -----------------------------------------------------------------------------
+# IOM DTM - a different KIND of evidence, not just another source
+# -----------------------------------------------------------------------------
+# Every other source records what an ANALYST attributed displacement to. DTM
+# records what DISPLACED PEOPLE AND KEY INFORMANTS SAID when asked why they left.
+# That is the same epistemic class as the identification questions themselves.
+#
+# Carried as evidence_type: reported_reason, and never pooled with "displaced"
+# or "events" - they answer different questions.
+#
+# Its unique value is validation: it is the only source that can show whether the
+# categories people actually give line up with the eight the questionnaire offers,
+# and how much falls into "other".
+dtm:
+  access: "Free subscription key from https://dtm-apim-portal.iom.int/ (Ocp-Apim-Subscription-Key header)"
+  api: "https://dtmapi.iom.int/v3/displacement/{admin0|admin1|admin2}"
+  version_note: >
+    v3 adds Displacement Reason, Origin of Displacement and sex disaggregation.
+    v2 has none of these and is only useful for longer history.
+  evidence_type: reported_reason
+  covers: [1, 2, 3, 4, 5, 6, 7]
+  caveats:
+    - "DTM's reason vocabulary is NOT globally standardised - each country
+       operation defines its own list, so the crosswalk in R/04_dtm.R must be
+       checked against the first live pull. The tidy function prints every
+       unmapped value rather than dropping it silently."
+    - "Reasons are frequently collected from KEY INFORMANTS rather than from
+       displaced individuals, so they are a community-level attribution, not a
+       self-report. Closer to the survey than IDMC is, but not the same thing."
+    - "Economic, livelihood and voluntary reasons are NOT valid causes of forced
+       displacement under IRIS. They are kept and reported separately, never
+       folded into codes 1-7. The share giving them is itself evidence about
+       false positives in the instrument."
+
+# -----------------------------------------------------------------------------
+# V-Dem - conditions, not displacement
+# -----------------------------------------------------------------------------
+# Fills the biggest structural hole: no displacement database has a category for
+# persecution or for state repression short of killing. V-Dem does not fix that
+# either - it measures whether the CONDITIONS exist, not displacement caused by
+# them. That is the same evidential class as an ACLED event count for codes 1-2:
+# proof the cause is present here, not proof it moved anyone.
+# Takes codes 3 and 4 from one confounded proxy across 20 researched countries to
+# a defensible measure across 181.
+vdem:
+  enabled: true
+  access: "Open, no key. https://raw.githubusercontent.com/vdeminstitute/vdemdata/master/data/vdem.RData"
+  code_3:
+    indicators: [v2clsocgrp, v2clrelig, v2pepwrsoc]
+    note: "social group equality in civil liberties, freedom of religion, power distributed by social group"
+  code_4:
+    indicators: [v2cltort, v2clkill, v2xcl_prpty]
+    note: "freedom from torture, freedom from political killings, property rights"
+  windows: [latest, worst_since_1990]
+  worst_window_rationale: >
+    The question asks about LIFETIME experience. A 55-year-old respondent may be
+    recalling conditions far worse than today's, so the worst year since 1990 is
+    reported alongside the current reading.
+  scale_note: "V-Dem runs high = MORE freedom; all indicators are inverted so high = more repression."
+
+# -----------------------------------------------------------------------------
+# Optional sources - disabled by default (user opted for IDMC-only on the
+# non-conflict side). Enable in run_all.R to strengthen codes 3 and 4.
+# -----------------------------------------------------------------------------
+optional_sources:
+  vdem:
+    enabled: false
+    indicators:
+      v2cltort:   "Freedom from torture -> code 4"
+      v2clkill:   "Freedom from political killings -> code 4"
+      v2clprptym: "Property rights, men -> code 4 (confiscation)"
+      v2clsocgrp: "Social group equality in respect for civil liberties -> code 3"
+      v2clrelig:  "Freedom of religion -> code 3"
+      v2clacjust: "Social class equality in respect for civil liberty -> code 3"
+    note: "Reachable from this sandbox via the vdemdata GitHub mirror."
+  emdat:
+    enabled: false
+    note: "Disaster occurrence independent of recorded displacement. Free
+           academic account required at emdat.be."
+
+# -----------------------------------------------------------------------------
+# Decision rule: when does a response option belong on a country's showcard?
+# -----------------------------------------------------------------------------
+showcard_rule:
+  # A code is RECOMMENDED for country X if either condition holds.
+  domestic_threshold: 0.05
+    # The cause accounts for >5% of country X's own displacement
+    # (IDP stock and new displacements over the window).
+
+  origin_weighted: true
+  origin_threshold: 0.05
+    # OR the cause is dominant in an origin country supplying >5% of the
+    # refugees and asylum seekers hosted by X. This clause is what stops
+    # Uganda's showcard being built from Ugandan events when its displaced
+    # population is overwhelmingly South Sudanese and Congolese.
+
+  always_include: [5, 8]
+    # Residual codes stay on every showcard regardless of evidence.
+
+  never_drop_on_absence_of_evidence: [3, 4, 7]
+    # Codes whose evidence_strength is indirect/partial are never recommended
+    # for REMOVAL on the basis of zero counts, only for de-emphasis in
+    # enumerator support material. Absence of evidence is not evidence of
+    # absence, and for these three the data is known to be blind.
+
+  output_states:
+    - RECOMMENDED    # evidence supports inclusion; give country-specific examples
+    - RESIDUAL       # always included, codes 5 and 8
+    - UNEVIDENCED    # no evidence either way; retain, flag for cognitive testing
+    - LOW_SALIENCE   # evidence available and near-zero; candidate for de-emphasis
+                     # in enumerator support screens, NOT for removal from the
+                     # instrument (the instrument must stay internationally
+                     # comparable - only the support material is localised)
