@@ -28,6 +28,9 @@ M = {
 "en": {
  "ui": {
   "skip_fleeloc1": "Ask if FleeLoc = Survey country",
+  "skip_apply": "Ask if FleeLoc = Other country, or FleeCross = Yes",
+  "instr_grid": "READ OUT EACH ONE. CODE YES OR NO FOR EACH.",
+  "note_fleecross_out": "Not asked of someone who fled a home in another country \u2014 they are already outside it, and asking about a border crossing here is a known source of wrong answers.",
   "oos_idp": "&rarr; out of scope &mdash; the home fled was in another country",
   "notidp_apply": "&rarr; not counted as an IDP (repatriated refugee or asylum seeker)",
   "notidp_m12": "&rarr; established residence abroad &mdash; not counted as an IDP",
@@ -154,6 +157,9 @@ M = {
 "fr": {
  "ui": {
   "skip_fleeloc1": "Poser si FleeLoc = Pays de l'enquête",
+  "skip_apply": "Poser si FleeLoc = Autre pays, ou FleeCross = Oui",
+  "instr_grid": "LIRE CHAQUE \u00c9NONC\u00c9. CODER OUI OU NON POUR CHACUN.",
+  "note_fleecross_out": "Non pos\u00e9e \u00e0 une personne ayant fui un domicile dans un autre pays : elle en est d\u00e9j\u00e0 sortie, et interroger ici sur le passage d\u2019une fronti\u00e8re est une source connue de r\u00e9ponses erron\u00e9es.",
   "oos_idp": "&rarr; hors champ &mdash; le domicile quitté se trouvait dans un autre pays",
   "notidp_apply": "&rarr; non compté comme PDI (réfugié rapatrié ou demandeur d'asile)",
   "notidp_m12": "&rarr; résidence établie à l'étranger &mdash; non compté comme PDI",
@@ -280,6 +286,9 @@ M = {
 "es": {
  "ui": {
   "skip_fleeloc1": "Preguntar si FleeLoc = País de la encuesta",
+  "skip_apply": "Preguntar si FleeLoc = Otro pa\u00eds, o FleeCross = S\u00ed",
+  "instr_grid": "LEER CADA UNA. CODIFICAR S\u00cd O NO EN CADA CASO.",
+  "note_fleecross_out": "No se pregunta a quien huy\u00f3 de un hogar en otro pa\u00eds: ya sali\u00f3 de \u00e9l, y preguntar aqu\u00ed por el cruce de una frontera es una fuente conocida de respuestas err\u00f3neas.",
   "oos_idp": "&rarr; fuera de alcance &mdash; el hogar abandonado estaba en otro país",
   "notidp_apply": "&rarr; no se cuenta como desplazado interno (refugiado repatriado o solicitante de asilo)",
   "notidp_m12": "&rarr; estableció residencia en el extranjero &mdash; no se cuenta como desplazado interno",
@@ -406,6 +415,9 @@ M = {
 "ar": {
  "ui": {
   "skip_fleeloc1": "تُطرح إذا كان FleeLoc = بلد المسح",
+  "skip_apply": "تُطرح إذا كان FleeLoc = بلد آخر، أو FleeCross = نعم",
+  "instr_grid": "اقرأ كل بند بصوت مسموع. سجّل نعم أو لا لكل بند.",
+  "note_fleecross_out": "لا تُطرح على من فرّ من منزل في بلد آخر: فهو خارجه بالفعل، والسؤال هنا عن عبور الحدود مصدر معروف للإجابات الخاطئة.",
   "oos_idp": "&larr; خارج النطاق &mdash; المسكن الذي غادره كان في بلد آخر",
   "notidp_apply": "&larr; لا يُحتسب نازحاً داخلياً (لاجئ عائد أو طالب لجوء)",
   "notidp_m12": "&larr; أقام إقامة في الخارج &mdash; لا يُحتسب نازحاً داخلياً",
@@ -527,6 +539,9 @@ M = {
 "ru": {
  "ui": {
   "skip_fleeloc1": "Задавать, если FleeLoc = Страна обследования",
+  "skip_apply": "Задавать, если FleeLoc = Другая страна или FleeCross = Да",
+  "instr_grid": "ЗАЧИТАТЬ КАЖДЫЙ ПУНКТ. ОТМЕТИТЬ «ДА» ИЛИ «НЕТ» ПО КАЖДОМУ.",
+  "note_fleecross_out": "Не задаётся тем, кто покинул дом в другой стране: они уже находятся за её пределами, а вопрос о пересечении границы здесь — известный источник неверных ответов.",
   "oos_idp": "&rarr; вне охвата &mdash; покинутое жильё находилось в другой стране",
   "notidp_apply": "&rarr; не учитывается как ВПЛ (репатриированный беженец или проситель убежища)",
   "notidp_m12": "&rarr; обосновался за границей &mdash; не учитывается как ВПЛ",
@@ -652,6 +667,9 @@ M = {
 "zh": {
  "ui": {
   "skip_fleeloc1": "如 FleeLoc = 调查所在国，则询问",
+  "skip_apply": "如 FleeLoc = 其他国家，或 FleeCross = 是，则询问",
+  "instr_grid": "逐条读出。每条记录“是”或“否”。",
+  "note_fleecross_out": "不向在其他国家逃离家园的人询问：他们已经身在该国之外，在此询问是否越过边界是已知的错误答案来源。",
   "oos_idp": "&rarr; 不在范围内 &mdash; 离开的住所在另一个国家",
   "notidp_apply": "&rarr; 不计为境内流离失所者（回返难民或寻求庇护者）",
   "notidp_m12": "&rarr; 已在国外定居 &mdash; 不计为境内流离失所者",

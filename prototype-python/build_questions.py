@@ -967,6 +967,18 @@ h2{font-size:15px;margin:28px 0 2px;font-weight:640}
 .dlstatus{font-size:12.5px;color:var(--m);max-width:60ch}
 .regcard .dlbar{margin:0 0 14px}
 .dlstatus.err{color:#d03b3b}
+ol.opts.grid li{align-items:center}
+.validpick{background:#f7f9fc;border:1px solid var(--g);border-radius:8px;padding:9px 12px;margin:9px 0 0;
+ font-family:ui-sans-serif,-apple-system,sans-serif;font-size:12.5px;line-height:1.45}
+.validpick b{color:var(--i)}
+.validpick .vp-note{color:var(--m)}
+.validpick code{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11.5px}
+.vp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:2px 14px;margin-top:6px}
+.vp{display:flex;gap:7px;align-items:baseline;cursor:pointer;color:var(--i2)}
+.vp input:checked+span{color:var(--i);font-weight:600}
+.ynbox{display:inline-flex;align-items:center;gap:4px;margin-right:8px;white-space:nowrap}
+.ynbox i{font-style:normal;font-size:11px;color:var(--m);margin-right:6px}
+.ynbox .box{margin:0}
 .dlbar{flex-direction:column;align-items:stretch;gap:6px}
 .dlgrp{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .dllab{font-size:12.5px;color:var(--i2);min-width:230px;font-weight:600}
@@ -1199,6 +1211,9 @@ download the questionnaire with its instructions, derivation rules and translati
 </div>
 <div class="bar bar-cont">
   <span class="grp"></span>
+  <span class="lbl">How asked</span>
+  <button class="adm on" data-a="multi">Choose all that apply</button>
+  <button class="adm" data-a="grid">Read out one by one</button>
   <span class="lbl">Language</span>
   <span id="langs"></span>
 </div>
@@ -1287,7 +1302,7 @@ claims there, then report them so the record is updated.</p>
 </div>
 
 <h2 class="step" id="files"><b>6</b> Your files</h2>
-<p class="sub">All four are for the country, populations, version and language chosen above, and
+<p class="sub">All five are for the country, populations, version and language chosen above, and
 carry your edits.</p>
 <div class="dlbar">
   <div class="filegrid">
@@ -1299,6 +1314,8 @@ carry your edits.</p>
     <div class="filebtns"><button id="derDocxBtn">Word</button><button id="derPdfBtn" class="secondary">PDF</button></div></div>
    <div class="filetile"><div class="filename">Translation template</div><div class="filedesc">Every text with the six UN-language drafts, a column for the survey language, and terminology notes.</div>
     <div class="filebtns"><button id="xlsBtn">Excel</button></div></div>
+   <div class="filetile"><div class="filename">KoBo / ODK form</div><div class="filedesc">The module as an XLSForm: skip logic, the valid-reason calculations, the localised lists, six languages. Upload it to KoBo, ODK or SurveyCTO.</div>
+    <div class="filebtns"><button id="xlsfBtn">XLSForm</button></div></div>
   </div>
   <div class="dlgrp dltools">
    <button id="chkBtn">Checks before fielding</button>
@@ -1366,6 +1383,7 @@ whose examples merely repeat the national list is not shown.
  <button data-for="insDocxBtn">Instructions</button>
  <button data-for="derDocxBtn">Derivation sheet</button>
  <button data-for="xlsBtn">Translation template</button>
+ <button data-for="xlsfBtn">XLSForm</button>
  <a href="#files">All formats &darr;</a>
 </div>
 <p class="pagefoot" id="pagefoot"></p>
@@ -1398,6 +1416,7 @@ const SLOTS={
  adm:{label:"IDPLoc / IDPPost — subnational examples",hint:"Separate with commas.",list:true},
  dtm:{label:"FrcOth — reasons heard in this country",hint:"Separate with commas.",list:true},
 };
+SLOTS.frcothvalid={label:"FrcOth \u2014 reasons that count as a valid cause of forced displacement here",hint:"Set with the tick boxes on the FrcOth item; recorded in every download.",list:true};
 for(let c=1;c<=8;c++) SLOTS["eg"+c]={label:"Forced to flee — examples for option "+c,hint:"Separate with commas. Read aloud shows the first three; the show card shows all.",list:true};
 [1,2].forEach(vv=>[0,1,2,3,4,5].forEach(i=>SLOTS[`b${vv}_${i}`]={label:`${VERSION_DEFS_LABEL(vv)} version — examples for option ${i+1}`,hint:"Separate with commas.",list:true}));
 function VERSION_DEFS_LABEL(v){ return v===1?"Shortest":"Mid-length"; }
@@ -1413,6 +1432,21 @@ function edClear(iso){ delete EDITS[iso]; edSave(); }
 function edCount(iso){ return Object.keys(EDITS[iso]||{}).length; }
 const edList=s=>String(s).split(/\s*[,;]\s*|\\n+/).map(x=>x.trim()).filter(Boolean);
 const isEdited=slot=>edGet(sel.value,slot)!==undefined;
+// Which of FrcOth's eleven back-coding reasons count as a valid cause of
+// forced displacement in this country. The default is the set fielded in the
+// FDS (conscription, fear of violent crime, political insecurity or civil
+// unrest, family violence) - a starting point to confirm, not a rule. Indices
+// are positions in M[LANG].frcoth.list, which is the paper's own order.
+const FRCOTH_DEFAULT=[0,2,3,6];
+function frcothValid(iso){
+ const v=edGet(iso||sel.value,"frcothvalid");
+ if(v===undefined) return FRCOTH_DEFAULT.slice();
+ return String(v).split(",").map(x=>parseInt(x,10)).filter(x=>!isNaN(x));
+}
+function frcothNames(iso){
+ const list=(M.en.frcoth.list||[]);
+ return frcothValid(iso).map(i=>list[i]?String(list[i][0]).replace(/<[^>]+>/g,""):"").filter(Boolean);
+}
 // Edited example list for an FrcFl option (or a Shortest/Mid-length bucket),
 // or null when the database list stands.
 function edEg(slot){ const v=edGet(sel.value,slot); return v===undefined?null:edList(v); }
@@ -1439,7 +1473,7 @@ function editedRows(iso){
 function stateToHash(){
  const iso=sel.value;
  const p=new URLSearchParams();
- p.set("c",iso); p.set("v",String(VER)); p.set("len",LEN); p.set("lang",LANG||"en");
+ p.set("c",iso); p.set("v",String(VER)); p.set("len",LEN); p.set("lang",LANG||"en"); p.set("adminmode",ADMIN);
  if(ADM>=0) p.set("adm",String(ADM));
  if(POP!=null) p.set("pop",String(POP));
  p.set("fw",[FW.idp?"idp":null,FW.refugee?"refugee":null].filter(Boolean).join(",")||"none");
@@ -1458,6 +1492,7 @@ function applyHashAfterPick(p){
  if(p.get("lang")&&LANGS[p.get("lang")]) LANG=p.get("lang");
  if(p.get("v")&&[1,2,3].includes(+p.get("v"))) VER=+p.get("v");
  if(p.get("len")&&["read_out","showcard"].includes(p.get("len"))) LEN=p.get("len");
+ if(p.get("adminmode")&&["multi","grid"].includes(p.get("adminmode"))) ADMIN=p.get("adminmode");
  if(p.get("adm")!=null&&v.adm1&&v.adm1[+p.get("adm")]) ADM=+p.get("adm");
  if(p.get("pop")!=null&&(v.populations||[])[+p.get("pop")]) POP=+p.get("pop");
  if(p.get("fw")){ const f=p.get("fw").split(","); FW.idp=f.includes("idp"); FW.refugee=f.includes("refugee"); if(!FW.idp&&!FW.refugee){FW.idp=true;FW.refugee=true;} }
@@ -1471,6 +1506,7 @@ function applyHashAfterPick(p){
  if(p.get("popn")){ const i=(v.populations||[]).findIndex(x=>x.name===p.get("popn")&&x.kind!=="national"); if(i>=0){ POP=i; ADM=-1; } }
  if(p.get("e")){ try{ const e=JSON.parse(p.get("e")); if(e&&typeof e==="object"){ EDITS[sel.value]=Object.assign({},EDITS[sel.value]||{},e); edSave(); } }catch(err){} }
  document.querySelectorAll('.len').forEach(b=>b.classList.toggle('on',b.dataset.l===LEN));
+ document.querySelectorAll('.adm').forEach(b=>b.classList.toggle('on',b.dataset.a===ADMIN));
  lvl.value=String(ADM);
 }
 const VERSION_DEFS={
@@ -1576,8 +1612,17 @@ function buildLevels(v){
 // shared by the main form (region-aware) and the per-population preview blocks
 // below (national form, no region — see the design note on why previews don't
 // cross with the selected admin1 level).
+// How the forced-to-flee options are administered. "multi" is the paper's
+// choose-all-that-apply list; "grid" reads each option out and codes Yes/No
+// for each - what the FDS fields, and the only workable form with respondents
+// who cannot read a show card or who are interviewed by telephone.
+let ADMIN="multi";
+const optBox=()=>{ if(ADMIN!=="grid") return `<span class="box"></span>`;
+ const u=MT().ui;
+ return `<span class="ynbox"><span class="box"></span><i>${esc(u.yes)}</i>`+
+        `<span class="box"></span><i>${esc(u.no)}</i></span>`; };
 function optsListHTML(data, lang, t, lim, region){
- let h=`<ol class="opts">`;
+ let h=`<ol class="opts${ADMIN==="grid"?" grid":""}">`;
  CODES.forEach(c=>{
   // a hand edit wins; otherwise region examples override the national ones
   // for the codes they cover
@@ -1599,10 +1644,10 @@ function optsListHTML(data, lang, t, lim, region){
       `${esc(use.join(", "))}</span>`+
       (more?` <span class="more">${esc(t.more.replace("{n}",more))}</span>`:``);}
   else eg=` <span class="eg gen egadd" data-slot="eg${c}" title="No examples recorded for this option — click to add your own"><span class="lab">${esc(t.eg)}</span> add your own</span>`;
-  h+=`<li><span class="box"></span><span class="num">${c}</span>`+
+  h+=`<li>${optBox()}<span class="num">${c}</span>`+
      `<span class="otext">${t.opts[c]}${c===8?" "+esc(t.specify):""}${eg}</span></li>`;});
- h+=`<li><span class="box"></span><span class="num">99</span>`+
-    `<span class="otext">${esc(t.none)} <span class="excl">${esc(t.excl)}</span>`+
+ h+=`<li>${optBox()}<span class="num">99</span>`+
+    `<span class="otext">${esc(t.none)}${ADMIN==="grid"?"":` <span class="excl">${esc(t.excl)}</span>`}`+
     `</span></li></ol>`;
  return h;}
 
@@ -1625,7 +1670,7 @@ function codeItems(data, region, code){
 // the question-testing document) only when none of them have real evidence.
 function versionOptsHTML(data, lim, region){
  const def=VERSION_DEFS[VER];
- let h=`<ol class="opts">`, nReal=0, nBeyond=0;
+ let h=`<ol class="opts${ADMIN==="grid"?" grid":""}">`, nReal=0, nBeyond=0;
  def.buckets.forEach((b,i)=>{
   let items=[];
   const slot=`b${VER}_${i}`, ed=edEg(slot);
@@ -1645,10 +1690,10 @@ function versionOptsHTML(data, lim, region){
    generic=true;
    eg=` <span class="eg gen" data-slot="${slot}"><span class="lab">e.g.</span> ${esc(b.generic)}</span>`;
   } else eg=` <span class="eg gen egadd" data-slot="${slot}" title="No examples recorded for this option — click to add your own"><span class="lab">e.g.</span> add your own</span>`;
-  h+=`<li><span class="box"></span><span class="num">${i+1}</span>`+
+  h+=`<li>${optBox()}<span class="num">${i+1}</span>`+
      `<span class="otext">${b.label}${b.specify?" [SPECIFY]":""}${eg}</span></li>`;});
- h+=`<li><span class="box"></span><span class="num">99</span>`+
-    `<span class="otext">None of the above <span class="excl">[EXCLUSIVE CODE]</span>`+
+ h+=`<li>${optBox()}<span class="num">99</span>`+
+    `<span class="otext">None of the above${ADMIN==="grid"?"":` <span class="excl">[EXCLUSIVE CODE]</span>`}`+
     `</span></li></ol>`;
  return {html:h, nBuckets:def.buckets.length, nReal, nBeyond};}
 
@@ -1722,7 +1767,7 @@ function render(){
    `${usingPop?" · "+esc(pop.name):""}</span></div>`+
    `<p class="stem">${t.stem1}</p><p class="stem">${stem2}</p>`+
    `<p class="lead">${esc(t.lead)}</p>`+
-   `<div class="instr">${esc(t.instr)}</div>`;
+   `<div class="instr">${esc(ADMIN==="grid"?MT().ui.instr_grid:t.instr)}</div>`;
  const verResult=VER===3?null:versionOptsHTML(data, lim, region);
  h+=VER===3?optsListHTML(data, LANG, t, lim, region):verResult.html;
  f.innerHTML=h;
@@ -1973,6 +2018,10 @@ function yesno(t,arrows){ return optRows([t.ui.yes,t.ui.no],arrows); }
 // abroad) and Outcome/IntApply/Legal are dropped; in the refugee-only version
 // a purely internal displacement ends the module.
 function fwMode(){ return FW.idp&&!FW.refugee?"idp":FW.refugee&&!FW.idp?"ref":"both"; }
+// Apply is reached either by having fled a home in another country, or by
+// having crossed a border after fleeing one here (FDS routing). The IDP-only
+// version keeps the paper's narrower condition, where Apply is an exclusion.
+const applySkip=(t,u)=>fwMode()==="idp"?t.apply.skip:u.skip_apply;
 
 function chainCtx(iso){
  const q=Q[iso]||{}, v=effReg(iso)||null;
@@ -1985,13 +2034,26 @@ const EGL=(list,slot)=>`<span class="egl${slot&&isEdited(slot)?" edited":""}"${s
 const fillC=(str,ctx)=>str.split("{country}").join(EG(ctx.c));
 const custLine=(tpl,list,slot)=>`<div class="modq-custom">${tpl.replace("{list}",EGL(list,slot))}</div>`;
 
+// On-screen only (class screenonly, stripped from every download): which of
+// the back-coding reasons this country treats as a valid cause of forced
+// displacement. It writes frcoth_valid in the derivation sheet and the
+// XLSForm, and is listed in the customisation table.
+function frcothPicker(){
+ const list=MT().frcoth.list||[], on=frcothValid(sel.value);
+ return `<div class="validpick screenonly"><b>Which of these count as a valid cause of forced displacement in `+
+  `${esc((Q[sel.value]||{}).name||sel.value)}?</b> <span class="vp-note">A country decision \u2014 it sets `+
+  `<code>frcoth_valid</code> in the derivation sheet and the form, and is recorded in every download.</span>`+
+  `<div class="vp-grid">`+list.map(([txt],i)=>
+   `<label class="vp"><input type="checkbox" class="vp-cb" data-i="${i}" ${on.includes(i)?"checked":""}>`+
+   `<span>${txt}</span></label>`).join("")+`</div></div>`;
+}
 function itemHTML(key,ctx){
  const t=MT(), u=t.ui, goto=x=>u.goto.replace("{x}",x), cu=ctx.cust||{};
  switch(key){
   case "frcoth": return modq("FrcOth",t.frcoth.skip,t.frcoth.stem,
    `<div class="modq-note">${t.frcoth.note}</div><ul class="modq-list">`+
    t.frcoth.list.map(([txt,soft])=>`<li>${txt}${soft?` <span class="modq-softcheck">${soft}</span>`:""}</li>`).join("")+
-   `</ul>`+(cu.dtm&&cu.dtm.length?`<div class="modq-custom">${u.cust_dtm.replace("{c}",EG(ctx.c))
+   `</ul>`+frcothPicker()+(cu.dtm&&cu.dtm.length?`<div class="modq-custom">${u.cust_dtm.replace("{c}",EG(ctx.c))
      .replace("{list}",EGL(cu.dtm.map(([r,pc])=>pc!=null?`${r} (${pc}%)`:r),"dtm"))}</div>`:""));
   case "fleeloc": return modq("FleeLoc",t.fleeloc.skip,t.fleeloc.stem,
    optRows([t.fleeloc.opts[0]+" &mdash; "+EG(ctx.c), t.fleeloc.opts[1]],
@@ -1999,13 +2061,20 @@ function itemHTML(key,ctx){
    (cu.origins&&cu.origins.length?custLine(u.cust_other,cu.origins,"origins"):""));
   case "idploc": return modq("IDPLoc",t.idploc.skip,t.idploc.stem,`<div class="modq-note">${u.open}</div>`+
    (cu.adm&&cu.adm.length?custLine(u.cust_adm,cu.adm,"adm"):""));
-  case "locliv": return modq("LocLiv",t.locliv.skip,fillC(t.locliv.stem,ctx),yesno(t,[null,goto("CitLoc")]))+
-                        modq("CitLoc",t.citloc.skip,fillC(t.citloc.stem,ctx),yesno(t));
+  // CitLoc is asked of everyone who fled, not only when LocLiv = No: citizenship
+  // where the causing event happened is the IRIS condition itself, and asking it
+  // of all is what the FDS does in the field.
+  case "locliv": return modq("LocLiv",t.locliv.skip,fillC(t.locliv.stem,ctx),yesno(t))+
+                        modq("CitLoc",t.locliv.skip,fillC(t.citloc.stem,ctx),yesno(t));
+  // FleeCross is asked only of people who fled a home in the survey country.
+  // Someone who fled abroad reaches Apply through FleeLoc instead: asking them
+  // about a border crossing produced 2-51% wrong answers among refugee-card
+  // holders in the three FDS pilots, and the fielded FDS form skips it.
   case "fleecross": {
    const m=fwMode();
-   const skip=m==="idp"?u.skip_fleeloc1:t.fleecross.skip;
+   const skip=u.skip_fleeloc1;
    const note=m==="idp"?`<div class="modq-note">${u.note_fleecross_idp}</div>`
-             :m==="ref"?`<div class="modq-note">${fillC(u.note_fleecross_ref,ctx)}</div>`:"";
+             :`<div class="modq-note">${u.note_fleecross_out}${m==="ref"?" "+fillC(u.note_fleecross_ref,ctx):""}</div>`;
    return modq("FleeCross",skip,t.fleecross.stem,
     (cu.dest&&cu.dest.length?custLine(u.cust_to,cu.dest,"dest"):"")+yesno(t)+note);
   }
@@ -2076,7 +2145,7 @@ function renderApply(iso,v){
  sec.hidden=!FW.refugee;
  f.setAttribute('dir',RTL()?"rtl":"ltr");
  const head=`<div class="fhead"><span class="fitem">Apply</span>`+
-  `<span class="fask">{${t.apply.skip}}</span>`+
+  `<span class="fask">{${fwMode()==="idp"?t.apply.skip:u.skip_apply}}</span>`+
   `<span class="fcountry">${esc(hostName)}</span></div>`+
   `<p class="stem"><b>${t.apply.stem}</b></p>`;
  const opts=`<ol class="opts aopts">`+
@@ -2135,6 +2204,11 @@ function afterRender(){
  const rb=document.getElementById('resetBtn'); if(rb){ const n=edCount(sel.value); rb.hidden=!n; if(!rb.dataset.arm) rb.textContent=`Reset your ${n} edit${n===1?"":"s"}`; }
  const il=document.getElementById('issueLink'); if(il) il.href=issueURL();
  ["step0","maplink"].forEach(id=>{ const a=document.getElementById(id); if(a) a.href=`map.html?c=${sel.value}`; });
+ document.querySelectorAll('.vp-cb').forEach(cb=>cb.addEventListener('change',()=>{
+  const on=[...document.querySelectorAll('.vp-cb')].filter(x=>x.checked).map(x=>+x.dataset.i);
+  edSet(sel.value,"frcothvalid",on.join(","));
+  const rb=document.getElementById('resetBtn'); if(rb){ delete rb.dataset.arm; }
+  renderReg(sel.value); }));
  const sc=document.getElementById('stickyC'); if(sc) sc.textContent=`${(Q[sel.value]||{}).name||sel.value} \u00b7 ${5+activeItemNames().length} items`;
  syncHash();
 }
@@ -2158,7 +2232,7 @@ function renderRegInner(iso){
   : yesno(t,[goto("Outcome"),itemActive("intapply")?goto("IntApply"):null]);
  if(!v){
   badges.innerHTML="";
-  form.innerHTML=buildFrontChain(ctx)+modq("Apply",t.apply.skip,t.apply.stem,
+  form.innerHTML=buildFrontChain(ctx)+modq("Apply",applySkip(t,u),t.apply.stem,
    `<div class="pmiss">${u.no_example}</div>`+applyOpts)+tail();
   warn.style.display="none";cav.style.display="none";
   return;
@@ -2167,7 +2241,7 @@ function renderRegInner(iso){
   `<span class="badge b-reg">Claims registered by ${esc(v.reg==="BOTH"?"Government and UNHCR":(REGLABEL[v.reg]||v.reg))}</span>`+
   `<span class="badge b-cf-${v.cf}" title="How well the sources support the office and document names">Source confidence: ${esc(String(v.cf).toLowerCase())}</span>`;
  if(v.reg==="NONE"){
-  form.innerHTML=buildFrontChain(ctx)+modq("Apply",t.apply.skip,t.apply.stem,
+  form.innerHTML=buildFrontChain(ctx)+modq("Apply",applySkip(t,u),t.apply.stem,
    `<div class="pmiss">${u.none_proc}</div>`)+legalHTML;
   warn.style.display="none";cav.style.display="none";
   return;
@@ -2182,7 +2256,7 @@ function renderRegInner(iso){
    `<div class="specimens specimens-chain">${renderSpecimenHTML(iso,v)}</div>`;
  if(!ex) ex=`<div class="pmiss">${u.no_example_short}</div>`+
    (v.ow?`<div class="why">${esc(v.ow)}</div>`:"")+(v.dw?`<div class="why">${esc(v.dw)}</div>`:"");
- let h=buildFrontChain(ctx)+modq("Apply",t.apply.skip,t.apply.stem,ex+applyOpts)+tail();
+ let h=buildFrontChain(ctx)+modq("Apply",applySkip(t,u),t.apply.stem,ex+applyOpts)+tail();
  form.innerHTML=h;
  if(v.mis){warn.style.display="";
   warn.innerHTML=`<b>The office wording does not work well here</b> &mdash; claims are actually lodged like this: ${esc(v.how)}. Use Version B (the document).`;
@@ -2240,6 +2314,9 @@ lvl.addEventListener('change',()=>{ADM=+lvl.value;render();});
 document.querySelectorAll('.len').forEach(b=>b.addEventListener('click',()=>{
  document.querySelectorAll('.len').forEach(x=>x.classList.remove('on'));
  b.classList.add('on');LEN=b.dataset.l;render();}));
+document.querySelectorAll('.adm').forEach(b=>b.addEventListener('click',()=>{
+ document.querySelectorAll('.adm').forEach(x=>x.classList.remove('on'));
+ b.classList.add('on');ADMIN=b.dataset.a;render();renderReg(sel.value);}));
 // Same collapsed-panel pattern as map.html's "How to read this" etc.
 function panelToggle(btnId,panelId,openTxt,shutTxt){
  document.getElementById(btnId).addEventListener('click',e=>{
@@ -2275,7 +2352,7 @@ panelToggle('subsBtn','moditems',"Choose categories","Hide categories");
 
 function stripImgs(html){
  const tmp=document.createElement('div'); tmp.innerHTML=html;
- tmp.querySelectorAll('.egadd').forEach(el=>el.remove());
+ tmp.querySelectorAll('.egadd,.screenonly').forEach(el=>el.remove());
  tmp.querySelectorAll('img').forEach(im=>{ if(!/^data:/.test(im.getAttribute('src')||'')) im.remove(); });
  tmp.querySelectorAll('.spec-item').forEach(el=>el.classList.remove('broken'));
  return tmp.innerHTML;
@@ -2296,6 +2373,8 @@ p.lede{color:#5a6884;font-size:10pt;margin:0 0 14pt}
 ol.opts{list-style:none;margin:0;padding:0}
 ol.opts li{padding:4pt 0;border-bottom:0.5pt dotted #dde1e8}
 .box{display:inline-block;width:9pt;height:9pt;border:1pt solid #1d2940;margin-right:8pt}
+.ynbox{white-space:nowrap;margin-right:6pt}
+.ynbox i{font-style:normal;font-size:8pt;color:#8b93a8;margin-right:6pt}
 .num{color:#8b93a8;margin-right:6pt}
 .eg{color:#3b71b9}
 .eg .lab{font-style:italic;color:#5a6884}
@@ -2415,6 +2494,8 @@ function customisationHTML(iso){
  h+=row("Forced to flee, version",`${esc(VERSION_DEFS[VER]?VERSION_DEFS[VER].label:"Long")} `+
    (VER===3?`&mdash; the full item, 8 response codes plus none`:`&mdash; official variant from the question-testing document, drafted in English only`));
  h+=row("Length",LEN==="showcard"?"Show card &mdash; all recorded examples":"Read aloud &mdash; up to three examples per option");
+ h+=row("How the options are asked",ADMIN==="grid"?"Read out one by one &mdash; each option coded Yes or No, plus &lsquo;none of the above&rsquo;. Works with respondents who cannot read a show card, and by telephone."
+   :"Choose all that apply &mdash; one question, several options may be ticked, &lsquo;none of the above&rsquo; exclusive.");
  h+=row("Language",esc(langName)+(LANG!=="en"?" (unreviewed draft translation)":""));
  h+=row("Frameworks",fw.length?fw.join(" and "):"none selected");
  h+=row("Core items, always asked",CORE_ITEMS+`. These alone identify: any history of forced displacement; whether it began inside or outside the survey country; ${coreIdentifies().join("; ").toLowerCase()}.`);
@@ -2428,6 +2509,8 @@ function customisationHTML(iso){
  if(cu.origins) h+=row("FleeLoc &mdash; other-country examples",`${cu.origins.join(", ")} <small>(largest refugee populations hosted in ${esc(v.name)}, UNHCR)</small>`);
  if(cu.dest) h+=row("FleeCross &mdash; destination examples",`${cu.dest.join(", ")} <small>(where nationals of ${esc(v.name)} are registered as refugees or asylum seekers, UNHCR)</small>`);
  if(cu.adm) h+=row("IDPLoc / IDPPost &mdash; subnational examples",`${cu.adm.join(", ")} <small>(areas with the most recorded displacement events, UCDP and IDMC)</small>`);
+ if(itemActive("frcoth")) h+=row("FrcOth &mdash; reasons that count as valid here",
+   (frcothNames(iso).join("; ")||"none selected")+` <small>(sets <code>frcoth_valid</code>; the default is the set fielded in the FDS &mdash; confirm against ${esc(v.name)}'s own rules)</small>`);
  if(cu.dtm) h+=row("FrcOth &mdash; reasons from IOM DTM",cu.dtm.map(([x,pc])=>pc!=null?`${esc(x)} (${pc}%)`:esc(x)).join(", ")+` <small>(share of displaced people interviewed who gave a reason outside the FrcFl codes)</small>`);
  if(r&&(r.da||r.dr||(r.svd&&r.svd.length))) h+=row("Legal &mdash; document names",
    [r.da?`asylum applicant document: <b>${esc(r.da)}</b>`:null, r.dr?`refugee: <b>${esc(r.dr)}</b>`:null,
@@ -2712,11 +2795,11 @@ const VARS=[
  ["frcfl_1 … frcfl_7","FrcFl","0/1 for each of options 1–7 (armed conflict, widespread violence, persecution, human-rights violations, other violence, natural disasters, man-made events); several may be 1"],
  ["frcfl_8","FrcFl","1 if ‘a different threat’ was ticked"],
  ["frcfl_none","FrcFl","1 if ‘none of the above’ (exclusive)"],
- ["frcoth_valid","FrcOth","1 if the office coded the ‘different threat’ to a reason this country treats as a valid cause of forced displacement; 0 otherwise (documented per country)"],
+ ["frcoth_valid","FrcOth","1 if the ‘different threat’ was coded to a reason this country treats as a valid cause of forced displacement; 0 otherwise. Set on the page: {frcoth}"],
  ["fd_hist","derived","1 if any of frcfl_1…frcfl_7 = 1 or frcoth_valid = 1 — a history of forced displacement"],
  ["fleeloc","FleeLoc","1 survey country · 2 other country (fleeloc_oth holds the name)"],
  ["locliv","LocLiv","1 yes · 2 no"],
- ["citloc","CitLoc","1 yes · 2 no (asked only when locliv = 2)"],
+ ["citloc","CitLoc","1 yes · 2 no (asked of everyone who fled)"],
  ["fleecross","FleeCross","1 yes · 2 no"],
  ["mnths12","12Mnths","1 less than 12 months · 2 twelve months or more"],
  ["apply","Apply","1 yes · 2 no"],
@@ -2886,8 +2969,8 @@ function buildDerivationHTML(iso){
  if(mode!=="idp") keep.add("Outcome"); if(A("legal")) keep.add("Legal");
  h+=`<h2>1. Variables</h2><table class="dv"><tr><th>Variable</th><th>From</th><th>Values</th></tr>`+
   VARS.filter(([n,from])=>keep.has(from)&&!(n==="frcoth_valid"&&!A("frcoth"))&&!(n==="loc_now_idppost"&&!A("idppost"))&&!(n==="loc_now_idploc"&&!A("idploc")))
-   .map(([n,from,val])=>`<tr><td><code>${esc(n)}</code></td><td>${esc(from)}</td><td>${esc(val)}</td></tr>`).join("")+`</table>`+
-  `<p class="note">Code the FrcFl options as separate 0/1 variables (it is a choose-all-that-apply question). <code>frcoth_valid</code> is coded in the office against the list of reasons ${esc(v.name)} treats as valid causes of forced displacement &mdash; document that list with the dataset. `+
+   .map(([n,from,val])=>`<tr><td><code>${esc(n)}</code></td><td>${esc(from)}</td><td>${esc(val.replace("{frcoth}",frcothNames(iso).join("; ")||"nothing selected"))}</td></tr>`).join("")+`</table>`+
+  `<p class="note">Code the FrcFl options as separate 0/1 variables${ADMIN==="grid"?" (each option is asked as its own Yes/No question, so they arrive that way)":" (it is a choose-all-that-apply question)"}. <code>frcoth_valid</code> is 1 when the reason recorded at FrcOth is one of: ${esc(frcothNames(iso).join("; ")||"nothing selected yet")} &mdash; ${esc(v.name)}'s own decision, to be documented with the dataset. `+
   `Location comparisons for the IDP sub-categories are made at the lowest administrative level both places are coded to.</p>`;
  // Framework coverage: every IRRS / IRIS category and how this questionnaire reaches it.
  const cov=SUBCATS.filter(c=>c.fw!=="shared"&&((c.fw==="refugee"&&mode!=="idp")||(c.fw==="idp"&&mode!=="ref")));
@@ -2958,13 +3041,15 @@ function walkPath(a){
  asked.push("FleeLoc");
  if(mode==="idp"&&a.fleeloc===2) { if(A("legal")) asked.push("Legal"); return {asked,valid,end:"out of scope"}; }
  if(a.fleeloc===1&&A("idploc")) asked.push("IDPLoc");
- if(A("locliv")){ asked.push("LocLiv"); if(a.locliv===2) asked.push("CitLoc"); }
- const askCross=mode==="idp"?a.fleeloc===1:true;
+ if(A("locliv")){ asked.push("LocLiv"); asked.push("CitLoc"); }
+ // FleeCross only for a home fled inside the survey country
+ const askCross=a.fleeloc===1;
  if(askCross) asked.push("FleeCross");
  if(mode==="ref"&&a.fleeloc===1&&a.fleecross===2){ if(A("legal")) asked.push("Legal"); return {asked,valid,end:"out of scope"}; }
  if(a.fleeloc===1&&a.fleecross===2&&A("idppost")) asked.push("IDPPost");
- if(askCross&&a.fleecross===1){
-  if(A("mnths12")) asked.push("12Mnths");
+ if(askCross&&a.fleecross===1&&A("mnths12")) asked.push("12Mnths");
+ // Apply: fled abroad, or crossed a border after fleeing here
+ if(a.fleeloc===2||(askCross&&a.fleecross===1)){
   asked.push("Apply");
   if(mode!=="idp"){
    if(a.apply===2&&A("intapply")) asked.push("IntApply");
@@ -3072,7 +3157,7 @@ function checksList(iso){
    else add("note",`<b>Show card.</b> A specimen image is included in the questionnaire download; confirm it is the current design.`);
   }
  }
- if(A("frcoth")) add("must",`<b>FrcOth valid-reason list.</b> Decide and document which &ldquo;other&rdquo; reasons count as valid causes of forced displacement under ${esc(v.name)}'s rules (1951 Convention only, or a broader OAU/Cartagena definition)${cu.dtm&&cu.dtm.length?`; reasons displaced people here have given include ${cu.dtm.map(x=>esc(x[0])).join(", ")}`:""}. The derivation sheet's <code>frcoth_valid</code> depends on it.`);
+ if(A("frcoth")) add("must",`<b>FrcOth valid-reason list.</b> Confirm which &ldquo;other&rdquo; reasons count as valid causes of forced displacement under ${esc(v.name)}'s rules (1951 Convention only, or a broader OAU/Cartagena definition) &mdash; currently set to: ${esc(frcothNames(iso).join("; ")||"nothing")}. Change it with the tick boxes on the FrcOth item${cu.dtm&&cu.dtm.length?`; reasons displaced people here have given include ${cu.dtm.map(x=>esc(x[0])).join(", ")}`:""}.`);
  if(A("legal")) add("must",`<b>Legal options.</b> Localise the options under each header (keep the headers): the documents actually issued here${r&&(r.da||r.dr)?` &mdash; ${[r.da,r.dr].filter(Boolean).map(esc).join(", ")}`:""}${r&&r.svd&&r.svd.length?`; UNHCR issues ${r.svd.map(x=>esc(x.toLowerCase())).join(", ")}`:""} &mdash; and citizenship documents. Record the final code list with the dataset.`);
  if(A("idploc")||A("idppost")) add("must",`<b>Location coding.</b> Provide interviewers with the administrative area list at the levels you will code (province, district, locality)${cu.adm&&cu.adm.length?`; the areas most often named will include ${cu.adm.map(esc).join(", ")}`:""}, and the rule for people displaced more than once (the first home fled). The IDP sub-categories are formed by comparing these locations with the current dwelling.`);
  if(mode==="idp") add("check",`<b>IDP-only version.</b> FleeCross, 12Mnths and Apply are kept only as IRIS exclusion conditions. Decide whether Apply stays (it is the only way to exclude repatriated refugees) or is dropped to shorten the module.`);
@@ -3223,6 +3308,242 @@ function buildTranslationWorkbook(iso){
  return XLSX.write(wb,{bookType:"xlsx",type:"array"});
 }
 
+
+// =====================================================================
+// XLSForm export - the module as a KoBo / ODK / SurveyCTO form.
+// The routing below is the one printed on the page: FleeCross only for a
+// home fled inside the survey country, Apply reached either by FleeLoc =
+// other country or by FleeCross = Yes, CitLoc asked of everyone who fled.
+// Every label carries the coordinator's edits and all six UN languages.
+// =====================================================================
+const XLS_LANGS=["en","fr","es","ar","ru","zh"];
+const XLS_LANGNAME={en:"English (en)",fr:"Français (fr)",es:"Español (es)",ar:"العربية (ar)",ru:"Русский (ru)",zh:"中文 (zh)"};
+// Text with the page's markup removed: an XLSForm label is plain text (with
+// markdown bold, which KoBo renders).
+const xt=h=>String(h==null?"":h)
+  .replace(/<span class="modq-vtag">[AB]<\/span>/g,"")
+  .replace(/<br\s*\/?>/gi,"\\n").replace(/<\/li>/gi,"\\n").replace(/<[^>]+>/g,"")
+  .replace(/&mdash;/g,"—").replace(/&ndash;/g,"–").replace(/&nbsp;/g," ")
+  .replace(/&ldquo;|&rdquo;/g,'"').replace(/&lsquo;|&rsquo;/g,"'")
+  .replace(/&middot;/g,"·").replace(/&hellip;/g,"…").replace(/&amp;/g,"&")
+  .replace(/&lt;/g,"<").replace(/&gt;/g,">")
+  .replace(/[ \\t]+\\n/g,"\\n").replace(/\\n{3,}/g,"\\n\\n").trim();
+// Per-language text for one item, as a {en:…, fr:…} object the row builder
+// turns into label:: columns.
+const perLang=f=>{const o={}; XLS_LANGS.forEach(l=>{ try{ o[l]=xt(f(M[l]||M.en,l)); }catch(e){ o[l]=""; } }); return o;};
+
+function xlsFormRows(iso){
+ const v=Q[iso], r=effReg(iso), cu=effCust(iso), A=itemActive, mode=fwMode();
+ const C=v.name, rows=[], choices=[];
+ const row=(type,name,lab,extra)=>{ const o=Object.assign({type,name},extra||{});
+   if(lab) XLS_LANGS.forEach(l=>{ o["label::"+XLS_LANGNAME[l]]=lab[l]||lab.en||""; });
+   rows.push(o); };
+ const hint=(o,h)=>{ XLS_LANGS.forEach(l=>{ o["hint::"+XLS_LANGNAME[l]]=h[l]||h.en||""; }); return o; };
+ const ch=(list,name,lab,filter)=>{ const o={list_name:list,name:String(name)};
+   XLS_LANGS.forEach(l=>{ o["label::"+XLS_LANGNAME[l]]=lab[l]||lab.en||""; });
+   if(filter) o.filter=filter; choices.push(o); };
+ // ---- shared choice lists ----
+ ch("ynr",1,perLang(m=>m.ui.yes)); ch("ynr",2,perLang(m=>m.ui.no));
+ ch("ynr",99,{en:"Refuse to answer",fr:"Refus de répondre",es:"Se niega a responder",ar:"يرفض الإجابة",ru:"Отказ от ответа",zh:"拒绝回答"});
+ ch("yndr",1,perLang(m=>m.ui.yes)); ch("yndr",2,perLang(m=>m.ui.no));
+ ch("yndr",98,{en:"Don't know",fr:"Ne sait pas",es:"No sabe",ar:"لا يعرف",ru:"Не знаю",zh:"不知道"});
+ ch("yndr",99,{en:"Refuse to answer",fr:"Refus de répondre",es:"Se niega a responder",ar:"يرفض الإجابة",ru:"Отказ от ответа",zh:"拒绝回答"});
+
+ rows.push({type:"begin_group",name:"idq",appearance:"field-list",
+   ...Object.fromEntries(XLS_LANGS.map(l=>["label::"+XLS_LANGNAME[l], l==="en"?"Identification questions":xt((M[l]||M.en).ui.ask_all)]))});
+
+ // ---- FrcFl ----
+ const stem2=VER===3?null:VERSION_DEFS[VER].stem2;
+ row("note","FrcFl_intro",perLang((m,l)=>{const tt=T[l]||T.en; return tt.stem1+"\\n\\n"+(stem2||tt.stem2);}));
+ const codes=VER===3?CODES:VERSION_DEFS[VER].buckets.map((b,i)=>i+1);
+ const optLabel=(c)=>{ if(VER===3) return perLang((m,l)=>{const tt=T[l]||T.en; return tt.opts[c];});
+   const b=VERSION_DEFS[VER].buckets[c-1]; return {en:xt(b.label)+(b.specify?" [SPECIFY]":"")}; };
+ // the examples that go with each option, as a hint (they are read out)
+ const optHint=(c)=>{ let items=null;
+   if(VER===3){ const ed=edEg("eg"+c); items=ed||baseItems(c); }
+   else { const ed=edEg(`b${VER}_${c-1}`); const b=VERSION_DEFS[VER].buckets[c-1];
+          items=ed; if(!items){ const {data,region}=formData(); let acc=[];
+            b.codes.forEach(code=>{ const rr=codeItems(data,region,code); if(rr.real) acc=acc.concat(rr.items); });
+            items=acc.length?acc:(b.generic?[b.generic]:[]); } }
+   if(!items||!items.length) return null;
+   const lim=LEN==="read_out"?3:items.length;
+   const txt=items.slice(0,lim).join(", ");
+   return perLang((m,l)=>((T[l]||T.en).eg||"e.g.")+" "+txt); };
+ if(ADMIN==="grid"){
+  row("note","FrcFl_q",perLang((m,l)=>(T[l]||T.en).lead),{appearance:"field-list"});
+  codes.forEach(c=>{ const o={type:"select_one ynr",name:"FrcFl_"+c,appearance:"list-nolabel",required:"yes"};
+    XLS_LANGS.forEach(l=>{ o["label::"+XLS_LANGNAME[l]]=optLabel(c)[l]||optLabel(c).en; });
+    const hh=optHint(c); if(hh) hint(o,hh); rows.push(o); });
+  row("select_one ynr","FrcFl_none",perLang((m,l)=>(T[l]||T.en).none),{appearance:"list-nolabel",required:"yes"});
+ }else{
+  codes.forEach(c=>{ const lab=optLabel(c), hh=optHint(c), o={};
+    XLS_LANGS.forEach(l=>{ o[l]=(lab[l]||lab.en)+(hh?"  ("+(hh[l]||hh.en)+")":""); });
+    ch("frcfl",c,o); });
+  ch("frcfl",99,perLang((m,l)=>(T[l]||T.en).none));
+  const o={type:"select_multiple frcfl",name:"FrcFl",required:"yes",
+    constraint:"not(selected(.,'99') and count-selected(.)>1)"};
+  XLS_LANGS.forEach(l=>{ o["label::"+XLS_LANGNAME[l]]=xt((T[l]||T.en).lead);
+    o["constraint_message::"+XLS_LANGNAME[l]]=l==="en"?"'None of the above' cannot be combined with another answer.":"";
+    o["hint::"+XLS_LANGNAME[l]]=xt(ADMIN==="grid"?(M[l]||M.en).ui.instr_grid:(T[l]||T.en).instr); });
+  rows.push(o);
+ }
+ // valid reason from FrcFl: codes 1-7 in the Long version, 1-3 in the shorter ones
+ const validCodes=VER===3?[1,2,3,4,5,6,7]:codes.slice(0,-1);
+ rows.push({type:"calculate",name:"FrcFl_valid",
+   calculation:ADMIN==="grid"?`if(${validCodes.map(c=>"${FrcFl_"+c+"}=1").join(" or ")}, 1, 2)`
+                             :`if(${validCodes.map(c=>"selected(${FrcFl},'"+c+"')").join(" or ")}, 1, 2)`});
+ // ---- FrcOth ----
+ const othCode=VER===3?8:codes[codes.length-1];
+ if(A("frcoth")){
+  const list=M.en.frcoth.list||[], valid=frcothValid(iso);
+  list.forEach(([txt],i)=>ch("FrcOth",i+1,perLang(m=>(m.frcoth.list[i]||[""])[0])));
+  ch("FrcOth",99,{en:"Other reason (specify)",fr:"Autre raison (préciser)",es:"Otra razón (especificar)",ar:"سبب آخر (يُحدَّد)",ru:"Другая причина (уточнить)",zh:"其他原因（请说明）"});
+  row("select_multiple FrcOth","FrcOth",perLang(m=>m.frcoth.stem),
+    {relevant:ADMIN==="grid"?`\${FrcFl_${othCode}}=1`:`selected(\${FrcFl},'${othCode}')`,required:"yes",
+     ...Object.fromEntries(XLS_LANGS.map(l=>["hint::"+XLS_LANGNAME[l], xt((M[l]||M.en).frcoth.note)]))});
+  row("text","FrcOth_specify",{en:"Please specify the reason.",fr:"Veuillez préciser la raison.",es:"Especifique la razón.",ar:"يرجى تحديد السبب.",ru:"Уточните причину.",zh:"请说明原因。"},
+    {relevant:"selected(${FrcOth},'99')"});
+  rows.push({type:"calculate",name:"FrcOth_valid",
+    calculation:valid.length?`if(${valid.map(i=>"selected(${FrcOth},'"+(i+1)+"')").join(" or ")}, 1, 2)`:"2"});
+  rows.push({type:"calculate",name:"flee_valid",calculation:"if(${FrcFl_valid}=1 or ${FrcOth_valid}=1, 1, 2)"});
+ }else{
+  rows.push({type:"calculate",name:"flee_valid",calculation:"${FrcFl_valid}"});
+ }
+ const FV="${flee_valid}=1";
+
+ // ---- FleeLoc ----
+ ch("FleeLoc",1,{en:C,fr:C,es:C,ar:C,ru:C,zh:C});
+ (cu.origins||[]).forEach((o,i)=>ch("FleeLoc",10+i,{en:o,fr:o,es:o,ar:o,ru:o,zh:o}));
+ ch("FleeLoc",2,perLang(m=>m.fleeloc.opts[1]));
+ row("select_one FleeLoc","FleeLoc",perLang(m=>m.fleeloc.stem),{relevant:FV,required:"yes"});
+ row("text","FleeLoc_specify",{en:"If other country, please specify",fr:"Si autre pays, veuillez préciser",es:"Si es otro país, especifique",ar:"إذا كان بلداً آخر، يرجى التحديد",ru:"Если другая страна, уточните",zh:"如为其他国家，请说明"},
+   {relevant:"${FleeLoc}=2"});
+ rows.push({type:"calculate",name:"fled_here",calculation:"if(${FleeLoc}=1, 1, 2)"});
+ const HERE="${fled_here}=1";
+
+ // ---- IDPLoc ----
+ if(A("idploc")){
+  row("note","IDPLoc",perLang(m=>m.idploc.stem),{relevant:`${HERE} and ${FV}`});
+  ["Admin1","Admin2","Admin3"].forEach((lv,i)=>
+    row("select_one_from_file "+iso.toLowerCase()+"_admin.csv","IDPLoc_"+lv,
+      {en:["Province / region","District","Sub-district"][i]},{relevant:`${HERE} and ${FV}`}));
+  row("text","IDPLoc_Admin4",{en:"Village or town"},{relevant:`${HERE} and ${FV}`});
+ }
+ // ---- LocLiv / CitLoc ----
+ if(A("locliv")){
+  row("select_one ynr","LocLiv",perLang(m=>m.locliv.stem.split("{country}").join(C)),{relevant:FV,required:"yes"});
+  row("select_one ynr","CitLoc",perLang(m=>m.citloc.stem.split("{country}").join(C)),{relevant:FV,required:"yes"});
+ }
+ // ---- FleeCross ----
+ row("select_one ynr","FleeCross",perLang(m=>m.fleecross.stem),{relevant:`${HERE} and ${FV}`,required:"yes"});
+ if(A("idppost")){
+  row("note","IDPPost",perLang(m=>m.idppost.stem),{relevant:`${HERE} and \${FleeCross}=2`});
+  ["Admin1","Admin2","Admin3"].forEach((lv,i)=>
+    row("select_one_from_file "+iso.toLowerCase()+"_admin.csv","IDPPost_"+lv,
+      {en:["Province / region","District","Sub-district"][i]},{relevant:`${HERE} and \${FleeCross}=2`}));
+  row("text","IDPPost_Admin4",{en:"Village or town"},{relevant:`${HERE} and \${FleeCross}=2`});
+ }
+ if(A("mnths12")){
+  M.en.mnths12.opts.forEach((o,i)=>ch("_12Mnths",i+1,perLang(m=>m.mnths12.opts[i])));
+  row("select_one _12Mnths","_12Mnths",perLang(m=>m.mnths12.stem),{relevant:"${FleeCross}=1",required:"yes"});
+ }
+ // ---- Apply ----
+ const applyRel=`\${FleeLoc}!=1 or \${FleeCross}=1`;
+ if(FW.refugee||mode==="idp"){
+  const n=applyNames(iso,r||{});
+  const ex=(r&&r.reg!=="NONE")?(r.mis||!n.office?
+      (n.doc?perLang(m=>m.apply.probe_doc.split("{name}").join(n.doc)):null)
+    : perLang(m=>m.apply.probe_office.split("{name}").join(n.office))):null;
+  const o={type:"select_one yndr",name:"Apply",relevant:applyRel,required:"yes"};
+  XLS_LANGS.forEach(l=>{ o["label::"+XLS_LANGNAME[l]]=xt((M[l]||M.en).apply.stem)+(ex?"\\n"+(ex[l]||ex.en):""); });
+  rows.push(o);
+  if(A("intapply")&&mode!=="idp") row("select_one yndr","IntApply",perLang(m=>m.intapply.stem),{relevant:"${Apply}=2",required:"yes"});
+  if(mode!=="idp"){
+   M.en.outcome.opts.forEach((x,i)=>ch("Outcome",i+1,perLang(m=>m.outcome.opts[i])));
+   ch("Outcome",98,{en:"Don't know",fr:"Ne sait pas",es:"No sabe",ar:"لا يعرف",ru:"Не знаю",zh:"不知道"});
+   row("select_one Outcome","Outcome",perLang(m=>m.outcome.stem),{relevant:"${Apply}=1",required:"yes"});
+  }
+ }
+ // ---- Legal, with the paper's headers kept as a prefix on every label ----
+ if(A("legal")){
+  let code=0; const docFor=(ci,oi)=>ci===4?(oi===0?(r&&r.da):oi===1?(r&&r.dr):null):null;
+  M.en.legal.cats.forEach((cat,ci)=>{ cat[1].forEach((opt,oi)=>{ code++;
+    const extra=docFor(ci,oi);
+    ch("Legal",code,perLang((m,l)=>{ const cc=m.legal.cats[ci];
+      const head=xt(cc[0]).toUpperCase(), body=xt(cc[1][oi]).split("{country}").join(C);
+      return head+": "+body+(extra?" — "+extra:""); }));
+  }); });
+  // UNHCR-issued types that are not already named on the asylum/refugee lines
+  const otherCode=code, already=[r&&r.da,r&&r.dr].filter(Boolean).map(x=>String(x).toLowerCase());
+  if(r&&r.svd&&r.svd.length) r.svd.filter(d=>!already.includes(String(d).toLowerCase()))
+    .forEach(d=>{ code++; ch("Legal",code,{en:"PROTECTED STATUS: "+d+" (issued by UNHCR)"}); });
+  row("select_one Legal","Legal",perLang(m=>m.legal.stem.split("{country}").join(C)),
+    {required:"yes",...Object.fromEntries(XLS_LANGS.map(l=>["hint::"+XLS_LANGNAME[l],xt((M[l]||M.en).legal.note)]))});
+  row("text","Legal_specify",{en:"Specify the other document."},{relevant:"selected(${Legal},'"+otherCode+"')"});
+  // ---- document verification ----
+  ch("Legal_see",1,{en:"Yes, document seen"}); ch("Legal_see",2,{en:"No, document not seen"});
+  row("select_one Legal_see","Legal_see",{en:"Can I see the document?"},{});
+  row("select_one ynr","Legal_pic_yn",{en:"Can I take a picture of the document?"},{relevant:"${Legal_see}=1"});
+  row("image","Legal_pic",{en:"Take the picture"},{relevant:"${Legal_pic_yn}=1",parameters:"max-pixels=1024"});
+  row("text","Legal_num",{en:"Record the document or registration number."},{relevant:"${Legal_see}=1 and ${Legal_pic_yn}!=1"});
+ }
+ rows.push({type:"end_group",name:""});
+ rows.push({type:"calculate",name:"idq_seconds",calculation:"(decimal-date-time(${idq_end}) - decimal-date-time(${idq_start})) * 86400"});
+ // timing brackets, placed around the group
+ const gi=rows.findIndex(x=>x.type==="begin_group"&&x.name==="idq");
+ rows.splice(gi,0,{type:"calculate",name:"idq_start",calculation:"once(now())"});
+ const ge=rows.findIndex(x=>x.type==="end_group");
+ rows.splice(ge,0,{type:"calculate",name:"idq_end",calculation:"once(now())"});
+ return {rows,choices};
+}
+
+function buildXlsForm(iso){
+ const v=Q[iso], {rows,choices}=xlsFormRows(iso);
+ const cols=["type","name"]
+   .concat(XLS_LANGS.map(l=>"label::"+XLS_LANGNAME[l]))
+   .concat(XLS_LANGS.map(l=>"hint::"+XLS_LANGNAME[l]))
+   .concat(["appearance","relevant","constraint"])
+   .concat(["parameters"])
+   .concat(XLS_LANGS.map(l=>"constraint_message::"+XLS_LANGNAME[l]))
+   .concat(["calculation","required","choice_filter"]);
+ const survey=rows.map(r=>{const o={}; cols.forEach(c=>o[c]=r[c]!==undefined?r[c]:""); return o;});
+ const ccols=["list_name","name"].concat(XLS_LANGS.map(l=>"label::"+XLS_LANGNAME[l])).concat(["filter"]);
+ const chs=choices.map(r=>{const o={}; ccols.forEach(c=>o[c]=r[c]!==undefined?r[c]:""); return o;});
+ const wb=XLSX.utils.book_new();
+ const ws=XLSX.utils.json_to_sheet(survey,{header:cols});
+ ws['!cols']=cols.map(c=>({wch:c.startsWith("label")?46:c.startsWith("hint")?30:c==="type"?26:c==="relevant"?30:c==="calculation"?38:14}));
+ XLSX.utils.book_append_sheet(wb,ws,"survey");
+ const ws2=XLSX.utils.json_to_sheet(chs,{header:ccols});
+ ws2['!cols']=ccols.map(c=>({wch:c.startsWith("label")?44:14}));
+ XLSX.utils.book_append_sheet(wb,ws2,"choices");
+ const stem=safeFileStem(v.name).toLowerCase();
+ const ws3=XLSX.utils.aoa_to_sheet([
+  ["form_title","form_id","version","default_language","style"],
+  [`EGRISS identification questions — ${v.name}`,`idq_${stem}`,new Date().toISOString().slice(0,10).replace(/-/g,""),XLS_LANGNAME[LANG]||XLS_LANGNAME.en,"pages"]]);
+ XLSX.utils.book_append_sheet(wb,ws3,"settings");
+ // a read-me sheet so whoever opens the file knows what was decided
+ const ed=editedRows(iso), mode=fwMode();
+ const notes=[["EGRISS identification questions — XLSForm",v.name],
+  ["Generated",new Date().toISOString().slice(0,10)],
+  ["Questionnaire",`${VERSION_DEFS[VER]?VERSION_DEFS[VER].label:"Long"} version of the forced-to-flee question, ${ADMIN==="grid"?"read out one by one (Yes/No each)":"choose all that apply"}, ${LEN==="showcard"?"show card":"read aloud"} examples; ${mode==="idp"?"IDP-only (IRIS)":mode==="ref"?"refugee-only (IRRS)":"combined refugee and IDP"}`],
+  ["Items",CORE_ITEMS+(activeItemNames().length?", "+activeItemNames().join(", "):"")],
+  ["Routing","FleeCross is asked only when the home fled was in "+v.name+"; Apply is reached by FleeLoc = another country, or FleeCross = Yes; CitLoc is asked of everyone who fled. This follows the FDS as fielded rather than the 2023 paper's narrower conditions — see the derivation sheet."],
+  ["frcoth_valid",A_frcothNote(iso)],
+  ["Localisation",(function(){const r=effReg(iso); if(!r) return "no office or document on record"; if(r.reg==="NONE") return "no registration procedure exists"; const n=applyNames(iso,r); return `Apply names ${r.mis?"the document (Version B) because the office wording does not work well here":"the office (Version A)"}: ${r.mis?(n.doc||"—"):(n.office||"—")}`;})()],
+  ["Your edits",ed.length?ed.map(e=>`${e.label}: ${e.value}`).join(" | "):"none"],
+  ["Set-up link",shareURL()],
+  ["Before you upload","Add your own admin choice file for the location items (a CSV named "+iso.toLowerCase()+"_admin.csv), decide whether the module repeats per household member, and check the module against the derivation sheet's rules."],
+  ["Corrections",issueURL()]];
+ const ws4=XLSX.utils.aoa_to_sheet(notes); ws4['!cols']=[{wch:22},{wch:130}];
+ XLSX.utils.book_append_sheet(wb,ws4,"read me");
+ return XLSX.write(wb,{bookType:"xlsx",type:"array"});
+}
+function A_frcothNote(iso){
+ if(!itemActive("frcoth")) return "FrcOth is not in this questionnaire";
+ const names=frcothNames(iso);
+ return names.length?`1 when FrcOth is one of: ${names.join("; ")} (this country's decision, set on the page)`:"nothing is currently marked valid — set it on the FrcOth item";
+}
+
 function safeFileStem(name){
  return (name||'country').replace(/[^\w\-]+/g,'_').replace(/^_+|_+$/g,'')||'country';
 }
@@ -3305,6 +3626,16 @@ wireDownload('insDocxBtn',buildInstructionsHTML,'_instructions',false);
 wireDownload('insPdfBtn',buildInstructionsHTML,'_instructions',true);
 wireDownload('derDocxBtn',buildDerivationHTML,'_derivation_sheet',false);
 wireDownload('derPdfBtn',buildDerivationHTML,'_derivation_sheet',true);
+document.getElementById('xlsfBtn').addEventListener('click',()=>{
+ const iso=sel.value,v=Q[iso]; if(!v) return;
+ if(!window.XLSX){ setDlStatus('The spreadsheet library did not load \u2014 reload the page and try again.',true); return; }
+ setDlStatus('Building the XLSForm\u2026');
+ try{
+  const fn=safeFileStem(v.name)+'_identification_xlsform.xlsx';
+  saveBlob(fn,new Blob([buildXlsForm(iso)],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}));
+  setDlStatus('Downloaded '+fn+' \u2014 upload it to KoBo, ODK or SurveyCTO. Read the \u201cread me\u201d sheet first: it lists the routing, the valid-reason rule and what you still have to add.');
+ }catch(e){ setDlStatus('Couldn\u2019t build the XLSForm. Reload the page and try again; if it keeps failing, use \u201cReport a correction\u201d and say which country.',true); }
+});
 document.getElementById('xlsBtn').addEventListener('click',()=>{
  const iso=sel.value,v=Q[iso]; if(!v) return;
  if(!window.XLSX){ setDlStatus('The spreadsheet library did not load — try again in a moment.',true); return; }
