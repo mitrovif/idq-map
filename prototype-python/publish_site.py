@@ -51,26 +51,31 @@ SITE = ROOT / "site"
 # plain numbered list, not icon cards, so there's no icon column any more.
 PAGES = [
     ("idq_population_by_cause.html", "index.html",
-     "Causes of displacement, and the events behind them",
-     "Two switchable world maps — how many people are displaced and by what, and "
-     "how often each kind of event actually happens. Search a country for the "
-     "response options the evidence supports there.", "Open the map"),
+     "Step 0 — Where and why: the evidence",
+     "Who is displaced in each country, how many, and what displaced them; where "
+     "international-protection claims are lodged. Open a country for its drafting "
+     "brief — which populations to identify, which options need local examples, the "
+     "areas and the office and document to name — and build the questionnaire from it.",
+     "Start from the evidence"),
     ("idq_localised_questions.html", "questions.html",
-     "Identification questions, customised by country",
-     "The forced-to-flee and international-protection questions as they would appear "
-     "on a form, with the examples and the office and document names drafted from what "
-     "was recorded in each country, then the full module in the version you choose. "
-     "Six languages; downloads as Word or PDF with a summary of every customisation.",
-     "Open the questionnaire"),
+     "Steps 1–6 — Build the questionnaire",
+     "Choose the country and the populations to identify (the IRRS and IRIS categories); "
+     "the forced-to-flee and international-protection questions are customised from the "
+     "evidence and every blue value can be edited. Test the routing with respondent "
+     "profiles, then download the questionnaire, the coordinator and interviewer "
+     "instructions, the derivation rules with code, and a translation template — in "
+     "six languages, with a link that reopens the exact set-up.",
+     "Build a questionnaire"),
     ("idq_crosswalk_mechanisms.html", "crosswalk.html",
-     "What sits under each option",
-     "For each of the eight options: 66 real-world mechanisms in words a "
+     "Reference — What sits under each option",
+     "For each of the eight forced-to-flee options: 66 real-world mechanisms in words a "
      "respondent might use, and the 68 source-database categories they were "
      "mapped from — including the ones that fit badly.", "Open the crosswalk"),
     ("idq_evidence_map.html", "counted-vs-documented.html",
-     "Counted versus documented",
+     "Reference — Counted versus documented",
      "Where human rights research documents displacement that no statistical "
-     "agency counts — the case for options 3 and 7.", "Open the comparison"),
+     "agency counts — the case for keeping options 3 and 7 even where the data look empty.",
+     "Open the comparison"),
 ]
 # idq_protection_question.html / protection.html was retired: the registration
 # item now lives inline on questions.html (build_questions.py), and its map
@@ -173,10 +178,13 @@ code{background:var(--tint);border:1px solid var(--line);border-radius:4px;paddi
 a{color:var(--blue)}
 </style></head><body><div class="w">
 <div class="eyebrow">EGRISS &middot; Identification questions</div>
-<h1>Causing events and the identification questions</h1>
-<p class="lede">Which &ldquo;reason for fleeing&rdquo; response options does the evidence
-support putting in front of respondents in each country, and what local examples should
-enumerator support materials give for each one?</p>
+<h1>The identification questions, built for a country</h1>
+<p class="lede">A questionnaire builder for the EGRISS identification questions: start from
+the evidence on who is displaced where and why, choose the populations to identify, review
+the customised questions, and download the questionnaire with its instructions, derivation
+rules and translation template. The questions and response options never change; what
+varies by country is the examples, the office and the document named &mdash; and everything
+that varies is shown in blue and can be edited.</p>
 <p class="meta">EGRISS methodological paper on identification questions for refugees and
 IDPs &middot; supported by a UNHCR Data Innovation Grant</p>
 __CARDS__

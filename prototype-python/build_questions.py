@@ -705,7 +705,14 @@ def main():
         survey_present = False
     meta = {"built": datetime.date.today().isoformat(), "events_to": int(latest_year),
             "unhcr_year": unhcr_year, "survey": survey_present}
-    write_page(out, rows, reg, spec, meta)
+    # Per-country digest written by build_population_map.py (counts, cause
+    # shares, origins, areas, registrar) - the map's evidence, quoted by the
+    # checks list and the instructions. Absent until the map has been built.
+    try:
+        mapfacts = json.load(open(f"{OUT}/mapfacts.json"))
+    except FileNotFoundError:
+        mapfacts = {}
+    write_page(out, rows, reg, spec, meta, mapfacts)
     print("\nExample — Nigeria:")
     if "NGA" in out:
         print("   " + out["NGA"]["question"].replace("\n", "\n   "))
@@ -1140,6 +1147,7 @@ response options never change; the parts the instrument lets vary &mdash; the ex
 Choose the country and the populations you need to identify, check and edit the blue text, and
 download the questionnaire with its instructions, derivation rules and translation template.</p>
 <ol class="steps">
+ <li><a id="step0" href="map.html" title="The map: who is displaced here, what displaced them, where claims are lodged"><b>0</b> Where and why</a></li>
  <li><a href="#s1"><b>1</b> Country</a></li>
  <li><a href="#s2"><b>2</b> Who to identify</a></li>
  <li><a href="#s3"><b>3</b> Forced-to-flee question</a></li>
@@ -1231,6 +1239,7 @@ browser, carried into every file you download and into the link you copy.</p>
 <div class="info" id="warn"></div>
 <button class="help small" id="provbtn">Where these examples come from</button>
 <div id="provwrap" hidden>
+<p class="sub" style="margin:8px 0 4px">Each example and the record it was drafted from. The map (step 0) shows the same evidence as populations and events: <a id="maplink" href="map.html" target="_blank" rel="noopener">see this country on the map &#8599;</a></p>
 <table id="prov"><thead><tr><th>Option</th><th>Example</th><th>Type</th>
 <th>Source</th><th>Evidence</th></tr></thead><tbody></tbody></table>
 </div>
@@ -1361,7 +1370,7 @@ whose examples merely repeat the national list is not shown.
 </div>
 <p class="pagefoot" id="pagefoot"></p>
 </div><script>
-const Q=__DATA__, P=__PROV__, T=__T__, LANGS=__LANGS__, REG=__REG__, REGLABEL=__REGLABEL__, SPEC=__SPEC__, M=__M__, META=__META__;
+const Q=__DATA__, P=__PROV__, T=__T__, LANGS=__LANGS__, REG=__REG__, REGLABEL=__REGLABEL__, SPEC=__SPEC__, M=__M__, META=__META__, MF=__MF__;
 const CODES=[1,2,3,4,5,6,7,8];
 const LBL={1:"1. Armed conflict",2:"2. Widespread violence",3:"3. Persecution",
  4:"4. HR violations",5:"5. Other violence",6:"6. Natural disasters",
@@ -1453,6 +1462,13 @@ function applyHashAfterPick(p){
  if(p.get("pop")!=null&&(v.populations||[])[+p.get("pop")]) POP=+p.get("pop");
  if(p.get("fw")){ const f=p.get("fw").split(","); FW.idp=f.includes("idp"); FW.refugee=f.includes("refugee"); if(!FW.idp&&!FW.refugee){FW.idp=true;FW.refugee=true;} }
  if(p.get("sub")){ const s=p.get("sub").split(","); SUBCATS.forEach(c=>SUB[c.key]=s.includes(c.key)); }
+ // From the map's drafting brief: a preset name and a population to preview
+ if(p.get("preset")){ const pr=p.get("preset");
+  if(pr==="core"){ FW.idp=true; FW.refugee=true; setAllSubs(false); }
+  else if(pr==="refugee"){ FW.idp=false; FW.refugee=true; setAllSubs(true); }
+  else if(pr==="idp"){ FW.idp=true; FW.refugee=false; setAllSubs(true); }
+  else { FW.idp=true; FW.refugee=true; setAllSubs(true); } }
+ if(p.get("popn")){ const i=(v.populations||[]).findIndex(x=>x.name===p.get("popn")&&x.kind!=="national"); if(i>=0){ POP=i; ADM=-1; } }
  if(p.get("e")){ try{ const e=JSON.parse(p.get("e")); if(e&&typeof e==="object"){ EDITS[sel.value]=Object.assign({},EDITS[sel.value]||{},e); edSave(); } }catch(err){} }
  document.querySelectorAll('.len').forEach(b=>b.classList.toggle('on',b.dataset.l===LEN));
  lvl.value=String(ADM);
@@ -2118,6 +2134,7 @@ function afterRender(){
  try{ chkRender(); }catch(e){}
  const rb=document.getElementById('resetBtn'); if(rb){ const n=edCount(sel.value); rb.hidden=!n; rb.textContent=`Reset ${n} hand edit${n===1?"":"s"}`; }
  const il=document.getElementById('issueLink'); if(il) il.href=issueURL();
+ ["step0","maplink"].forEach(id=>{ const a=document.getElementById(id); if(a) a.href=`map.html?c=${sel.value}`; });
  const sc=document.getElementById('stickyC'); if(sc) sc.textContent=`${(Q[sel.value]||{}).name||sel.value} \u00b7 ${5+activeItemNames().length} items`;
  syncHash();
 }
@@ -2999,11 +3016,42 @@ function walkRender(){
  form.querySelectorAll('.modq[data-item]').forEach(el=>{ if(path.asked.includes(el.dataset.item)) el.classList.add('wk-asked'); });
 }
 
+// ---- what the map says about this country (mapfacts.json) ----
+const CAUSE_NAME={1:"armed conflict",2:"widespread violence",3:"persecution",4:"human-rights violations",5:"other violence",6:"natural disasters",7:"man-made events"};
+function mapFacts(iso){ return (MF&&MF[iso])||null; }
+const fmtK=n=>n>=1e6?(n/1e6).toFixed(1).replace(/\.0$/,"")+" million":n>=1e3?Math.round(n/1e3)+",000":String(n);
+function causeList(o){ return Object.entries(o||{}).sort((a,b)=>b[1]-a[1]).slice(0,2).map(([c,sh])=>`${CAUSE_NAME[c]||c} ${Math.round(sh*100)}%`).join(", "); }
+// The map's evidence as the opening of the instructions' Part A: why this
+// questionnaire is configured the way it is for this country.
+function whyHereHTML(iso){
+ const v=Q[iso], f=mapFacts(iso), cu=effCust(iso), r=effReg(iso), mode=fwMode();
+ if(!f) return "";
+ const tot=f.idps+f.refugees;
+ const recs=(v.localised||[]).slice().sort(), gaps=[1,2,3,4,5,6,7].filter(c=>!recs.includes(c));
+ let h=`<h3>A0. Why the questionnaire looks like this in ${esc(v.name)}</h3>`;
+ h+=`<p><b>Who is here.</b> ${fmtK(f.idps)} IDPs and ${fmtK(f.refugees)} refugees and asylum seekers hosted${f.origins&&f.origins.length?`, mostly from ${f.origins.map(esc).join(", ")}`:""}. `+
+  `This questionnaire is the ${mode==="idp"?"IDP-only (IRIS)":mode==="ref"?"refugee-only (IRRS)":"combined refugee and IDP"} version${tot>0?`; ${f.idps>=10000&&f.refugees>=10000?"both populations are sizeable here":f.refugees>f.idps?"refugees are the larger population here":"IDPs are the larger population here"}`:""}.</p>`;
+ if(f.idps>0||f.refugees>0) h+=`<p><b>What displaced them.</b> ${f.idps>0?`IDPs: ${causeList(f.idp_causes)||"cause not recorded"}. `:""}${f.refugees>0?`Refugees hosted, by the cause mix of their origin country: ${causeList(f.ref_causes)||"cause not recorded"}. `:""}`+
+  `${recs.length?`Options ${recs.join(", ")} of the forced-to-flee question carry examples drafted from the recorded events; `:""}${gaps.length?`options ${gaps.join(", ")} use the questionnaire's generic wording because no source records that cause here — not because it is rare.`:""}</p>`;
+ if(f.areas&&f.areas.length) h+=`<p><b>Where.</b> Most recorded violence is in ${f.areas.map(esc).join(", ")}; these are the example areas for IDPLoc and IDPPost and the strata to check in the sample.</p>`;
+ if(r) h+=`<p><b>How claims are lodged.</b> ${r.reg==="NONE"?"No registration or protection procedure exists, so Apply is a screener only.":`Claims are registered by ${r.reg==="BOTH"?"both the Government and UNHCR":r.reg==="UNHCR"?"UNHCR":"the Government"}${r.org?` at ${esc(r.org)}`:""}${r.da||r.dr?`, producing ${esc(r.da||r.dr)}`:""}; ${r.mis?"the office wording is known to misfire here, so Version B (the document) is preferred":"Version A (the office) and Version B (the document) are both usable"}.`}</p>`;
+ h+=`<p class="note">Sources: UNHCR population statistics, IDMC, UCDP GED, IOM DTM, help.unhcr.org/RIMAP; see the map page for the figures and the events behind each example.</p>`;
+ return h;
+}
+
 // ---- checks before fielding ----
 function checksList(iso){
  const v=Q[iso], r=effReg(iso), mode=fwMode(), A=itemActive, cu=effCust(iso);
  const L=[]; const add=(lvl,text)=>L.push({lvl,text});
  add("must",`<b>Placement and respondent.</b> The questions are asked about each individual, in the household roster or the individual questionnaire (paper, para. 50). Decide the administration option &mdash; member-by-member through a proxy respondent, or group-then-exceptions &mdash; and write the proxy rule into the interviewer instructions; the paper does not recommend asking every member directly unless the survey already does.`);
+ const f=mapFacts(iso);
+ if(f){
+  if(FW.idp&&f.idps<2000&&f.refugees>=10000) add("check",`<b>Few IDPs recorded.</b> The map records ${fmtK(f.idps)} IDPs against ${fmtK(f.refugees)} refugees hosted; consider the refugee-only questionnaire, or keep the IDP items only if internal displacement matters for your reporting.`);
+  if(FW.refugee&&f.refugees<2000&&f.idps>=10000) add("check",`<b>Few refugees recorded.</b> The map records ${fmtK(f.refugees)} refugees and asylum seekers against ${fmtK(f.idps)} IDPs; consider the IDP-only questionnaire, keeping Apply as the screener for repatriated refugees.`);
+  const dis=(f.idp_causes||{})["6"]||0;
+  if(dis>=0.5) add("check",`<b>Disaster displacement dominates</b> (${Math.round(dis*100)}% of IDPs). Make sure option 6 names the actual events (the named floods, storms or droughts) and that interviewers do not treat disaster displacement as out of scope.`);
+  if(f.origins&&f.origins.length&&FW.refugee) add("note",`<b>Populations to preview.</b> Refugees here come mostly from ${f.origins.map(esc).join(", ")}; check the forced-to-flee examples with each origin's own (More options, step 3) before printing a version for a camp or settlement survey.`);
+ }
  add("must",`<b>Variables the survey already carries.</b> Check the roster for country of birth, citizenship, and always-lived-here items; the module must not duplicate them${A("locliv")?", and LocLiv/CitLoc can be dropped if citizenship at the time of displacement is captured elsewhere (record which variable)":""}. Do not filter these questions on migrant status or citizenship (paper, paras 58&ndash;59).`);
  const gen=CODES.filter(c=>c!==8).filter(c=>{ const ed=edEg("eg"+c); if(ed) return false; const {data,region}=formData(); const it=codeItems(data,region,c); return !it.real; });
  if(gen.length) add("check",`<b>Forced to flee examples.</b> Options ${gen.join(", ")} have no country-specific examples (generic wording or none). Draft examples from local knowledge &mdash; click the blue &ldquo;e.g.&rdquo; to add them &mdash; and check the recorded ones for actor names that could anchor or offend.`);
@@ -3049,6 +3097,7 @@ function chkRender(){
 function coordinatorHTML(iso){
  const v=Q[iso], r=effReg(iso), mode=fwMode(), A=itemActive;
  let h=`<h2>Part A &mdash; for the survey coordinator</h2>`;
+ h+=whyHereHTML(iso);
  h+=`<h3>A1. Where the questions go, and who answers</h3>`+
   `<p><b>Individual level, always.</b> Being forcibly displaced is a characteristic of a person, not a household; households are mixed. Place the module in the household roster or in the individual questionnaire, and identify through the questionnaire even when the sample frame is a camp or a registration database &mdash; frames are heterogeneous in practice.</p>`+
   `<p><b>Three ways to administer it.</b> (1) Member by member through a proxy &mdash; the head or another knowledgeable adult answers for each member; (2) member by member, each person directly; (3) group then exceptions &mdash; the household's situation first, then whether any member differs, with follow-up only for them. Option 2 is the most accurate but rarely feasible unless the survey already interviews every member directly. Between 1 and 3 there is no evidence either is more accurate: choose by questionnaire flow &mdash; option 1 where the survey already has an extensive roster, option 3 where it is built around household-level questions. Write the proxy rule into Part B.</p>`+
@@ -3369,10 +3418,11 @@ def survey_note():
             "<br><br>")
 
 
-def write_page(out, rows, reg=None, spec=None, meta=None):
+def write_page(out, rows, reg=None, spec=None, meta=None, mapfacts=None):
     reg = reg or {}
     spec = spec or {}
     meta = meta or {}
+    mapfacts = mapfacts or {}
     html = (PAGE.replace("__DATA__", json.dumps(out, separators=(",", ":")))
                 .replace("__PROV__", json.dumps(rows, separators=(",", ":")))
                 .replace("__T__", json.dumps(T, separators=(",", ":")))
@@ -3382,6 +3432,7 @@ def write_page(out, rows, reg=None, spec=None, meta=None):
                 .replace("__SPEC__", json.dumps(spec, separators=(",", ":")))
                 .replace("__M__", json.dumps(MODULE_T, separators=(",", ":"), ensure_ascii=False))
                 .replace("__META__", json.dumps(meta, separators=(",", ":")))
+                .replace("__MF__", json.dumps(mapfacts, separators=(",", ":")))
                 .replace("__SURVEYNOTE__", survey_note()))
     open(f"{OUT}/idq_localised_questions.html", "w").write(html)
     print(f"\nwrote idq_localised_questions.html "

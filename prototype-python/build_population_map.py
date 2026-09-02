@@ -363,6 +363,22 @@ def main():
                    qlabels={"3": "Discrimination or persecution",
                             "4": "Human rights violations by authorities",
                             "7": "Man-made events"})
+    # A small per-country digest for build_questions.py (checks list, the
+    # instructions' "why the questionnaire looks like this here", the map
+    # back-link): counts and shares only, never event counts.
+    facts = {}
+    for iso, d in data.items():
+        st, rf = d.get("stock") or {}, d.get("refugees") or {}
+        n_i = sum(st.values()); n_r = sum(rf.values())
+        def shares(o, n):
+            return {str(k): round(v / n, 3) for k, v in o.items() if n and k not in ("0", "9") and v / n >= 0.05}
+        facts[iso] = dict(idps=int(n_i), refugees=int(n_r),
+                          idp_causes=shares(st, n_i), ref_causes=shares(rf, n_r),
+                          origins=[o["name"] for o in (d.get("origins") or [])[:3]],
+                          areas=[r["a"] for r in (geda1.get(iso) or [])[:3]],
+                          registrar=(protmap.get("office") or {}).get(iso))
+    json.dump(facts, open(f"{OUT}/mapfacts.json", "w"), separators=(",", ":"))
+    print(f"  mapfacts.json: {len(facts)} countries")
     html = TPL.replace("__DATA__", json.dumps(payload, separators=(",", ":")))
     name = "idq_population_by_cause.html"
     open(f"{OUT}/{name}", "w").write(html)
@@ -442,11 +458,12 @@ button.on em{color:var(--surface-1);opacity:.72}
    pair before anyone clicks it, rather than reading as a third peer. */
 .viewsep{width:1px;align-self:stretch;background:var(--grid);margin:2px 2px}
 .viewsw button{font-size:14px;padding:8px 15px;font-weight:560}
-.findwrap{position:relative;margin-left:auto}
+.findwrap{position:relative}
+.setup .step0 .findwrap{margin-left:0}
 #find{font:inherit;font-size:13.5px;padding:8px 13px;border-radius:8px;
  border:1px solid var(--grid);background:var(--surface-1);color:var(--ink);width:250px}
 #find:focus{outline:2px solid var(--c1);outline-offset:-1px}
-#findlist{position:absolute;z-index:12;top:calc(100% + 4px);right:0;width:290px;
+#findlist{position:absolute;z-index:12;top:calc(100% + 4px);left:0;width:360px;
  background:var(--surface-1);border:1px solid var(--grid);border-radius:9px;
  box-shadow:0 10px 30px rgba(0,0,0,.18);max-height:320px;overflow:auto;padding:4px}
 #findlist div{padding:7px 10px;border-radius:6px;cursor:pointer;font-size:13.5px}
@@ -516,6 +533,40 @@ a.viewform:hover{opacity:.88}
 .warn{margin-top:8px;padding:8px 11px;border-radius:7px;font-size:12.5px;
  background:color-mix(in srgb,#fab219 14%,transparent);
  border:1px solid color-mix(in srgb,#fab219 38%,transparent)}
+/* ---- step-0 framing, shared with questions.html ------------------------- */
+.crumb{font-size:11.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:0 0 6px}
+.crumb b{color:var(--ink)}
+.steps{list-style:none;display:flex;flex-wrap:wrap;gap:6px;margin:0 0 14px;padding:0;font-size:12.5px}
+.steps a{display:inline-block;padding:5px 11px 5px 7px;border:1px solid var(--grid);border-radius:20px;color:var(--ink);text-decoration:none;background:var(--surface-1)}
+.steps a:hover{border-color:var(--c1);color:var(--c1)}
+.steps a.on{background:var(--ink);color:var(--surface-1);border-color:var(--ink)}
+.steps b,.grp b,.brief h3 b{display:inline-block;width:18px;height:18px;line-height:18px;border-radius:50%;background:var(--ink);color:var(--surface-1);
+ text-align:center;font-size:11px;font-weight:700;margin-right:6px;letter-spacing:0}
+.steps a.on b{background:var(--surface-1);color:var(--ink)}
+.setup{background:var(--plane);border:1px solid var(--grid);border-radius:12px;padding:4px 16px 12px;margin:0 0 10px}
+.setup .ctl{margin:10px 0 0}
+.setup .ctl+.ctl{border-top:0;padding-top:0}
+.setup .ctl .grp{min-width:150px;color:var(--ink);text-transform:none;letter-spacing:.02em;font-size:12.5px;font-weight:620}
+.setup .step0 #find{min-width:320px}
+.setup .hint{font-size:12px;color:var(--muted);max-width:44ch;line-height:1.35}
+.ctlright{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
+.advanced{margin-top:10px;padding:2px 12px 8px;border-left:3px solid var(--grid)}
+.advanced[hidden]{display:none}
+.advanced .ctl .grp{color:var(--muted);text-transform:uppercase;font-weight:600;font-size:11px}
+.viewhint{font-size:13px;color:var(--ink-2);margin:10px 0 8px;max-width:100ch}
+h2.sec{font-size:17px;margin:30px 0 4px}
+h3.tblh{font-size:14px;margin:14px 0 6px;font-weight:640}
+/* ---- the drafting brief at the top of a country panel -------------------- */
+.brief{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px;margin:4px 0 6px}
+.brief .bk{background:var(--plane);border:1px solid var(--grid);border-radius:10px;padding:10px 12px;font-size:12.5px;line-height:1.5}
+.brief .bk h4{margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:700}
+.brief .bk .so{margin-top:6px;padding-top:6px;border-top:1px dotted var(--grid);color:var(--ink)}
+.brief .bk .so b{color:var(--c1)}
+.brief .eg{color:var(--c1);font-weight:600}
+.briefcta{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:8px 0 4px}
+.briefcta .hint{font-size:12px;color:var(--muted)}
+a.buildq{font:inherit;font-size:13.5px;font-weight:700;padding:9px 15px;border-radius:8px;background:var(--c1);color:#fff;text-decoration:none}
+a.buildq:hover{opacity:.9}
 .grp{font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);
  font-weight:640;min-width:172px}
 @media(max-width:760px){.grp{min-width:0;width:100%}}
@@ -735,10 +786,21 @@ button.cz:not(.on):hover{border-color:var(--egriss-blue);color:var(--egriss-blue
 .viewctl button:hover,button.help:hover{color:var(--egriss-navy)}
 </style></head><body><div class="wrap">
 
-<h1 id="title">Displaced population by cause</h1>
-<p class="sub" id="lede">One circle per country, sized by how many people are displaced and divided by
-what displaced them. Hover a country to see the numbers and the actual events IDMC
-recorded — the named storm, the named conflict. Scroll to zoom, drag to pan.</p>
+<p class="crumb">EGRISS &middot; Identification questions &middot; <b>Step 0</b> of the questionnaire builder</p>
+<h1 id="title">Where and why &mdash; the evidence behind the questions</h1>
+<p class="sub" id="lede">Who is displaced in each country, how many, and what displaced them &mdash;
+the evidence that decides which populations a survey there needs to identify and which
+forced-to-flee options need local examples. Open a country for its <b>drafting brief</b>,
+then build the questionnaire from it.</p>
+<ol class="steps">
+ <li><a class="on" href="#"><b>0</b> Where and why</a></li>
+ <li><a href="questions.html#s1"><b>1</b> Country</a></li>
+ <li><a href="questions.html#s2"><b>2</b> Who to identify</a></li>
+ <li><a href="questions.html#s3"><b>3</b> Forced-to-flee question</a></li>
+ <li><a href="questions.html#s4"><b>4</b> Review and edit</a></li>
+ <li><a href="questions.html#s5"><b>5</b> Test the routing</a></li>
+ <li><a href="questions.html#files"><b>6</b> Your files</a></li>
+</ol>
 
 <div class="ctl" id="intbanner" hidden>
   <span class="intbadge">Pending ACLED endorsement</span>
@@ -747,16 +809,27 @@ recorded — the named storm, the named conflict. Scroll to zoom, drag to pan.</
   <b>provisional</b> until that is confirmed — the rest of the page is unaffected.</span>
 </div>
 
-<div class="ctl viewsw">
-  <span class="grp">What the map shows</span>
-  <button class="view on" data-v="pop">People displaced<em>Forced-to-flee item</em></button>
-  <button class="view" data-v="events">Events that happened<em>Forced-to-flee item</em></button>
-  <span class="viewsep" aria-hidden="true"></span>
-  <button class="view" data-v="prot">Registration wording<em>Apply item &mdash; a different question</em></button>
+<div class="setup">
+<div class="ctl step0">
+  <span class="grp"><b>0</b> Country</span>
   <span class="findwrap">
     <input id="find" type="search" autocomplete="off" spellcheck="false"
-           placeholder="Find a country &mdash; e.g. Chad" aria-label="Find a country">
+           placeholder="Type a country &mdash; e.g. Chad" aria-label="Find a country">
     <div id="findlist" hidden></div>
+  </span>
+  <span class="hint">opens the country&rsquo;s evidence and drafting brief &mdash; or click a circle on the map</span>
+</div>
+<div class="ctl viewsw">
+  <span class="grp">What to look at</span>
+  <button class="view on" data-v="pop">Who is displaced here<em>people, by cause</em></button>
+  <button class="view" data-v="events">What happened<em>events recorded, by kind</em></button>
+  <span class="viewsep" aria-hidden="true"></span>
+  <button class="view" data-v="prot">Where claims are lodged<em>Government, UNHCR or both</em></button>
+  <span class="ctlright">
+   <button class="help" id="helpbtn">How to read this</button>
+   <button class="help" id="srcbtn">Where these numbers come from</button>
+   <button class="help" id="glossbtn">Plain English</button>
+   <button class="help" id="advbtn">More options</button>
   </span>
 </div>
 
@@ -776,6 +849,7 @@ recorded — the named storm, the named conflict. Scroll to zoom, drag to pan.</
   <button class="players" data-pl="ask">Does the office wording work?</button>
 </div>
 
+<div class="advanced" id="advpanel" hidden>
 <div class="ctl" id="popctl">
   <span class="grp">Which displaced population</span>
   <button class="mode on" data-m="both">Everyone displaced now <em>snapshot</em></button>
@@ -797,16 +871,18 @@ recorded — the named storm, the named conflict. Scroll to zoom, drag to pan.</
   <button class="cz" data-c="6">6. Natural disasters</button>
   <button class="cz" data-c="7">7. Man-made events</button>
 </div>
-<div class="ctl" id="basicctl">
-  <button class="help" id="helpbtn">How to read this</button>
-  <button class="help" id="srcbtn">Where these numbers come from</button>
-  <button class="help" id="glossbtn">Plain English</button>
-  <button class="help" id="advbtn">More options</button>
-</div>
 <div class="ctl" id="layerctl" hidden>
-  <span class="grp">More options</span>
+  <span class="grp">Layers</span>
   <button id="evid">Documented evidence for codes 3, 4 and 7</button>
   <button id="attr">Attribute unknowns via UCDP</button>
+</div>
+<div class="ctl" id="basicctl">
+  <span class="grp">Display</span>
+  <button id="shape">Single bubbles</button>
+  <button id="reset">Reset zoom</button>
+  <button id="theme">Dark mode</button>
+</div>
+</div>
 </div>
 
 <div class="card help-panel" id="glosspanel" hidden></div>
@@ -912,23 +988,19 @@ recorded — the named storm, the named conflict. Scroll to zoom, drag to pan.</
  Ringed countries have it &mdash; hover for the evidence, click to pin the sources.</p>
 </div>
 
+<p class="viewhint" id="viewhint"></p>
 <div class="card">
-  <div id="anchor" style="font-size:11.5px;color:var(--muted);margin:0 0 8px"></div>
   <div id="anchor" style="font-size:11.5px;color:var(--muted);margin:0 0 8px"></div>
   <svg id="map" viewBox="0 0 1000 500" role="img"
     aria-label="World map with per-country pie charts of displaced population by cause"></svg>
   <div class="key" id="key"></div>
 </div>
 <div class="card profile" id="profile" hidden></div>
-<div class="viewctl">
-  <span>Display</span>
-  <button id="shape">Single bubbles</button>
-  <button id="reset">Reset zoom</button>
-  <button id="theme">Dark mode</button>
-</div>
 <p class="note" id="modenote"></p>
 
-<h2>The twenty largest displaced populations</h2>
+<h2 class="sec">Sources and caveats</h2>
+<p class="note">The twenty largest displaced populations, and the caveats that apply to every figure on this page. Full source notes are behind &ldquo;Where these numbers come from&rdquo; above.</p>
+<h3 class="tblh">The twenty largest displaced populations</h3>
 <div class="card tblwrap"><div class="tblscroll"><table id="tbl"></table></div></div>
 
 <p class="note" id="caveats"><b>Caveats.</b> IDMC figures here cover 2025 only, so the stock reflects
@@ -1596,36 +1668,57 @@ function showProfile(iso){
 
  // The recommendation goes FIRST. Everything below it is the working that
  // supports it, and a reader who stops after this section has the answer.
- const rec=D.sc[iso];
- if(rec){
-  const ST={RECOMMENDED:["st-rec","Give examples"],
-            RESIDUAL:["st-res","Always keep"],
+ const rec=D.sc[iso]||[];
+ {
+  const ST={RECOMMENDED:["st-rec","Local examples"],
+            RESIDUAL:["st-res","Always on the list"],
             UNEVIDENCED:["st-un","Keep — no data"],
             LOW_SALIENCE:["st-low","Low salience"]};
-  // A summary, not the form itself -- the drafted question, with per-country
-  // examples, read-aloud/showcard length, language and subnational level, all
-  // now lives ONLY on questions.html (see the note by .viewform above). This
-  // panel just tells you what's there and links straight to this country.
+  // The drafting brief: what this country's evidence says about how the
+  // questionnaire should be built, in four blocks that map onto the steps of
+  // questions.html, ending in a link that opens that page with country,
+  // preset and population preview already set (its URL hash carries them).
   const q=D.lq&&D.lq[iso];
-  if(q){
-   h+=`<div class="psec"><h3>Drafted wording for this country</h3>`+
-    `<div class="ev">${q.n_localised} of 7 options carry country-specific `+
-    `examples, ${q.n_available} in total`+
-    ((q.adm1&&q.adm1.length)
-      ? ` \u2014 <b>${q.adm1.length} subnational set${q.adm1.length===1?"":"s"}</b> `+
-        `differ from the national one` : ``)+
-    ((D.prot||[]).includes(iso)
-      ? ` \u2014 that page also carries the registration wording (where an `+
-        `international protection claim is lodged, and what document it produces).`
-      : ``)+
-    `.</div>`+
-    `<a class="viewform" href="questions.html?c=${iso}" target="_blank" `+
-    `rel="noopener">View the full drafted question for ${d.name} \u2192</a></div>`;}
-  h+=`<div class="psec"><h3>What to put on the showcard here</h3>`+
+  const nI=sum(idp), nR=sum(ref), tot=nI+nR;
+  const big=x=>x>=10000||(tot>0&&x/tot>=0.1&&x>=2000);
+  const preset=big(nI)&&big(nR)?"both":big(nR)?"refugee":big(nI)?"idp":"both";
+  const presetName={both:"the full refugee-and-IDP questionnaire",refugee:"the refugee questionnaire",idp:"the IDP questionnaire"}[preset];
+  const origins=(d.origins||[]).slice(0,3);
+  const withData=q?(q.populations||[]).filter(p=>p.kind==="refugee"&&p.has_data).map(p=>p.name):[];
+  const previewPop=origins.map(o=>o.name).find(n=>withData.includes(n))||null;
+  // which options carry a drafted local example is what questions.html
+  // knows (lq.localised); the showcard verdicts (sc) are the evidence grades
+  const recs=(q&&q.localised)?q.localised.slice().sort():rec.filter(r=>r.s==="RECOMMENDED"&&r.e).map(r=>r.c);
+  const gaps=[1,2,3,4,5,6,7].filter(c=>!recs.includes(c));
+  const topA=a1.slice(0,3).map(r=>r.a);
+  const who=MP.office&&MP.office[iso], org=MP.orgnames&&MP.orgnames[iso], docs=(MP.docnames&&MP.docnames[iso])||[], ask=MP.ask&&MP.ask[iso], stages=MP.doc&&MP.doc[iso];
+  const whoTxt={GOVERNMENT:"the Government",UNHCR:"UNHCR",BOTH:"both the Government and UNHCR",NONE:"nobody — no procedure exists"}[who]||null;
+  const link=`questions.html#c=${iso}&preset=${preset}${previewPop?`&popn=${encodeURIComponent(previewPop)}`:""}`;
+  h+=`<div class="psec"><h3>Drafting brief — what the evidence says about the questionnaire here</h3><div class="brief">`+
+   `<div class="bk"><h4>1 · Who is here → who to identify</h4>`+
+    `${fmt(nI)} IDPs and ${fmt(nR)} refugees and asylum seekers hosted`+
+    (origins.length?`, mostly from ${origins.map(o=>`<span class="eg">${o.name}</span>`).join(", ")}`:"")+`.`+
+    `<div class="so">Build <b>${presetName}</b>${tot<2000?" — no sizeable displaced population is recorded, so nothing narrows it":""}`+
+    (previewPop?`; preview the forced-to-flee examples with <b>${previewPop}</b>'s own`:"")+`.</div></div>`+
+   `<div class="bk"><h4>2 · What displaced them → which options get examples</h4>`+
+    (nI>0?`IDPs: ${C.filter(c=>idp[String(c)]>0&&c!==0&&c!==9).sort((x,y)=>idp[String(y)]-idp[String(x)]).slice(0,2).map(c=>`${L[c].toLowerCase()} ${(100*idp[String(c)]/nI).toFixed(0)}%`).join(", ")}. `:"")+
+    (nR>0?`Refugees hosted, by cause in their origin: ${C.filter(c=>ref[String(c)]>0&&c!==0&&c!==9).sort((x,y)=>ref[String(y)]-ref[String(x)]).slice(0,2).map(c=>`${L[c].toLowerCase()} ${(100*ref[String(c)]/nR).toFixed(0)}%`).join(", ")}.`:"")+
+    `<div class="so">${recs.length?`Local examples drafted for options <b>${recs.join(", ")}</b>`:"No option has recorded evidence here"}`+
+    (gaps.length?`; options <b>${gaps.join(", ")}</b> fall back to generic wording — add your own on the questionnaire page (click the blue &ldquo;e.g.&rdquo;)`:"")+`.</div></div>`+
+   `<div class="bk"><h4>3 · Where → the location items</h4>`+
+    (topA.length?`Most recorded violence in ${topA.map(a=>`<span class="eg">${a}</span>`).join(", ")}.`:`No subnational pattern of events is recorded.`)+
+    (q&&q.adm1&&q.adm1.length?` ${q.adm1.length} subnational example set${q.adm1.length===1?"":"s"} differ${q.adm1.length===1?"s":""} from the national one.`:"")+
+    `<div class="so">${topA.length?`These become the example areas for <b>IDPLoc / IDPPost</b> and the strata to check in the sample`:`Use the survey's own admin list for <b>IDPLoc / IDPPost</b>`}.</div></div>`+
+   `<div class="bk"><h4>4 · How claims are lodged → the protection question</h4>`+
+    (whoTxt?`Claims registered by <span class="eg">${whoTxt}</span>${org?`; the office is <span class="eg">${org}</span>`:""}${docs.length?`; documents: <span class="eg">${docs.join("</span>, <span class=\"eg\">")}</span>`:""}.`:`No office or document on record yet.`)+
+    `<div class="so">${who==="NONE"?"The <b>Apply</b> item stays as a screener only":ask==="reword"?"The office wording misfires here — use <b>Version B</b> (the document)":stages===2?"Both document stages are nameable — <b>Version A or B</b> will work":org?"<b>Version A</b> (the office) is available; confirm the document name for B":"Draft <b>Apply</b> with the registrar before fielding"}.</div></div>`+
+   `</div><div class="briefcta"><a class="buildq" href="${link}" target="_blank" rel="noopener">Build the questionnaire for ${d.name} →</a>`+
+   `<span class="hint">opens the questionnaire builder with the country, ${presetName.replace("the ","")} and ${previewPop?"the "+previewPop+" preview":"no population preview"} already set; every blue value can be changed there.</span></div></div>`;
+  if(rec.length) h+=`<div class="psec"><h3>Evidence by option — what the forced-to-flee examples are drafted from</h3>`+
     `<div style="font-size:12.5px;color:var(--ink-2);margin:-2px 0 9px">`+
     `All eight options stay on the questionnaire everywhere — that is what makes the `+
-    `data comparable. What changes by country is which ones the enumerator gives a `+
-    `worked example for.</div><div class="rec">`+
+    `data comparable. What changes by country is which ones carry a local example, `+
+    `and this is the evidence behind each.</div><div class="rec">`+
    rec.map(r=>{const [cls,txt]=ST[r.s]||["st-res",r.s];
     return `<span class="st ${cls}">${txt}</span><div>`+
      `<div class="rl">${r.c}. ${r.l}</div>`+
@@ -2178,23 +2271,23 @@ function applyView(){
   if(document.querySelector('.cz.on')&&document.querySelector('.cz.on').hidden)
     setCause("all");
  }
- document.getElementById('title').textContent = pr
-   ? "Registration wording by country"
-   : ev ? "Events by cause" : "Displaced population by cause";
- document.getElementById('lede').innerHTML = pr
-   ? `Each country coloured by the drafted registration item — a separate part of the `+
-     `instrument asking whether someone ever applied for international protection. See `+
-     `<a href="questions.html" target="_blank" rel="noopener">questions.html</a> for the `+
-     `full drafted wording, country by country. Scroll to zoom, drag to pan.`
-   : ev
-   ? `One circle per ${ELEVEL==="country"?"country":"subnational area"}, sized by how many `+
-     `events were recorded there and divided by what kind. This is frequency, not `+
-     `magnitude — hover to see the named conflicts and hazards behind it. `+
-     `Scroll to zoom, drag to pan.`
-   : `One circle per country, sized by how many people are displaced and divided by `+
-     `what displaced them. Hover a country to see the numbers and the actual events IDMC `+
-     `recorded — the named storm, the named conflict. Scroll to zoom, drag to pan.`;
+ viewHint();
  unpin();draw();}
+// The title stays; this line above the map says what the current view shows.
+function viewHint(){
+ const ev=VIEW==="events", pr=VIEW==="prot";
+ document.getElementById('viewhint').innerHTML = pr
+   ? `<b>Where claims are lodged.</b> Each country coloured by who registers international-protection `+
+     `claims — the Government, UNHCR or both — which decides the office and document named in the `+
+     `questionnaire's international-protection question. Scroll to zoom, drag to pan.`
+   : ev
+   ? `<b>What happened.</b> One circle per ${ELEVEL==="country"?"country":"subnational area"}, sized by how many `+
+     `events were recorded there and divided by what kind — how often, not how many people moved. `+
+     `Hover for the named conflicts and hazards; these are what the forced-to-flee examples are drafted from. `+
+     `Scroll to zoom, drag to pan.`
+   : `<b>Who is displaced here.</b> One circle per country, sized by how many people are displaced there now `+
+     `and divided by what displaced them: inner disc IDPs, outer ring refugees hosted. Hover for the numbers `+
+     `and the events behind them; click to open the country's drafting brief. Scroll to zoom, drag to pan.`;}
 /* Find a country. Hunting for Uganda on a world map is not a reasonable ask of
    someone who came here with a specific country in mind. */
 const FIND=Object.entries(D.data).map(([iso,d])=>({iso,n:d.name,
@@ -2207,7 +2300,7 @@ let fsel=-1, fhits=[];
 function frender(){
  if(!fhits.length){flist.hidden=true;return;}
  flist.innerHTML=fhits.map((h,i)=>`<div class="${i===fsel?'sel':''}" data-i="${i}">`+
-   `${h.n}<span>${D.sc[h.iso]?"showcard":""}</span></div>`).join("");
+   `${h.n}<span>${(D.lq&&D.lq[h.iso])?`${D.lq[h.iso].n_localised}/7 with local examples`:""}</span></div>`).join("");
  flist.hidden=false;}
 function fgo(i){
  const h=fhits[i]; if(!h)return;
@@ -2275,10 +2368,16 @@ document.getElementById('glosspanel').innerHTML=glossPanel();
 {const e=document.getElementById('acledn');
  if(e)e.innerHTML=NACLED?`${NACLED} countries`:"not in shared build";}
 panelToggle('glossbtn','glosspanel',"Plain English","Hide");
+// "More options" opens the analytical switches (population sub-views, cause
+// filter, layers, display) — the coordinator's path never needs them.
 document.getElementById('advbtn').addEventListener('click',e=>{
- e.stopPropagation(); const h=document.getElementById('layerctl');
+ e.stopPropagation(); const h=document.getElementById('advpanel');
  h.hidden=!h.hidden; e.target.classList.toggle('on',!h.hidden);
  e.target.textContent=h.hidden?"More options":"Fewer options";});
+// Deep link from questions.html ("Evidence on the map"): map.html?c=ISO3
+// opens that country's brief straight away.
+{const dc=(new URLSearchParams(location.search).get('c')||"").toUpperCase();
+ if(dc&&(D.data[dc]||D.ev[dc])) setTimeout(()=>showProfile(dc),50);}
 document.getElementById('evid').addEventListener('click',e=>{
  e.stopPropagation(); EVID=!EVID; unpin();
  e.target.textContent=EVID?"Documented evidence for codes 3, 4 and 7  \u2713"
@@ -2319,6 +2418,7 @@ document.addEventListener('click',e=>{
  document.querySelectorAll('.gl.open').forEach(x=>{if(x!==g)x.classList.remove('open');});
  if(g){e.stopPropagation();placeDef(g);g.classList.toggle('open');}},true);
 
+viewHint();
 draw();
 </script></body></html>"""
 
