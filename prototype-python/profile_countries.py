@@ -183,7 +183,7 @@ def build_profile(iso3):
 
         if c in RESIDUAL:
             status = "RESIDUAL"
-            reasons.append("Residual code - retained on every showcard by design")
+            reasons.append("Residual code - retained on every show card by design")
         else:
             supported = False
             if pd.notna(d_s) and d_s >= DOMESTIC_THRESHOLD:

@@ -798,7 +798,7 @@ then build the questionnaire from it.</p>
  <li><a href="questions.html#s2"><b>2</b> Who to identify</a></li>
  <li><a href="questions.html#s3"><b>3</b> Forced-to-flee question</a></li>
  <li><a href="questions.html#s4"><b>4</b> Review and edit</a></li>
- <li><a href="questions.html#s5"><b>5</b> Test the routing</a></li>
+ <li><a href="questions.html#s5"><b>5</b> Try a respondent</a></li>
  <li><a href="questions.html#files"><b>6</b> Your files</a></li>
 </ol>
 
@@ -817,7 +817,7 @@ then build the questionnaire from it.</p>
            placeholder="Type a country &mdash; e.g. Chad" aria-label="Find a country">
     <div id="findlist" hidden></div>
   </span>
-  <span class="hint">opens the country&rsquo;s evidence and drafting brief &mdash; or click a circle on the map</span>
+  <span class="hint">opens its evidence and drafting brief. You can also click a circle on the map.</span>
 </div>
 <div class="ctl viewsw">
   <span class="grp">What to look at</span>
@@ -845,8 +845,8 @@ then build the questionnaire from it.</p>
 <div class="ctl" id="protctl" hidden>
   <span class="grp">Colour by</span>
   <button class="players on" data-pl="reg">Who registers claims</button>
-  <button class="players" data-pl="doc">Document stages nameable</button>
-  <button class="players" data-pl="ask">Does the office wording work?</button>
+  <button class="players" data-pl="doc">Document names known</button>
+  <button class="players" data-pl="ask">Office wording works</button>
 </div>
 
 <div class="advanced" id="advpanel" hidden>
@@ -873,8 +873,8 @@ then build the questionnaire from it.</p>
 </div>
 <div class="ctl" id="layerctl" hidden>
   <span class="grp">Layers</span>
-  <button id="evid">Documented evidence for codes 3, 4 and 7</button>
-  <button id="attr">Attribute unknowns via UCDP</button>
+  <button id="evid">Human-rights evidence (options 3, 4, 7)</button>
+  <button id="attr">Fill unknown causes from UCDP</button>
 </div>
 <div class="ctl" id="basicctl">
   <span class="grp">Display</span>
@@ -966,7 +966,7 @@ then build the questionnaire from it.</p>
  <p class="hn"><b>Watch the third column.</b> Three views put the circle where displacement was
  caused. The last two are about where displaced people went. Germany shows 2.8m not because
  anything happened in Germany, but because it hosts that many people displaced elsewhere. That
- is the view that matters for designing a showcard in a host country, precisely because the
+ is the view that matters for designing a show card in a host country, precisely because the
  causing events happened somewhere else.</p>
 
  <h3>IDPs and refugees</h3>
@@ -1081,7 +1081,7 @@ const GLOSS=[
   "fighting back — by a government, or by an armed group."],
  ["response options","The list of answers a respondent chooses from. Here, the eight "+
   "reasons for having to leave home."],
- ["showcard","The card an enumerator shows a respondent listing the answer options, "+
+ ["show card","The card an enumerator shows a respondent listing the answer options, "+
   "with worked examples to help them recognise their own situation."],
  ["enumerator","The person who actually asks the questions in a survey."],
  ["subnational","Below the level of a whole country — a province, state or district."],
@@ -1452,7 +1452,7 @@ function drawEvents(){
     `Compare with the population view — the two disagree sharply, and the disagreement `+
     `is the point.`
   : `<b>${items.length.toLocaleString()} subnational areas.</b> Conflict is concentrated in `+
-    `a handful of provinces inside most affected countries; a national showcard hides that. `+
+    `a handful of provinces inside most affected countries; a national show card hides that. `+
     `Zoom in.`;
  document.getElementById('modenote').innerHTML="<b>What you are looking at.</b> "+
   `Recorded events, not displaced people. Conflict incidents come from `+
@@ -1708,10 +1708,10 @@ function showProfile(iso){
    `<div class="bk"><h4>3 · Where → the location items</h4>`+
     (topA.length?`Most recorded violence in ${topA.map(a=>`<span class="eg">${a}</span>`).join(", ")}.`:`No subnational pattern of events is recorded.`)+
     (q&&q.adm1&&q.adm1.length?` ${q.adm1.length} subnational example set${q.adm1.length===1?"":"s"} differ${q.adm1.length===1?"s":""} from the national one.`:"")+
-    `<div class="so">${topA.length?`These become the example areas for <b>IDPLoc / IDPPost</b> and the strata to check in the sample`:`Use the survey's own admin list for <b>IDPLoc / IDPPost</b>`}.</div></div>`+
+    `<div class="so">${topA.length?`These are the example areas for the two <b>location questions</b> (IDPLoc, IDPPost), and the areas to make sure the sample covers`:`Use the survey's own administrative list for the two <b>location questions</b> (IDPLoc, IDPPost)`}.</div></div>`+
    `<div class="bk"><h4>4 · How claims are lodged → the protection question</h4>`+
     (whoTxt?`Claims registered by <span class="eg">${whoTxt}</span>${org?`; the office is <span class="eg">${org}</span>`:""}${docs.length?`; documents: <span class="eg">${docs.join("</span>, <span class=\"eg\">")}</span>`:""}.`:`No office or document on record yet.`)+
-    `<div class="so">${who==="NONE"?"The <b>Apply</b> item stays as a screener only":ask==="reword"?"The office wording misfires here — use <b>Version B</b> (the document)":stages===2?"Both document stages are nameable — <b>Version A or B</b> will work":org?"<b>Version A</b> (the office) is available; confirm the document name for B":"Draft <b>Apply</b> with the registrar before fielding"}.</div></div>`+
+    `<div class="so">${who==="NONE"?"The <b>Apply</b> item stays as a screener only":ask==="reword"?"The office wording does not work here — use <b>Version B</b> (the document)":stages===2?"Both document stages are nameable — <b>Version A or B</b> will work":org?"<b>Version A</b> (the office) is available; confirm the document name for B":"Draft <b>Apply</b> with the registrar before fielding"}.</div></div>`+
    `</div><div class="briefcta"><a class="buildq" href="${link}" target="_blank" rel="noopener">Build the questionnaire for ${d.name} →</a>`+
    `<span class="hint">opens the questionnaire builder with the country, ${presetName.replace("the ","")} and ${previewPop?"the "+previewPop+" preview":"no population preview"} already set; every blue value can be changed there.</span></div></div>`;
   if(rec.length) h+=`<div class="psec"><h3>Evidence by option — what the forced-to-flee examples are drafted from</h3>`+
@@ -1722,7 +1722,7 @@ function showProfile(iso){
    rec.map(r=>{const [cls,txt]=ST[r.s]||["st-res",r.s];
     return `<span class="st ${cls}">${txt}</span><div>`+
      `<div class="rl">${r.c}. ${r.l}</div>`+
-     (r.w?`<div class="rw">${r.w.replace(/\|/g,"·")}</div>`:``)+
+     (r.w?`<div class="rw">${r.w.replace(/\|/g,"·").replace(/showcard/g,"show card")}</div>`:``)+
      (r.e?`<div class="re"><b style="font-size:10px;text-transform:uppercase;`+
           `letter-spacing:.04em;color:var(--muted)">Local examples</b><br>`+
           `${r.e.replace(/;/g,"<br>")}</div>`:``)+
@@ -2164,7 +2164,7 @@ function draw(){
    "and short pre-emptive evacuations are included, which inflates the disaster share "+
    "relative to what a respondent would call having to flee a home.",
   refugees:"Refugees and asylum seekers hosted, each attributed to the cause mix of their "+
-   "origin country. This is the view that matters for designing a showcard in a host "+
+   "origin country. This is the view that matters for designing a show card in a host "+
    "country, because the causing events happened somewhere else. <b>Treat the disaster "+
    "slice with suspicion:</b> it assumes people cross a border for the same reasons that "+
    "displace people internally, and crossing a border to seek protection is far more "+
@@ -2354,7 +2354,7 @@ LANDS.forEach(p=>{
 
 document.getElementById('attr').addEventListener('click',e=>{
  e.stopPropagation(); ATTR=!ATTR; unpin();
- e.target.textContent=ATTR?"Attribute unknowns via UCDP  \u2713":"Attribute unknowns via UCDP";
+ e.target.textContent=ATTR?"Fill unknown causes from UCDP  \u2713":"Fill unknown causes from UCDP";
  e.target.classList.toggle('on',ATTR); draw();});
 function panelToggle(btnId,panelId,openTxt,shutTxt){
  document.getElementById(btnId).addEventListener('click',e=>{
@@ -2380,8 +2380,8 @@ document.getElementById('advbtn').addEventListener('click',e=>{
  if(dc&&(D.data[dc]||D.ev[dc])) setTimeout(()=>showProfile(dc),50);}
 document.getElementById('evid').addEventListener('click',e=>{
  e.stopPropagation(); EVID=!EVID; unpin();
- e.target.textContent=EVID?"Documented evidence for codes 3, 4 and 7  \u2713"
-                          :"Documented evidence for codes 3, 4 and 7";
+ e.target.textContent=EVID?"Human-rights evidence (options 3, 4, 7)  \u2713"
+                          :"Human-rights evidence (options 3, 4, 7)";
  e.target.classList.toggle('on',EVID); draw();});
 document.getElementById('shape').addEventListener('click',e=>{
  e.stopPropagation(); SHAPE=SHAPE==="pie"?"bubble":"pie";
