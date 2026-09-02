@@ -1,6 +1,6 @@
 <!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Identification questions — customised by country</title><style>
+<title>Build the questionnaire — steps 1 to 6</title><style>
 :root{color-scheme:light dark;--s:#fcfcfb;--p:#f2f1ec;--i:#111;--i2:#4a4945;
  --m:#8a8880;--g:#d9d8d0;--a:#2a78d6;--w:#fab219;--paper:#fff}
 @media(prefers-color-scheme:dark){:root{--s:#1c1c1a;--p:#111110;--i:#f4f3ee;
@@ -419,7 +419,7 @@ select,.bar button{border-color:var(--g) !important}
 .form{box-shadow:0 1px 3px rgba(20,35,76,.06),0 10px 28px rgba(20,35,76,.08) !important}
 .regform{box-shadow:0 1px 3px rgba(20,35,76,.06),0 10px 28px rgba(20,35,76,.08) !important}
 </style></head><body><div class="w">
-<h1>Identification questions &mdash; customised by country</h1>
+<h1>Build the questionnaire &mdash; steps 1 to 6</h1>
 <p class="lede">Build the EGRISS identification questions for one country: the questions and
 response options never change; the parts the instrument lets vary &mdash; the examples after each
 &ldquo;e.g.&rdquo;, the office and document named when asking about international protection
@@ -432,7 +432,7 @@ download the questionnaire with its instructions, derivation rules and translati
  <li><a href="#s2"><b>2</b> Who to identify</a></li>
  <li><a href="#s3"><b>3</b> Forced-to-flee question</a></li>
  <li><a href="#s4"><b>4</b> Review and edit</a></li>
- <li><a href="#s5"><b>5</b> Test the routing</a></li>
+ <li><a href="#s5"><b>5</b> Try a respondent</a></li>
  <li><a href="#files"><b>6</b> Your files</a></li>
 </ol>
 
@@ -456,14 +456,14 @@ download the questionnaire with its instructions, derivation rules and translati
  <div class="bar" id="s2">
   <span class="grp"><b>2</b> Who to identify</span>
   <span class="modpresets" id="modpresets">
-   <button class="preset" data-p="core">Core only &mdash; shortest</button>
+   <button class="preset" data-p="core">Core items only (shortest)</button>
    <button class="preset" data-p="refugee">Refugees</button>
    <button class="preset" data-p="idp">IDPs</button>
-   <button class="preset on" data-p="both">Refugees and IDPs &mdash; full</button>
+   <button class="preset on" data-p="both">Refugees and IDPs (full)</button>
   </span>
  </div>
  <p class="modsummaryrow"><span class="modsummary" id="modsummary"></span>
-  <button type="button" class="help small" id="subsBtn">Choose sub-categories</button></p>
+  <button type="button" class="help small" id="subsBtn">Choose categories</button></p>
  <div id="moditems" hidden></div>
 </div>
 
@@ -474,8 +474,8 @@ download the questionnaire with its instructions, derivation rules and translati
   <button class="ver" data-v="2">Mid-length</button>
   <button class="ver" data-v="1">Shortest</button>
   <span class="lbl">Examples</span>
-  <button class="len on" data-l="read_out">Read aloud &mdash; up to 3</button>
-  <button class="len" data-l="showcard">Show card &mdash; all</button>
+  <button class="len on" data-l="read_out">Read aloud (3 examples)</button>
+  <button class="len" data-l="showcard">Show card (all examples)</button>
 </div>
 <div class="bar bar-cont">
   <span class="grp"></span>
@@ -508,11 +508,10 @@ the rest of the module follows the language and the populations chosen in step 2
 </div>
 
 <h2 class="step" id="s4"><b>4</b> Review and edit</h2>
-<p class="edithint"><span class="swatch" style="background:#3b71b9"></span><b>Blue</b> was drafted
-for this country from the databases &mdash; <b>click it to change it</b> (an office renamed, a
-document everyone calls something else, an example that does not fit).
-<span class="swatch" style="background:#7a3fb5"></span><b>Purple</b> is your edit: kept in this
-browser, carried into every file you download and into the link you copy.</p>
+<p class="edithint"><span class="swatch" style="background:#3b71b9"></span><b>Anything in blue can be edited: click it.</b>
+It was drafted for this country from the databases &mdash; an office renamed, a document everyone
+calls something else, an example that does not fit. <span class="swatch" style="background:#7a3fb5"></span><b>Purple</b>
+marks your edits: kept in this browser, carried into every file you download and into the link you copy.</p>
 
 <p class="cardlab">Forced-to-flee question &mdash; with this country&rsquo;s examples</p>
 <div class="form" id="form"></div>
@@ -527,7 +526,7 @@ browser, carried into every file you download and into the link you copy.</p>
  <div class="eplab" id="epLab"></div>
  <textarea id="epText" spellcheck="false"></textarea>
  <div class="ephint" id="epHint"></div>
- <div class="epbtns"><button id="epSave">Save</button><button class="secondary" id="epReset">Restore default</button><button class="plain" id="epCancel">Cancel</button></div>
+ <div class="epbtns"><button id="epSave">Save</button><button class="secondary" id="epReset">Use database value</button><button class="plain" id="epCancel">Cancel</button></div>
 </div>
 
 <!-- The Apply item as its own localisable card, same shape as the forced-to-flee
@@ -551,11 +550,12 @@ country, applied for protection, outcome. Everything else appears because a sub-
 selected needs it.</p>
 <span class="badges" id="regbadges"></span>
 <div class="regform" id="regform"></div>
-<p class="pmiss" id="regmiss" style="display:none">No drafted registration example for
-this country yet.</p>
+<p class="pmiss" id="regmiss" style="display:none">No office or document is on record for this
+country yet. Draft Version A (the office) and Version B (the document) with whoever registers
+claims there, then report them so the record is updated.</p>
 </div>
 
-<h2 class="step" id="s5"><b>5</b> Test the routing</h2>
+<h2 class="step" id="s5"><b>5</b> Try a respondent</h2>
 <div class="walk" id="walk">
  <p class="sub">Pick a respondent profile, or set the answers yourself. The questions that would be
  asked are marked in the questionnaire above and the resulting category follows the rules in the
@@ -583,7 +583,7 @@ carry your edits.</p>
   <div class="dlgrp dltools">
    <button id="chkBtn">Checks before fielding</button>
    <button id="linkBtn">Copy link to this set-up</button>
-   <button id="resetBtn" hidden>Reset hand edits</button>
+   <button id="resetBtn" hidden>Reset your edits</button>
    <a id="issueLink" class="dlissue" href="#" target="_blank" rel="noopener">Report a correction</a></div>
   <span class="dlstatus" id="dlStatus"></span>
 </div>
@@ -644,8 +644,8 @@ whose examples merely repeat the national list is not shown.
  <span class="stickyc" id="stickyC"></span>
  <button data-for="docxBtn">Questionnaire</button>
  <button data-for="insDocxBtn">Instructions</button>
- <button data-for="derDocxBtn">Derivation</button>
- <button data-for="xlsBtn">Translation</button>
+ <button data-for="derDocxBtn">Derivation sheet</button>
+ <button data-for="xlsBtn">Translation template</button>
  <a href="#files">All formats &darr;</a>
 </div>
 <p class="pagefoot" id="pagefoot"></p>
@@ -678,7 +678,7 @@ const SLOTS={
  adm:{label:"IDPLoc / IDPPost — subnational examples",hint:"Separate with commas.",list:true},
  dtm:{label:"FrcOth — reasons heard in this country",hint:"Separate with commas.",list:true},
 };
-for(let c=1;c<=8;c++) SLOTS["eg"+c]={label:"Forced to flee — examples for option "+c,hint:"Separate with commas. Read-aloud length shows the first three; the showcard shows all.",list:true};
+for(let c=1;c<=8;c++) SLOTS["eg"+c]={label:"Forced to flee — examples for option "+c,hint:"Separate with commas. Read aloud shows the first three; the show card shows all.",list:true};
 [1,2].forEach(vv=>[0,1,2,3,4,5].forEach(i=>SLOTS[`b${vv}_${i}`]={label:`${VERSION_DEFS_LABEL(vv)} version — examples for option ${i+1}`,hint:"Separate with commas.",list:true}));
 function VERSION_DEFS_LABEL(v){ return v===1?"Shortest":"Mid-length"; }
 let EDITS={}; try{ EDITS=JSON.parse(localStorage.getItem('idq_edits')||'{}')||{}; }catch(e){ EDITS={}; }
@@ -878,7 +878,7 @@ function optsListHTML(data, lang, t, lim, region){
    eg=` <span class="eg ${generic?'gen':''}${ed?' edited':''}" data-slot="eg${c}"><span class="lab">${esc(t.eg)}</span> `+
       `${esc(use.join(", "))}</span>`+
       (more?` <span class="more">${esc(t.more.replace("{n}",more))}</span>`:``);}
-  else eg=` <span class="eg gen egadd" data-slot="eg${c}" title="No examples recorded — click to add your own"><span class="lab">${esc(t.eg)}</span> &hellip;</span>`;
+  else eg=` <span class="eg gen egadd" data-slot="eg${c}" title="No examples recorded for this option — click to add your own"><span class="lab">${esc(t.eg)}</span> add your own</span>`;
   h+=`<li><span class="box"></span><span class="num">${c}</span>`+
      `<span class="otext">${t.opts[c]}${c===8?" "+esc(t.specify):""}${eg}</span></li>`;});
  h+=`<li><span class="box"></span><span class="num">99</span>`+
@@ -924,7 +924,7 @@ function versionOptsHTML(data, lim, region){
   } else if(b.generic){
    generic=true;
    eg=` <span class="eg gen" data-slot="${slot}"><span class="lab">e.g.</span> ${esc(b.generic)}</span>`;
-  } else eg=` <span class="eg gen egadd" data-slot="${slot}"><span class="lab">e.g.</span> &hellip;</span>`;
+  } else eg=` <span class="eg gen egadd" data-slot="${slot}" title="No examples recorded for this option — click to add your own"><span class="lab">e.g.</span> add your own</span>`;
   h+=`<li><span class="box"></span><span class="num">${i+1}</span>`+
      `<span class="otext">${b.label}${b.specify?" [SPECIFY]":""}${eg}</span></li>`;});
  h+=`<li><span class="box"></span><span class="num">99</span>`+
@@ -944,7 +944,7 @@ function buildPops(v){
  if(!pops.length){sect.style.display="none";wrap.innerHTML="";return;}
  sect.style.display="";
  wrap.innerHTML=pops.map((p,i)=>{
-  const label=p.kind==="national"?`${esc(p.name)}&rsquo;s own examples`:
+  const label=p.kind==="national"?`${esc(p.name)}&rsquo;s own (national) examples`:
               p.kind==="refugee"?`Refugees from ${esc(p.name)}`:esc(p.name);
   return `<button class="pop${POP===i?' on':''}${p.has_data?'':' nodata'}" `+
    `data-i="${i}" data-kind="${p.kind}" `+
@@ -1020,7 +1020,7 @@ function render(){
   `${data.n_available} in total.</b> ${miss} still use the questionnaire's generic `+
   `wording or none at all. `+
   (data.n_beyond_read_out?`<b>${data.n_beyond_read_out} more examples are recorded</b> `+
-    `than belong in a read-aloud list — the showcard length includes them. `:``)+
+    `than belong in a read-aloud list — the show card includes them. `:``)+
   (!usingPop?((v.adm1&&v.adm1.length)?`<b>${v.adm1.length} subnational example sets</b> differ from the `+
     `national one — under &ldquo;More options&rdquo; in step 3. `:`No subnational set differs enough from `+
     `the national one to be worth showing. `):``)+
@@ -1030,7 +1030,7 @@ function render(){
   `examples</b> once the Long version's options are merged into ${VERSION_DEFS[VER].label}'s `+
   `broader categories. ${verResult.nBuckets-verResult.nReal} use generic wording or none at all. `+
   (verResult.nBeyond?`<b>${verResult.nBeyond} more examples are recorded</b> than belong in a `+
-    `read-aloud list — the showcard length includes them. `:``)+
+    `read-aloud list — the show card includes them. `:``)+
   `<b>${VERSION_DEFS[VER].label} is drafted in English only</b> — the official variant from `+
   `the question-testing document, not yet translated.`
   );
@@ -1038,7 +1038,7 @@ function render(){
   `<tr><td>${LBL[r.code_id]||r.code_id}</td><td>${esc(r.example||"—")}</td>`+
   `<td><span class="k k-${r.kind}">${r.kind}</span></td><td>${r.source||"—"}</td>`+
   `<td style="color:var(--i2)">${esc(r.evidence||"")}`+
-  (r.in_read_out===false?`<div class="ro">showcard only</div>`:``)+`</td></tr>`).join("");
+  (r.in_read_out===false?`<div class="ro">show card only</div>`:``)+`</td></tr>`).join("");
  syncHash();}
 
 // Registration (international protection) card — a different question item
@@ -1142,7 +1142,7 @@ const SUBCATS=[
   cond:"FrcOth coded to a locally valid reason; also screens out false positives", items:["frcoth"]},
 ];
 const SELECTABLE=SUBCATS.filter(c=>!c.core&&!c.na);
-const NA_LABEL={roster:"roster",extra:"more questions",composite:"composite measure"};
+const NA_LABEL={roster:"from the roster",extra:"not yet askable",composite:"composite measure only"};
 const NA_LONG={roster:"from the household roster",extra:"needs additional questions still to be developed",composite:"needs the composite measure of displacement-related vulnerabilities"};
 let SUB={}; SUBCATS.forEach(c=>SUB[c.key]=true);
 let FW={idp:true, refugee:true};
@@ -1183,7 +1183,7 @@ function coreIdentifies(){ return SUBCATS.filter(c=>c.core).map(c=>c.label); }
 function buildModPicker(){
  const cur=currentPreset();
  document.querySelectorAll('.preset').forEach(b=>b.classList.toggle('on',b.dataset.p===cur));
- if(cur===null){ const mi=document.getElementById('moditems'), sb=document.getElementById('subsBtn'); if(mi&&mi.hidden){ mi.hidden=false; if(sb){ sb.classList.add('on'); sb.textContent="Hide sub-categories"; } } }
+ if(cur===null){ const mi=document.getElementById('moditems'), sb=document.getElementById('subsBtn'); if(mi&&mi.hidden){ mi.hidden=false; if(sb){ sb.classList.add('on'); sb.textContent="Hide categories"; } } }
  const names=activeItemNames();
  document.getElementById('modsummary').innerHTML=
   `<b>${5+names.length} items</b>: core${names.length?" + "+names.join(", "):" only"}`;
@@ -1197,7 +1197,7 @@ function buildModPicker(){
   const toggle=key?`<label class="modtoggle"><input type="checkbox" class="fw-cb" data-fw="${key}" ${on?"checked":""}> ${title}</label>`
                    :`<span class="modtoggle">${title}</span>`;
   let body="";
-  if(key&&!on) body=`<p class="modoff">Not being identified. Tick to add its categories.</p>`;
+  if(key&&!on) body=`<p class="modoff">Not being identified. Tick to include these categories.</p>`;
   else{
    body=coreText||"";
    let lastGrp=null;
@@ -1412,7 +1412,7 @@ function renderReg(iso){ renderRegInner(iso); afterRender(); }
 function afterRender(){
  try{ walkRender(); }catch(e){}
  try{ chkRender(); }catch(e){}
- const rb=document.getElementById('resetBtn'); if(rb){ const n=edCount(sel.value); rb.hidden=!n; rb.textContent=`Reset ${n} hand edit${n===1?"":"s"}`; }
+ const rb=document.getElementById('resetBtn'); if(rb){ const n=edCount(sel.value); rb.hidden=!n; if(!rb.dataset.arm) rb.textContent=`Reset your ${n} edit${n===1?"":"s"}`; }
  const il=document.getElementById('issueLink'); if(il) il.href=issueURL();
  ["step0","maplink"].forEach(id=>{ const a=document.getElementById(id); if(a) a.href=`map.html?c=${sel.value}`; });
  const sc=document.getElementById('stickyC'); if(sc) sc.textContent=`${(Q[sel.value]||{}).name||sel.value} · ${5+activeItemNames().length} items`;
@@ -1465,7 +1465,7 @@ function renderRegInner(iso){
  let h=buildFrontChain(ctx)+modq("Apply",t.apply.skip,t.apply.stem,ex+applyOpts)+tail();
  form.innerHTML=h;
  if(v.mis){warn.style.display="";
-  warn.innerHTML=`<b>The office framing is likely to misfire here</b> &mdash; claims are actually lodged like this: ${esc(v.how)}. Prefer Version B.`;
+  warn.innerHTML=`<b>The office wording does not work well here</b> &mdash; claims are actually lodged like this: ${esc(v.how)}. Use Version B (the document).`;
  }else{warn.style.display="none";}
  const cols=(v.cols&&v.cols.length)?v.cols.join(", "):null;
  if(v.cav){cav.style.display="";cav.innerHTML=`<b>Note.</b> ${esc(v.cav)}`;
@@ -1530,7 +1530,7 @@ function panelToggle(btnId,panelId,openTxt,shutTxt){
 panelToggle('notesbtn','notespanel',"Show the caveats","Hide the caveats");
 panelToggle('provbtn','provwrap',"Where these examples come from","Hide the sources");
 panelToggle('advBtn','advanced',"More options: subnational example set, other populations’ examples","Fewer options");
-panelToggle('subsBtn','moditems',"Choose sub-categories","Hide sub-categories");
+panelToggle('subsBtn','moditems',"Choose categories","Hide categories");
 // The sticky download bar: visible while "Your files" is off screen.
 (function(){
  const st=document.getElementById('sticky'), files=document.getElementById('files');
@@ -1694,7 +1694,7 @@ function customisationHTML(iso){
    `${pop.kind==="national"?"the host country's own":"this population's own, in place of the host country's"}`);
  h+=row("Forced to flee, version",`${esc(VERSION_DEFS[VER]?VERSION_DEFS[VER].label:"Long")} `+
    (VER===3?`&mdash; the full item, 8 response codes plus none`:`&mdash; official variant from the question-testing document, drafted in English only`));
- h+=row("Length",LEN==="showcard"?"Showcard &mdash; all recorded examples":"Read aloud &mdash; up to three examples per option");
+ h+=row("Length",LEN==="showcard"?"Show card &mdash; all recorded examples":"Read aloud &mdash; up to three examples per option");
  h+=row("Language",esc(langName)+(LANG!=="en"?" (unreviewed draft translation)":""));
  h+=row("Frameworks",fw.length?fw.join(" and "):"none selected");
  h+=row("Core items, always asked",CORE_ITEMS+`. These alone identify: any history of forced displacement; whether it began inside or outside the survey country; ${coreIdentifies().join("; ").toLowerCase()}.`);
@@ -1716,13 +1716,13 @@ function customisationHTML(iso){
  if(r&&r.reg!=="NONE"&&FW.refugee){
   h+=row("Apply localisation",`Version A (office): ${r.org?"<b>"+esc(r.org)+"</b>":"cannot be worded here"} &middot; `+
     `Version B (document): ${(r.da||r.dr)?"<b>"+esc(r.da||r.dr)+"</b>":"cannot be worded here"}`+
-    (r.mis?` &middot; the office framing is flagged as likely to misfire in this country`:``)+
+    (r.mis?` &middot; the office wording does not work well in this country; Version B is preferred`:``)+
     ` &middot; source confidence ${esc(r.cf)}`);
  }else if(r&&r.reg==="NONE"){
   h+=row("Apply localisation","No registration or protection procedure exists in this country; the Apply sequence does not apply.");
  }
  const ed=editedRows(iso);
- h+=row("Edited by hand",ed.length?`<ul>`+ed.map(e=>`<li><b>${esc(e.label)}</b>: <span class="edited">${esc(e.value)}</span></li>`).join("")+`</ul>`+
+ h+=row("Your edits",ed.length?`<ul>`+ed.map(e=>`<li><b>${esc(e.label)}</b>: <span class="edited">${esc(e.value)}</span></li>`).join("")+`</ul>`+
    `<small>These replace the database values above wherever they appear; shown in purple in the questionnaire.</small>`
    :"none &mdash; every customisation is the database value");
  h+=row("Link to this set-up",`<small>${esc(shareURL())}</small>`);
@@ -1905,7 +1905,7 @@ function instrCountryBox(key,iso,v,r,mode){
    const dn=r.da||r.dr;
    if(dn) bits.push(`<b>The document (Version B):</b> ${esc(dn)}${(r.da?r.daC:r.drC)?` &mdash; people call it &ldquo;${esc(r.da?r.daC:r.drC)}&rdquo;`:""}${r.da&&r.dr&&r.dr!==r.da?`; on recognition it becomes ${esc(r.dr)}${r.drC?` (&ldquo;${esc(r.drC)}&rdquo;)`:""}`:""}.${r.dw?` ${esc(r.dw)}.`:""}`);
    if(r.cols&&r.cols.length) bits.push(`<b>Colour names in use:</b> ${esc(r.cols.join(", "))} &mdash; respondents often know the document by its colour; accept these answers.`);
-   if(r.mis) bits.push(`<b>Warning &mdash; the office framing misfires here.</b> Claims are actually lodged like this: ${esc(r.how)}. Prefer Version B.`);
+   if(r.mis) bits.push(`<b>The office wording does not work well here.</b> Claims are actually lodged like this: ${esc(r.how)}. Use Version B (the document).`);
    if(r.cav) bits.push(`<b>Background and history to listen for.</b> ${esc(r.cav)}`);
    const sp=SPEC[iso];
    if(sp&&sp.images&&sp.images.length) bits.push(`<b>Show card:</b> a specimen of the document is included in the questionnaire download &mdash; show it while asking.`);
@@ -1949,7 +1949,7 @@ function buildInstructionsHTML(iso){
   `what is specific to ${esc(v.name)}, drawn from the same sources that customised the questionnaire. `+
   `<b>Draft for review; instructions are in English</b> &mdash; an interviewer manual is normally translated as `+
   `its own reviewed exercise. Questionnaire settings when this file was generated: ${esc(VERSION_DEFS[VER]?VERSION_DEFS[VER].label:"Long")} version, `+
-  `${LEN==="showcard"?"showcard":"read-aloud"} length, ${esc(langName)}, `+
+  `${LEN==="showcard"?"show card":"read-aloud"} length, ${esc(langName)}, `+
   `${mode==="idp"?"IDP-only (IRIS)":mode==="ref"?"refugee-only (IRRS)":"combined refugee and IDP"} questionnaire.</p>`;
  h+=coordinatorHTML(iso);
  h+=`<h2>Part B &mdash; for interviewers</h2>`;
@@ -2282,7 +2282,7 @@ function walkRender(){
  const active=WK.preset!=="none";
  form.classList.toggle('walking',active);
  form.querySelectorAll('.modq').forEach(el=>el.classList.remove('wk-asked'));
- if(!active){ grid.innerHTML=""; res.innerHTML="No respondent selected."; return; }
+ if(!active){ grid.innerHTML=""; res.innerHTML="Pick a profile above, or set the answers yourself, to see which questions are asked and the category that results."; return; }
  const {ans,path}=walkAnswers();
  const A=itemActive, mode=fwMode();
  const inQ={frcfl:true,frcoth:A("frcoth"),fleeloc:true,locliv:A("locliv"),citloc:A("locliv"),fleecross:true,mnths12:A("mnths12"),apply:true,intapply:A("intapply")&&mode!=="idp",outcome:mode!=="idp",legal:A("legal"),curloc:A("idploc")||A("idppost")};
@@ -2322,7 +2322,7 @@ function whyHereHTML(iso){
  if(f.idps>0||f.refugees>0) h+=`<p><b>What displaced them.</b> ${f.idps>0?`IDPs: ${causeList(f.idp_causes)||"cause not recorded"}. `:""}${f.refugees>0?`Refugees hosted, by the cause mix of their origin country: ${causeList(f.ref_causes)||"cause not recorded"}. `:""}`+
   `${recs.length?`Options ${recs.join(", ")} of the forced-to-flee question carry examples drafted from the recorded events; `:""}${gaps.length?`options ${gaps.join(", ")} use the questionnaire's generic wording because no source records that cause here — not because it is rare.`:""}</p>`;
  if(f.areas&&f.areas.length) h+=`<p><b>Where.</b> Most recorded violence is in ${f.areas.map(esc).join(", ")}; these are the example areas for IDPLoc and IDPPost and the strata to check in the sample.</p>`;
- if(r) h+=`<p><b>How claims are lodged.</b> ${r.reg==="NONE"?"No registration or protection procedure exists, so Apply is a screener only.":`Claims are registered by ${r.reg==="BOTH"?"both the Government and UNHCR":r.reg==="UNHCR"?"UNHCR":"the Government"}${r.org?` at ${esc(r.org)}`:""}${r.da||r.dr?`, producing ${esc(r.da||r.dr)}`:""}; ${r.mis?"the office wording is known to misfire here, so Version B (the document) is preferred":"Version A (the office) and Version B (the document) are both usable"}.`}</p>`;
+ if(r) h+=`<p><b>How claims are lodged.</b> ${r.reg==="NONE"?"No registration or protection procedure exists, so Apply is a screener only.":`Claims are registered by ${r.reg==="BOTH"?"both the Government and UNHCR":r.reg==="UNHCR"?"UNHCR":"the Government"}${r.org?` at ${esc(r.org)}`:""}${r.da||r.dr?`, producing ${esc(r.da||r.dr)}`:""}; ${r.mis?"the office wording does not work well here, so Version B (the document) is preferred":"Version A (the office) and Version B (the document) are both usable"}.`}</p>`;
  h+=`<p class="note">Sources: UNHCR population statistics, IDMC, UCDP GED, IOM DTM, help.unhcr.org/RIMAP; see the map page for the figures and the events behind each example.</p>`;
  return h;
 }
@@ -2352,7 +2352,7 @@ function checksList(iso){
   else{
    if(r.cf!=="HIGH") add("check",`<b>Confirm with the registrar</b> (source confidence ${esc(r.cf)}): the office &ldquo;${esc(r.org||"—")}&rdquo; and the document &ldquo;${esc(r.da||r.dr||"—")}&rdquo; are what respondents would recognise today.`);
    else add("note",`<b>Office and document names</b> are HIGH confidence (${esc(r.org||"—")}; ${esc(r.da||r.dr||"—")}); still confirm the everyday names and colours with field staff.`);
-   if(r.mis) add("must",`<b>Use Version B.</b> The office framing is flagged as likely to misfire here &mdash; claims are actually lodged like this: ${esc(r.how||"")}.`);
+   if(r.mis) add("must",`<b>Use Version B (the document).</b> The office wording does not work well here &mdash; claims are actually lodged like this: ${esc(r.how||"")}.`);
    if(r.reg==="BOTH") add("check",`<b>Registration vs application.</b> Both the Government and UNHCR register people here; train interviewers that registering for assistance is not applying for protection, and probe what document was received.`);
    if(r.cav) add("check",`<b>History to listen for.</b> ${esc(r.cav)}`);
    const sp=SPEC[iso];
@@ -2368,14 +2368,14 @@ function checksList(iso){
  add("check",`<b>Mode.</b> Paper: no text-fills &mdash; the country name is printed. Telephone: no show card &mdash; describe the document (name, colour) instead. CAPI/KoBo: programme the soft check (home fled in another country but FleeCross = No) and the skip rules exactly as printed; use the walkthrough on this page to test the programmed form.`);
  add("must",`<b>Pretest.</b> Cognitive-test the customised questions before fielding &mdash; the protocol in the instructions download lists the quotas and the probes for what is uncertain in ${esc(v.name)}.`);
  const ed=editedRows(iso);
- if(ed.length) add("note",`<b>Hand edits.</b> ${ed.length} value${ed.length===1?" was":"s were"} changed on this page (${ed.map(e=>esc(e.label)).join("; ")}); they are listed in the customisation table of every download and must be carried into the translation.`);
+ if(ed.length) add("note",`<b>Your edits.</b> ${ed.length} value${ed.length===1?" was":"s were"} changed on this page (${ed.map(e=>esc(e.label)).join("; ")}); they are listed in the customisation table of every download and must be carried into the translation.`);
  return L;
 }
 function chkRender(){
  const p=document.getElementById('chkpanel'); if(!p||p.hidden) return;
  const L=checksList(sel.value);
  p.innerHTML=`<b>Checks before fielding in ${esc(Q[sel.value].name)}</b> &mdash; generated from what is and is not on record for this country and the questionnaire as configured. The same list, with the placement guidance and pretest protocol, opens the instructions download.<ul>`+
-  L.map(x=>`<li><span class="lvl lvl-${x.lvl}">${x.lvl==="must"?"do":x.lvl==="check"?"verify":"note"}</span>${x.text}</li>`).join("")+`</ul>`;
+  L.map(x=>`<li><span class="lvl lvl-${x.lvl}">${x.lvl==="must"?"required":x.lvl==="check"?"confirm":"note"}</span>${x.text}</li>`).join("")+`</ul>`;
 }
 
 // The coordinator part of the instructions download: placement and
@@ -2394,7 +2394,7 @@ function coordinatorHTML(iso){
   `<p><b>Mode.</b> Paper: no text-fills, so the country name and examples are printed as in the questionnaire. Telephone: the show card cannot be used; read Version B and describe the document. CAPI: programme the skip rules and the soft check at FleeCross (a home fled in another country but no move reported), and test the form with the respondent profiles on the page.</p>`;
  if(mode==="idp") h+=`<p><b>IDP-only version.</b> FleeCross, 12Mnths and Apply are retained only as IRIS's exclusion conditions (established residence abroad; sought protection abroad); Outcome, IntApply and Legal are dropped and a home fled in another country is out of scope.</p>`;
  if(mode==="ref") h+=`<p><b>Refugee-only version.</b> The IDP location items are dropped; a respondent displaced only within ${esc(v.name)} leaves the module at FleeCross.</p>`;
- h+=`<h3>A2. Checks before fielding</h3><ul class="chk">`+checksList(iso).map(x=>`<li><b>${x.lvl==="must"?"Do":x.lvl==="check"?"Verify":"Note"}.</b> ${x.text.replace(/<b>|<\/b>/g,"")}</li>`).join("")+`</ul>`;
+ h+=`<h3>A2. Checks before fielding</h3><ul class="chk">`+checksList(iso).map(x=>`<li><b>${x.lvl==="must"?"Required":x.lvl==="check"?"Confirm":"Note"}.</b> ${x.text.replace(/<b>|<\/b>/g,"")}</li>`).join("")+`</ul>`;
  h+=`<h3>A3. Pretest protocol</h3>`+
   `<p>A short cognitive-interviewing round on the customised questions, before translation is finalised. The design follows the project's mission terms of reference.</p>`+
   `<p><b>Participants: 14 minimum.</b> Non-citizens: 6 &mdash; at least 2 asylum seekers and 2 refugees, plus 2 migrants who are neither. Citizens: 6 &mdash; at least 2 IDPs, other citizens with a displacement history (returnees, naturalised), plus 2 who have moved between regions without displacement. Secondary quotas: at least 5 men and 5 women; at least 3 in each of 18&ndash;30, 30&ndash;55, 55+; at least 3 with less than completed primary education; literacy not required; all aged 18+, informed consent, local language, reasonable adaptations.</p>`+
@@ -2500,10 +2500,10 @@ function buildTranslationWorkbook(iso){
  XLSX.utils.book_append_sheet(wb,ws2,"Terminology");
  const langName=(LANGS[LANG]&&LANGS[LANG][0])||LANG;
  const ed=editedRows(iso);
- const about=[["Translation template",v.name],["Generated",new Date().toISOString().slice(0,10)],["Questionnaire",`${VERSION_DEFS[VER]?VERSION_DEFS[VER].label:"Long"} version, ${LEN==="showcard"?"showcard":"read-aloud"} length, page language ${langName}, ${fwMode()==="idp"?"IDP-only":fwMode()==="ref"?"refugee-only":"combined"} questionnaire`],
+ const about=[["Translation template",v.name],["Generated",new Date().toISOString().slice(0,10)],["Questionnaire",`${VERSION_DEFS[VER]?VERSION_DEFS[VER].label:"Long"} version, ${LEN==="showcard"?"show card":"read-aloud"} length, page language ${langName}, ${fwMode()==="idp"?"IDP-only":fwMode()==="ref"?"refugee-only":"combined"} questionnaire`],
   ["Items",CORE_ITEMS+(activeItemNames().length?", "+activeItemNames().join(", "):"")],
   ["UN-language columns","Unreviewed draft translations - a starting point for the translator, not approved text."],
-  ["Hand edits",ed.length?ed.map(e=>`${e.label}: ${e.value}`).join(" | "):"none"],
+  ["Your edits",ed.length?ed.map(e=>`${e.label}: ${e.value}`).join(" | "):"none"],
   ["Method","Translate the survey-language column, then reconcile (TRAPD or forward-and-back translation) and cognitive-test the result."],
   ["Set-up link",shareURL()],["Corrections",issueURL()]];
  const ws3=XLSX.utils.aoa_to_sheet(about); ws3['!cols']=[{wch:22},{wch:120}];
@@ -2585,7 +2585,7 @@ function wireDownload(btnId,builder,suffix,asPdf){
     saveBlob(fn,window.htmlDocx.asBlob(html));
    }
    setDlStatus('Downloaded '+fn);
-  }catch(e){ setDlStatus(asPdf?'Could not build the PDF.':'Could not build the Word document.',true); }
+  }catch(e){ setDlStatus(asPdf?'Couldn’t build the PDF. The page’s PDF library may not have loaded — reload the page and try again, or download the Word version.':'Couldn’t build the Word document. The page’s Word library may not have loaded — reload the page and try again, or download the PDF instead.',true); }
  });}
 wireDownload('docxBtn',buildExportHTML,'_questionnaire',false);
 wireDownload('pdfBtn',buildExportHTML,'_questionnaire',true);
@@ -2601,7 +2601,7 @@ document.getElementById('xlsBtn').addEventListener('click',()=>{
   const fn=safeFileStem(v.name)+'_translation_template.xlsx';
   saveBlob(fn,new Blob([buildTranslationWorkbook(iso)],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}));
   setDlStatus('Downloaded '+fn);
- }catch(e){ setDlStatus('Could not build the translation template.',true); }
+ }catch(e){ setDlStatus('Couldn’t build the translation template. Reload the page and try again; if it keeps failing, use “Report a correction” and say which country.',true); }
 });
 
 // Deep link from map.html's country panel ("View the full drafted question
@@ -2634,7 +2634,7 @@ function openEditor(el){
  const cur=edGet(sel.value,slot), dflt=slotDefault(slot);
  document.getElementById('epText').value=cur!==undefined?cur:dflt;
  document.getElementById('epHint').textContent=def.hint+(cur!==undefined?` Database value: ${dflt||"(none)"}.`:"")+
-  " Leave empty and save to show nothing here.";
+  " Save with the box empty to leave this out of the questionnaire. Ctrl+Enter saves, Esc cancels.";
  pop.hidden=false;
  const rect=el.getBoundingClientRect();
  const left=Math.max(8,Math.min(rect.left+window.scrollX, window.scrollX+document.documentElement.clientWidth-pop.offsetWidth-16));
@@ -2662,12 +2662,26 @@ document.getElementById('epCancel').addEventListener('click',closeEditor);
 document.getElementById('epText').addEventListener('keydown',e=>{
  if(e.key==="Escape") closeEditor();
  if(e.key==="Enter"&&(e.ctrlKey||e.metaKey)) document.getElementById('epSave').click(); });
-document.getElementById('resetBtn').addEventListener('click',()=>{ edClear(sel.value); rerenderAll(); setDlStatus('Hand edits removed; the database values are back.'); });
+// Reset is destructive: first click asks, second click within 4 s does it,
+// and the status line offers Undo (the removed edits are kept in memory).
+let UNDO=null;
+document.getElementById('resetBtn').addEventListener('click',()=>{
+ const rb=document.getElementById('resetBtn'), n=edCount(sel.value);
+ if(!rb.dataset.arm){ rb.dataset.arm="1"; rb.textContent=`Reset ${n} edit${n===1?"":"s"}? Click again to confirm`;
+  setTimeout(()=>{ if(rb.dataset.arm){ delete rb.dataset.arm; rb.textContent=`Reset your ${edCount(sel.value)} edit${edCount(sel.value)===1?"":"s"}`; } },4000); return; }
+ delete rb.dataset.arm;
+ UNDO={iso:sel.value,edits:Object.assign({},EDITS[sel.value]||{})};
+ edClear(sel.value); rerenderAll();
+ const el=document.getElementById('dlStatus');
+ el.innerHTML=`Your ${n} edit${n===1?" was":"s were"} removed and the database values are back. <a href="#" id="undoReset">Undo</a>`; el.classList.remove('err');
+ document.getElementById('undoReset').addEventListener('click',ev=>{ ev.preventDefault(); if(!UNDO) return;
+  EDITS[UNDO.iso]=UNDO.edits; edSave(); UNDO=null; rerenderAll(); setDlStatus(`Your edits are back.`); });
+});
 document.getElementById('linkBtn').addEventListener('click',async()=>{
  const url=shareURL(); let ok=false;
  try{ await navigator.clipboard.writeText(url); ok=true; }catch(e){}
  if(!ok){ try{ const i=document.createElement('input'); i.value=url; document.body.appendChild(i); i.select(); ok=document.execCommand('copy'); i.remove(); }catch(e){} }
- setDlStatus(ok?'Link copied — it opens this country with the same version, populations, language and hand edits.':'Could not copy; the address bar already holds the link.'); });
+ setDlStatus(ok?'Link copied — it opens this country with the same version, populations, language and your edits.':'Couldn’t copy automatically — the address bar holds the same link; copy it from there.'); });
 document.getElementById('chkBtn').addEventListener('click',e=>{
  const p=document.getElementById('chkpanel'); p.hidden=!p.hidden; e.target.classList.toggle('on',!p.hidden);
  if(!p.hidden){ chkRender(); p.scrollIntoView({behavior:"smooth",block:"nearest"}); } });
