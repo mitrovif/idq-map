@@ -1,5 +1,5 @@
 {
- "_readme": "Pilot data for the 'What it looks like' panel on questions.html. Hand-curated, not scraped: each image URL is hotlinked to its original publisher (never re-hosted) and was checked for reachability but not visually verified inside the build sandbox, which has no general internet access. Spot-check before wider use. Add countries incrementally -- the front end already shows a graceful 'no specimen found yet' note for every country with no entry here, so an empty entry set is a valid, honest starting state, not a bug. Round 5 (1 Sept 2026): UNHCR country help sites (Bolivia, Costa Rica, Ethiopia), RENAP Guatemala, Wikimedia Commons (Germany, Brazil), ONPAR Panama and NRC Kenya added; image URLs were confirmed to exist (HTTP-level) but not visually inspected, except Germany's Commons file which was opened in a browser.",
+ "_readme": "Pilot data for the 'What it looks like' panel on questions.html. Hand-curated, not scraped: each image URL is hotlinked to its original publisher (never re-hosted) and was checked for reachability but not visually verified inside the build sandbox, which has no general internet access. Spot-check before wider use. Add countries incrementally -- the front end already shows a graceful 'no specimen found yet' note for every country with no entry here, so an empty entry set is a valid, honest starting state, not a bug. Round 5 (1 Sept 2026): UNHCR country help sites (Bolivia, Costa Rica, Ethiopia), RENAP Guatemala, Wikimedia Commons (Germany, Brazil), ONPAR Panama and NRC Kenya added; image URLs were confirmed to exist (HTTP-level) but not visually inspected, except Germany's Commons file which was opened in a browser. Round 6 (4 Sept 2026): UNHCR country help sites revisited for country-customised specimens of UNHCR's OWN documents (the case that matters where UNHCR is the registrar and no government document exists). Malaysia publishes a full set (card, UC letter, appointment card, certified-copy letter, front and back) and Thailand one card; Kenya, Uganda, Egypt, India, Jordan and Indonesia name their documents in text but publish no picture. The global guidance chapter 5 (Documentation) is generic apart from the Malaysia card it uses as an illustration.",
  "countries": {
   "GBR": {
    "images": [
@@ -691,11 +691,24 @@
    ]
   },
   "THA": {
-   "note": "Round 5: coverage of the 2025–26 government ID rollout uses portraits, not the card.",
+   "note": "UNHCR Thailand publishes a specimen of its own card on its help site — one card design, used for both asylum-seekers (valid 12 months) and refugees (valid 36 months). Only the 300×186 thumbnail appears in the page HTML; the full-size original is very likely at the same path without the -300x186 suffix, but that was not confirmed. Round 5: coverage of the 2025–26 government ID rollout uses portraits, not the card.",
    "links": [
+    {
+     "label": "UNHCR Thailand — Register and documents (the page the specimen is published on)",
+     "url": "https://help.unhcr.org/thailand/asylum/register-and-documents/"
+    },
     {
      "label": "Get in the Picture — Thailand's biometric refugee ID programme (photo of people connected with the rollout; card not confirmed visible)",
      "url": "https://getinthepicture.org/news/thailand-expands-refugee-inclusion-through-biometric-id-programme"
+    }
+   ],
+   "images": [
+    {
+     "label": "UNHCR Thailand card — specimen (asylum-seeker and refugee card share one design)",
+     "img": "https://help.unhcr.org/thailand/wp-content/uploads/sites/112/2023/07/Sample-of-UNHCR-Thailand-Card-300x186.jpg",
+     "source": "https://help.unhcr.org/thailand/asylum/register-and-documents/",
+     "source_name": "UNHCR Thailand (help.unhcr.org)",
+     "license": "© UNHCR — hotlinked to the publisher, not re-hosted"
     }
    ]
   },
@@ -705,6 +718,74 @@
     {
      "label": "ecoi.net / IRB Canada — Foreigner's Residence Card issued in the Kurdistan Region (text report)",
      "url": "https://www.ecoi.net/en/document/1424675.html"
+    }
+   ]
+  },
+  "MYS": {
+   "note": "UNHCR is the registrar in Malaysia and the government issues no refugee document, so the UNHCR card IS the document a respondent holds. UNHCR Malaysia's own help site publishes specimens of everything it issues — the UNHCR card (recognised), the Under Consideration (UC) letter (pending), the appointment card and a certified-copy letter — each front and back. The same card artwork illustrates the global Guidance on Registration and Identity Management, chapter 5 (Documentation). Round 6 (4 Sept 2026): URLs read out of the page's own HTML, not guessed; not visually inspected in the sandbox.",
+   "images": [
+    {
+     "label": "UNHCR card — front (specimen)",
+     "img": "https://help.unhcr.org/malaysia/wp-content/uploads/sites/136/2026/05/image-1.png",
+     "source": "https://help.unhcr.org/malaysia/registration-and-documentation/registering-with-unhcr/",
+     "source_name": "UNHCR Malaysia (help.unhcr.org)",
+     "license": "© UNHCR — hotlinked to the publisher, not re-hosted"
+    },
+    {
+     "label": "UNHCR card — back (specimen)",
+     "img": "https://help.unhcr.org/malaysia/wp-content/uploads/sites/136/2026/05/image.png",
+     "source": "https://help.unhcr.org/malaysia/registration-and-documentation/registering-with-unhcr/",
+     "source_name": "UNHCR Malaysia (help.unhcr.org)",
+     "license": "© UNHCR — hotlinked to the publisher, not re-hosted"
+    },
+    {
+     "label": "Under Consideration (UC) letter — front (specimen)",
+     "img": "https://help.unhcr.org/malaysia/wp-content/uploads/sites/136/2026/05/image-4.png",
+     "source": "https://help.unhcr.org/malaysia/registration-and-documentation/registering-with-unhcr/",
+     "source_name": "UNHCR Malaysia (help.unhcr.org)",
+     "license": "© UNHCR — hotlinked to the publisher, not re-hosted"
+    },
+    {
+     "label": "Under Consideration (UC) letter — back (specimen)",
+     "img": "https://help.unhcr.org/malaysia/wp-content/uploads/sites/136/2026/05/image-3.png",
+     "source": "https://help.unhcr.org/malaysia/registration-and-documentation/registering-with-unhcr/",
+     "source_name": "UNHCR Malaysia (help.unhcr.org)",
+     "license": "© UNHCR — hotlinked to the publisher, not re-hosted"
+    },
+    {
+     "label": "Appointment card — front (specimen)",
+     "img": "https://help.unhcr.org/malaysia/wp-content/uploads/sites/136/2026/05/image-6.png",
+     "source": "https://help.unhcr.org/malaysia/registration-and-documentation/registering-with-unhcr/",
+     "source_name": "UNHCR Malaysia (help.unhcr.org)",
+     "license": "© UNHCR — hotlinked to the publisher, not re-hosted"
+    },
+    {
+     "label": "Appointment card — back (specimen)",
+     "img": "https://help.unhcr.org/malaysia/wp-content/uploads/sites/136/2026/05/image-5.png",
+     "source": "https://help.unhcr.org/malaysia/registration-and-documentation/registering-with-unhcr/",
+     "source_name": "UNHCR Malaysia (help.unhcr.org)",
+     "license": "© UNHCR — hotlinked to the publisher, not re-hosted"
+    },
+    {
+     "label": "Certified copy letter — specimen",
+     "img": "https://help.unhcr.org/malaysia/wp-content/uploads/sites/136/2026/05/image-2.png",
+     "source": "https://help.unhcr.org/malaysia/registration-and-documentation/registering-with-unhcr/",
+     "source_name": "UNHCR Malaysia (help.unhcr.org)",
+     "license": "© UNHCR — hotlinked to the publisher, not re-hosted"
+    }
+   ],
+   "links": [
+    {
+     "label": "UNHCR Malaysia — Registering with UNHCR (the page these specimens are published on)",
+     "url": "https://help.unhcr.org/malaysia/registration-and-documentation/registering-with-unhcr/"
+    },
+    {
+     "label": "UNHCR, Guidance on Registration and Identity Management, chapter 5 — Documentation (uses the Malaysia card as its illustration)",
+     "url": "https://www.unhcr.org/registration-guidance/chapter5/documentation/"
+    },
+    {
+     "label": "UNHCR Verify Plus — how the QR code on the card is checked (PDF)",
+     "url": "https://help.unhcr.org/malaysia/wp-content/uploads/sites/136/2026/06/2024-12_Verify-Plus_Digital-Version-A4_English.pdf"
     }
    ]
   }
