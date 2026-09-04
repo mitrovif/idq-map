@@ -1,5 +1,5 @@
 {
- "_readme": "Pilot data for the 'What it looks like' panel on questions.html. Hand-curated, not scraped: each image URL is hotlinked to its original publisher (never re-hosted) and was checked for reachability but not visually verified inside the build sandbox, which has no general internet access. Spot-check before wider use. Add countries incrementally -- the front end already shows a graceful 'no specimen found yet' note for every country with no entry here, so an empty entry set is a valid, honest starting state, not a bug. Round 5 (1 Sept 2026): UNHCR country help sites (Bolivia, Costa Rica, Ethiopia), RENAP Guatemala, Wikimedia Commons (Germany, Brazil), ONPAR Panama and NRC Kenya added; image URLs were confirmed to exist (HTTP-level) but not visually inspected, except Germany's Commons file which was opened in a browser. Round 6 (4 Sept 2026): UNHCR country help sites revisited for country-customised specimens of UNHCR's OWN documents (the case that matters where UNHCR is the registrar and no government document exists). Malaysia publishes a full set (card, UC letter, appointment card, certified-copy letter, front and back) and Thailand one card; Kenya, Uganda, Egypt, India, Jordan and Indonesia name their documents in text but publish no picture. The global guidance chapter 5 (Documentation) is generic apart from the Malaysia card it uses as an illustration.",
+ "_readme": "Pilot data for the 'What it looks like' panel on questions.html. Hand-curated, not scraped: each image URL is hotlinked to its original publisher (never re-hosted) and was checked for reachability but not visually verified inside the build sandbox, which has no general internet access. Spot-check before wider use. Add countries incrementally -- the front end already shows a graceful 'no specimen found yet' note for every country with no entry here, so an empty entry set is a valid, honest starting state, not a bug. Round 5 (1 Sept 2026): UNHCR country help sites (Bolivia, Costa Rica, Ethiopia), RENAP Guatemala, Wikimedia Commons (Germany, Brazil), ONPAR Panama and NRC Kenya added; image URLs were confirmed to exist (HTTP-level) but not visually inspected, except Germany's Commons file which was opened in a browser. Round 6 (4 Sept 2026): UNHCR country help sites revisited for country-customised specimens of UNHCR's OWN documents (the case that matters where UNHCR is the registrar and no government document exists). Malaysia publishes a full set (card, UC letter, appointment card, certified-copy letter, front and back) and Thailand one card; Kenya, Uganda, Egypt, India, Jordan and Indonesia name their documents in text but publish no picture. The global guidance chapter 5 (Documentation) is generic apart from the Malaysia card it uses as an illustration. Round 6b (4 Sept 2026) — TWO THINGS TO KNOW. (1) THE HELP-SITE SWEEP IS CLOSED: all 24 remaining UNHCR-registrar operations with a help site were checked and NONE publishes a specimen image. Malaysia and Thailand are the only two in the world that do, and the likeliest reason the rest do not is deliberate — a published specimen of a UNHCR certificate is a forgery aid. Do not re-run this sweep; the remaining UNHCR-registrar countries need the direct-contact channel. The sweep did harvest document names, colours and VALIDITY PERIODS for those 24 countries, which are recorded in each country's note. (2) FABRICATION WARNING, applies to this whole dataset: during the gazette pass the page-summarising model behind the fetch tool returned two different confident, fully-formed specifications for the Russian refugee certificate ('12 pages, white' and '5 pages, red cover, valid 5 years'); a strict verbatim re-fetch proved the page contained only a table of contents and BOTH were invented. Every numeric claim added in round 6b was re-run through a quote-it-exactly-or-write-NOT-PRESENT pass. Entries written in earlier rounds have NOT been through that pass and should be treated as unverified until they are.",
  "countries": {
   "GBR": {
    "images": [
@@ -384,7 +384,7 @@
    ]
   },
   "KEN": {
-   "note": "No photographic specimen found — the 2024 refugee regulations publish blank statutory form templates (fields plus a \"PHOTOGRAPH\" placeholder box), not an illustrated example of a filled/finished document. Round 5: an NRC report reproduces example images of both documents inside a PDF (pp. 6–7) — the closest thing to a photograph found so far.",
+   "note": "Round 6 national-gazette pass (the Bosnia method — a legal instrument that describes the document in words rather than publishing a picture). The 2024 Regulations were read in full. They give complete FIELD LISTS and validity but state NO colour, dimensions or security features anywhere. Form 2, Asylum Seeker Pass: name, registration number, date and place of birth, nationality, date and place of entry, status (principal/derivative), a photograph space, signatures of the designated officer and of the asylum seeker; 'valid until (period of validity NOT TO EXCEED ONE YEAR from date of issue)'; 'only valid in the original when bearing official stamp'. Form 9, Refugee Certificate / Identity Card, two-sided: front carries serial number, individual number, full name, sex, nationality, place and date of birth, date of issue, date of expiry, home designation, photograph and the designated officer's signature; back carries residential address, PIN and progress number; legend 'THIS IDENTITY CARD IS ISSUED IN ACCORDANCE WITH THE KENYA REFUGEES ACT, 2021'. Form 10, Refugee Identity Pass for Minors, carries a passport photo AND A THUMB IMPRESSION and 'expires on attaining 5 years or when the parent's identity expires'. Form 13, Convention Travel Document, is a booklet with a physical-description block (height, hair colour, eye colour, nose, face shape, complexion, special peculiarities), photograph and fingerprints if required. Form 14, Movement Pass, is signed by the Refugee Camp Officer and lists dependants with ration/token card numbers. INTERVIEWER LINE (Form 9): 'a two-sided identity card with the holder's photograph, a serial and individual number and an expiry date, printed with the words issued in accordance with the Kenya Refugees Act, 2021 — the law does not state its colour or size.' | Earlier rounds: No photographic specimen found — the 2024 refugee regulations publish blank statutory form templates (fields plus a \"PHOTOGRAPH\" placeholder box), not an illustrated example of a filled/finished document. Round 5: an NRC report reproduces example images of both documents inside a PDF (pp. 6–7) — the closest thing to a photograph found so far.",
    "links": [
     {
      "label": "NRC, 'Recognising Nairobi's Refugees' — example images of the Asylum Seeker Pass (p. 7) and Alien Card (p. 6) inside the PDF",
@@ -397,7 +397,7 @@
    ]
   },
   "UGA": {
-   "note": "No photographic specimen found — the 2010 refugee regulations publish a blank statutory form template (Form H) with a \"PHOTOGRAPH\" placeholder box, not an illustrated example of a filled/finished document.",
+   "note": "Round 6 national-gazette pass (the Bosnia method — a legal instrument that describes the document in words rather than publishing a picture). The Refugees Regulations 2010 (SI 2010 No. 9) were read. Third Schedule Form H, 'Identity Card', is the only identity document among Forms A-J2. Fields: full name, passport number, sex, registration number, nationality, place of residence, PHOTOGRAPH, date of issue, signature of the issuing officer and signature of the holder, and the printed legend 'VALID FOR FIVE YEARS FROM DATE OF ISSUE'. Regulation 42(2) additionally requires the identity number, name, gender, date and place of birth, country of citizenship, a recent photograph AND THE FINGERPRINTS of the refugee. No colour, dimensions or security features are stated anywhere in the instrument. INTERVIEWER LINE: 'a card bearing the holder's photograph, registration number and fingerprints, signed by both the issuing officer and the holder, printed valid for five years from date of issue — the regulations fix no colour or size.' | Earlier rounds: No photographic specimen found — the 2010 refugee regulations publish a blank statutory form template (Form H) with a \"PHOTOGRAPH\" placeholder box, not an illustrated example of a filled/finished document.",
    "links": [
     {
      "label": "Refugees Regulations 2010, Third Schedule, Form H (refugee identity card)",
@@ -406,7 +406,7 @@
    ]
   },
   "SRB": {
-   "note": "Reference only, content unverified — this is the correct official regulation (its exact title matches on the government's own page) but the PDF could not be fetched from this sandbox to confirm the card's visual design (colour, layout).",
+   "note": "Round 6 national-gazette pass (the Bosnia method — a legal instrument that describes the document in words rather than publishing a picture). STILL BLOCKED, CITATION ONLY. The instrument is confirmed by title from two independent sites: 'Pravilnik o sadržini i izgledu obrasca zahteva za azil i sadržini i izgledu obrazaca isprava koje se izdaju tražiocu azila i licu kojem je odobren azil ili privremena zaštita'. The title itself promises the appearance ('izgledu obrazaca isprava'), so the specification is very probably inside. The Commissariat's listing page loads and gives the PDF link, but the PDF returns HTTP 403 to automated fetching (re-confirmed this round); the azil.rs and paragraf.rs mirrors are robots-blocked. No Službeni glasnik number obtained. ONLY THE TITLE WAS READ, NOT THE INSTRUMENT. Needs a human with a browser. | Earlier rounds: Reference only, content unverified — this is the correct official regulation (its exact title matches on the government's own page) but the PDF could not be fetched from this sandbox to confirm the card's visual design (colour, layout).",
    "links": [
     {
      "label": "Rule on the content and appearance of asylum request forms and ID cards for asylum seekers and recognised persons — via the Serbian Commissariat for Refugees and Migration (KIRS), \"Pravilnici — Azil\" page; look for the \"Pravilnik o sadržini i izgledu obrazaca zahteva za azil i lične karte...\" PDF",
@@ -441,8 +441,16 @@
    ]
   },
   "SVN": {
-   "note": "The clearest specimen found in this round — a 2-page annex showing the international-protection applicant's ID card front and back — but it is inside a PDF rather than a standalone image file, so it cannot be embedded directly here.",
+   "note": "Round 6 national-gazette pass (the Bosnia method — a legal instrument that describes the document in words rather than publishing a picture). THE INSTRUCTIVE OPPOSITE OF BOSNIA: Slovenia publishes a PICTURE and no words. The Pravilnik o pravicah prosilcev za mednarodno zaščito (Uradni list RS, record 2011-01-3050) says at Article 2 only that the card is issued on the form in Annex 1, and that it is VALID AT MOST 60 DAYS, renewable in person before expiry. Annex 1 is a two-page image-only PDF — page 1 'Prva stran izkaznice' (front), page 2 'Druga stran izkaznice' (back). Text extraction returns nothing but those two headings: no dimensions, no colour, no field labels, no security features are stated in words anywhere. So this is a genuine front/back depiction that only needs someone to open the PDF and crop the two pages. Caveat: this 2011 rulebook sits under the old ZMZ; Slovenia's current statute is ZMZ-1 (2016) and the rulebook was not confirmed still in force. | Earlier rounds: The clearest specimen found in this round — a 2-page annex showing the international-protection applicant's ID card front and back — but it is inside a PDF rather than a standalone image file, so it cannot be embedded directly here.",
    "links": [
+    {
+     "label": "Pravilnik o pravicah prosilcev za mednarodno zaščito (Uradni list RS 2011-01-3050)",
+     "url": "https://www.uradni-list.si/glasilo-uradni-list-rs/vsebina/2011-01-3050/pravilnik-o-pravicah-prosilcev-za-mednarodno-zascito"
+    },
+    {
+     "label": "Priloga št. 1 — 2 pages, front and back of the international-protection applicant's card (image-only PDF, ready to crop)",
+     "url": "https://www.uradni-list.si/files/RS_-2011-068-03050-OB~P001-0000.PDF"
+    },
     {
      "label": "International protection applicant's ID card ('izkaznica prosilca za mednarodno zaščito') — front & back specimen, Uradni list RS 27/2017, Priloga 8",
      "url": "https://www.uradni-list.si/files/RS_-2017-027-01504-OB~P008-0000.PDF"
@@ -450,8 +458,16 @@
    ]
   },
   "RUS": {
-   "note": "Text/table specification, not a photograph — Russian government orders define the refugee certificate's exact dimensions, page layout and machine-readable-zone character positions in tabular form rather than showing a picture of the document. Round 5: strongest remaining lead is a page whose title promises a photo; needs a browser.",
+   "note": "Round 6 national-gazette pass (the Bosnia method — a legal instrument that describes the document in words rather than publishing a picture). THE SPECIFICATION EXISTS AND IS EXACTLY THE BOSNIA PATTERN, BUT IT COULD NOT BE READ. Government Resolution No. 356 of 10.05.2011 'Об удостоверении беженца' (as amended 979/2011, 1102/2012, 1490/2018) carries two annexes: 'Форма бланка удостоверения беженца' and 'Описание бланка удостоверения беженца' — a form and a written description. Every open copy is truncated: Garant shows the table of contents only, ConsultantPlus is paywalled and exposes just the opening words of the description, and Rossiyskaya Gazeta returns HTTP 401. NO COLOUR, DIMENSIONS, PAGE COUNT OR SECURITY FEATURES ARE RECORDED HERE, deliberately — see the fabrication warning in the file readme; two plausible-looking but invented specifications were produced for Russia during this pass and were discarded. What WAS read: the machine-readable zone tables of the superseded FMS Order No. 234 of 10.07.2012 (replaced by MVD Order No. 48 of 04.02.2019). The lower MRZ line has 44 character positions: 1-9 series and number, 10 check digit, 11-13 ICAO nationality code (e.g. AFG, or STA for stateless), 14-19 date of birth YYMMDD, 20 check digit, 21 sex, 22-27 expiry, 28 check digit, 29-42 date of issue and issuing-office code, 43-44 check digits. The filling rules run to pages 3-12, so the document is a booklet of at least 12 pages. HIGHEST-VALUE TARGET FOR A HUMAN WITH A BROWSER OR A CONSULTANTPLUS SUBSCRIPTION. | Earlier rounds: Text/table specification, not a photograph — Russian government orders define the refugee certificate's exact dimensions, page layout and machine-readable-zone character positions in tabular form rather than showing a picture of the document. Round 5: strongest remaining lead is a page whose title promises a photo; needs a browser.",
    "links": [
+    {
+     "label": "FMS Order № 234 of 10.07.2012, Table 2 — machine-readable zone character positions (read)",
+     "url": "https://sudact.ru/law/prikaz-fms-rossii-ot-10072012-n-234/prilozhenie/tablitsa-n-2/"
+    },
+    {
+     "label": "Постановление Правительства РФ № 356 of 10.05.2011 — Описание бланка удостоверения беженца (PAYWALLED, first line only)",
+     "url": "https://www.consultant.ru/document/cons_doc_LAW_113810/fd9bca02e7d17ee25881f46c46a11a6907899e0a/"
+    },
     {
      "label": "Government Decree No. 1227 (1995), \"On the refugee certificate\" — dimensions and page layout",
      "url": "https://base.garant.ru/5425989/"
@@ -467,8 +483,12 @@
    ]
   },
   "KOR": {
-   "note": "A near-complete lead, not yet resolved: the Refugee Act Enforcement Rule's Annex Form No. 8 (별지 제8호서식, Certificate of Refugee Status Recognition) is very likely the right specimen, but its download link is rendered by JavaScript and the exact file ID could not be resolved by automated search — a person can likely retrieve it in one click from the page below.",
+   "note": "Round 6 national-gazette pass (the Bosnia method — a legal instrument that describes the document in words rather than publishing a picture). MECHANISM CONFIRMED, FORM STILL NOT OPENED. The Refugee Act Enforcement Rule is current as MOJ Ordinance No. 1084 of 3 December 2024; law.go.kr remains JS-gated and returned metadata only, so Annex Form No. 8 (별지 제8호서식) could not be reached. What was newly established by reading a SIBLING form: Korean annex forms carry a 규격 footer stating size and paper stock — Form 7 ends '210mm x 297mm [보존용지(2종) 70g/m2]', i.e. A4 on archival grade-2 70 g/m2 paper. So the specification does exist for Korea and is given in millimetres and paper weight, but these are A4 PAPER CERTIFICATES, NOT CARDS. Form 8's own footer was not read and nothing is claimed about it. | Earlier rounds: A near-complete lead, not yet resolved: the Refugee Act Enforcement Rule's Annex Form No. 8 (별지 제8호서식, Certificate of Refugee Status Recognition) is very likely the right specimen, but its download link is rendered by JavaScript and the exact file ID could not be resolved by automated search — a person can likely retrieve it in one click from the page below.",
    "links": [
+    {
+     "label": "Example of the 규격 footer convention — 별지 제7호서식 (size and paper stock stated)",
+     "url": "https://www.law.go.kr/LSW/flDownload.do?gubun=&flSeq=34612849&bylClsCd=110202"
+    },
     {
      "label": "난민법 시행규칙 (Refugee Act Enforcement Rule) on law.go.kr — open and look for the 별지 제8호서식 download link",
      "url": "https://www.law.go.kr/LSW/lsInfoP.do?lsiSeq=141701"
@@ -628,8 +648,16 @@
    ]
   },
   "UKR": {
-   "note": "Round 5: the official service guide describes the certificate but shows no image.",
+   "note": "Round 6 national-gazette pass (the Bosnia method — a legal instrument that describes the document in words rather than publishing a picture). THE BEST RESULT OF THE PASS, and the only one Bosnia-grade. Cabinet of Ministers Resolution No. 202 of 14.03.2012 specifies the refugee certificate verbatim: a thread-sewn trimmed booklet 88 x 125 mm, cover of hard-wearing GREY binding material, front reading 'УКРАЇНА' above the small State Coat of Arms and 'ПОСВІДЧЕННЯ БІЖЕНЦЯ' below, two photographs 35 x 45 mm, entries certified by an official's signature under an ink stamp, VALID FIVE YEARS. The blank itself is approved separately by the MVS, so the resolution carries no picture. The refugee travel document (Resolution No. 154 of 07.05.2014) is 88 x 125 (+/- 0.75) mm, LIGHT BLUE cover, 16 paper pages, 'Shield' watermark, polycarbonate data page — and that one DOES include a зразок бланка showing every page. INTERVIEWER LINE: 'a grey thread-sewn booklet the size of a small passport (88 x 125 mm), reading UKRAINE and ПОСВІДЧЕННЯ БІЖЕНЦЯ under the coat of arms, with the holder's photograph, valid five years.' Read verbatim at the zakon.cc mirror (zakon.rada.gov.ua is robots-blocked). Caveat: the version displayed is the 17.01.2014 redaction and was not confirmed to be the current consolidated text; Ukraine has since moved several documents to ID-1 cards. | Earlier rounds: Round 5: the official service guide describes the certificate but shows no image.",
    "links": [
+    {
+     "label": "Постанова КМУ № 154 of 07.05.2014 — refugee travel document, includes a зразок бланка (pictures of every page)",
+     "url": "https://www.zakon.cc/law/document/read/154-2014-%D0%BF"
+    },
+    {
+     "label": "Постанова КМУ № 202 of 14.03.2012 — Положення про посвідчення біженця (the specification quoted above)",
+     "url": "https://www.zakon.cc/law/document/read/202-2012-%D0%BF"
+    },
     {
      "label": "Diia guide — issuance of the довідка про звернення за захистом в Україні",
      "url": "https://guide.diia.gov.ua/view/vydacha-dovidky-pro-zvernennia-za-zakhystom-v-ukraini-8e06a141-d13d-49a0-ad99-fa105edd4a79"
@@ -664,8 +692,12 @@
    ]
   },
   "MDA": {
-   "note": "Round 5: an IGM 'first card issued' announcement likely carries a photo; the URL needs correcting by hand.",
+   "note": "Round 6 national-gazette pass (the Bosnia method — a legal instrument that describes the document in words rather than publishing a picture). NOT LOCATED. legis.md renders its documents through JavaScript and returns only 'Conținutul se încarcă...' to automated fetching, so no instrument on the appearance of the asylum-seeker or refugee document could be identified. Needs a human with a browser. | Earlier rounds: Round 5: an IGM 'first card issued' announcement likely carries a photo; the URL needs correcting by hand.",
    "links": [
+    {
+     "label": "legis.md (JS-gated to automated fetching)",
+     "url": "https://www.legis.md/cautare/getResults?lang=ro&doc_id=103072"
+    },
     {
      "label": "IGM — first identity document for temporary-protection beneficiaries issued (announcement; URL returned 404, search the IGM site)",
      "url": "https://igm.gov.md/en/document-de-identitate-al-beneficiarului-de-protectie-temporara-eliberat-in-premiera/"
@@ -713,11 +745,15 @@
    ]
   },
   "IRQ": {
-   "note": "Round 5: nothing found in English, Arabic or Kurdish.",
+   "note": "Round 6 sweep of the UNHCR country help site: no specimen image is published. The site does name the documents in text: UNHCR registration certificate (شهادة التسجيل), UNHCR Asylum-Seeker Certificate and UNHCR Refugee Certificate (RSD or prima facie), feeding into the government documents: KRI Residency Permit Card (ONE YEAR, renewable), Kurdistan Residency Card, Kurdistan Immigration Card, and the PC-MoI Card in the central and southern governorates. | Earlier rounds: Round 5: nothing found in English, Arabic or Kurdish.",
    "links": [
     {
      "label": "ecoi.net / IRB Canada — Foreigner's Residence Card issued in the Kurdistan Region (text report)",
      "url": "https://www.ecoi.net/en/document/1424675.html"
+    },
+    {
+     "label": "UNHCR Iraq help site — the page the documents are named on",
+     "url": "https://help.unhcr.org/iraq/help/residency/"
     }
    ]
   },
@@ -786,6 +822,240 @@
     {
      "label": "UNHCR Verify Plus — how the QR code on the card is checked (PDF)",
      "url": "https://help.unhcr.org/malaysia/wp-content/uploads/sites/136/2026/06/2024-12_Verify-Plus_Digital-Version-A4_English.pdf"
+    }
+   ]
+  },
+  "AFG": {
+   "note": "Round 6 sweep of the UNHCR country help site: no specimen image is published. The site does name the documents in text: none. The Afghanistan site addresses returnees and internally displaced Afghans, not UNHCR-registered refugees in Afghanistan, and names no UNHCR-issued document at all — only Afghan civil documents (Tazkira / e-Tazkira, birth, marriage and death certificates).",
+   "links": [
+    {
+     "label": "UNHCR Afghanistan help site — the page the documents are named on",
+     "url": "https://help.unhcr.org/afghanistan/support/help-for-refugees-and-asylum-seekers/"
+    }
+   ]
+  },
+  "DZA": {
+   "note": "Round 6 sweep of the UNHCR country help site: no specimen image is published. The site does name the documents in text: asylum-seeker certificate (on registration) and refugee card (on recognition). No validity period and no colour is stated for either.",
+   "links": [
+    {
+     "label": "UNHCR Algeria help site — the page the documents are named on",
+     "url": "https://help.unhcr.org/algeria/asylum-in-algeria/the-asylum-procedure-in-algeria/"
+    }
+   ]
+  },
+  "BGD": {
+   "note": "Round 6 sweep of the UNHCR country help site: no specimen image is published. The site does name the documents in text: Smart Card (individual identity card, everyone aged 12 and over, reissued through the Continuous Registration Exercise), plus Family Attestation, Factsheet and Birth Information Note. No validity or colour stated.",
+   "links": [
+    {
+     "label": "UNHCR Bangladesh help site — the page the documents are named on",
+     "url": "https://help.unhcr.org/bangladesh/support-in-bangladesh/faq-registration/"
+    }
+   ]
+  },
+  "BWA": {
+   "note": "Round 6 sweep of the UNHCR country help site: no specimen image is published. The site does name the documents in text: Proof of Registration, referred to locally as the 'Manifest', plus a Factsheet and ration cards. The asylum page refers only to 'confidential forms issued by the government' and a decision letter. No validity or colour stated.",
+   "links": [
+    {
+     "label": "UNHCR Botswana help site — the page the documents are named on",
+     "url": "https://help.unhcr.org/botswana/services/registration-unhcr/"
+    }
+   ]
+  },
+  "XCA": {
+   "note": "Round 6 sweep of the UNHCR country help site: no specimen image is published. The site does name the documents in text: asylum-seeker certificate and refugee certificate, both delivered by email and renewable — applicants are told to request renewal two weeks before expiry, but no fixed validity is stated. Also a negative decision letter and an appeal form (appeal within 30 days).",
+   "links": [
+    {
+     "label": "UNHCR Northern and Eastern Caribbean help site — the page the documents are named on",
+     "url": "https://help.unhcr.org/caribbean/asylum/unhcr/"
+    }
+   ]
+  },
+  "CHN": {
+   "note": "Round 6 sweep of the UNHCR country help site: no specimen image is published. The site does name the documents in text: UNHCR asylum-seeker ID card, issued on registration and SURRENDERED BACK TO UNHCR on recognition, and UNHCR refugee ID card, sent by post. The card 'recognizes that the holder is under UNHCR's protection. It is not a travel document or visa.' Renewal is by email. No validity or colour stated.",
+   "links": [
+    {
+     "label": "UNHCR China help site — the page the documents are named on",
+     "url": "https://help.unhcr.org/china/asylum/registering-with-unhcr/"
+    }
+   ]
+  },
+  "CUB": {
+   "note": "Round 6 sweep of the UNHCR country help site: no specimen image is published. The site does name the documents in text: a certificate of refugee status, which the site states explicitly 'does not constitute an official identity document'. No validity or colour stated.",
+   "links": [
+    {
+     "label": "UNHCR Cuba help site — the page the documents are named on",
+     "url": "https://help.unhcr.org/cuba/solicitar-asilo-en-cuba/"
+    }
+   ]
+  },
+  "DJI": {
+   "note": "Round 6 sweep of the UNHCR country help site: no specimen image is published. The site does name the documents in text: attestation de demandeur d'asile, attestation de réfugié and carte d'identité de réfugié — issued jointly by UNHCR and ONARS. No validity or colour stated.",
+   "links": [
+    {
+     "label": "UNHCR Djibouti help site — the page the documents are named on",
+     "url": "https://help.unhcr.org/djibouti/asile/"
+    }
+   ]
+  },
+  "COD": {
+   "note": "Round 6 sweep of the UNHCR country help site: no specimen image is published. The site does name the documents in text: Attestation de Prise de Contact (APC), issued at first contact, and attestation de demandeur d'asile, VALID SIX MONTHS. No refugee-card specimen or description.",
+   "links": [
+    {
+     "label": "UNHCR DR Congo help site — the page the documents are named on",
+     "url": "https://help.unhcr.org/drc/services-et-assistance/demander-lasile-en-rdc/"
+    }
+   ]
+  },
+  "LBN": {
+   "note": "Round 6 sweep of the UNHCR country help site: no specimen image is published. The site does name the documents in text: UNHCR certificate, VALID ONE YEAR and renewable, carrying the registration date, plus a UNHCR bio data attestation. A Mokhtar housing attestation is an accepted alternative for residency. Residency on the UNHCR basis is one year, renewable, and free if the UNHCR certificate is still valid at renewal.",
+   "links": [
+    {
+     "label": "UNHCR Lebanon help site — the page the documents are named on",
+     "url": "https://help.unhcr.org/lebanon/en/welcome/legal-aid/legal-residency/"
+    }
+   ]
+  },
+  "LBY": {
+   "note": "Round 6 sweep of the UNHCR country help site: no specimen image is published. The site does name the documents in text: none by name. The site refers only to 'your UNHCR document' when explaining renewal, and lists 'UNHCR or government refugee or asylum seeker certificates from other countries' among items to bring to registration.",
+   "links": [
+    {
+     "label": "UNHCR Libya help site — the page the documents are named on",
+     "url": "https://help.unhcr.org/libya/how-to-seek-help/registration/"
+    }
+   ]
+  },
+  "MNG": {
+   "note": "Round 6 sweep of the UNHCR country help site: no specimen image is published. The site does name the documents in text: none. The Mongolia site is a single stub page — a welcome note, a contact address and a language switch — with no registration, documentation or asylum sub-page.",
+   "links": [
+    {
+     "label": "UNHCR Mongolia help site — the page the documents are named on",
+     "url": "https://help.unhcr.org/mongolia/"
+    }
+   ]
+  },
+  "MAR": {
+   "note": "Round 6 sweep of the UNHCR country help site: no specimen image is published. The site does name the documents in text: Asylum Seeker Certificate (شهادة طالب اللجوء) issued by UNHCR and renewable before expiry, then on recognition a national Refugee Card issued by BRA (the Moroccan government), VALID ONE YEAR, and a separate residence permit from the Foreigners and Documentation Department, also one year. No colours stated. The one photograph on the site is an infographic of the RSD procedure, not a document.",
+   "links": [
+    {
+     "label": "UNHCR Morocco help site — the page the documents are named on",
+     "url": "https://help.unhcr.org/morocco/seeking-asylum-in-morocco/register-and-apply-for-asylum/"
+    }
+   ]
+  },
+  "NER": {
+   "note": "Round 6 sweep of the UNHCR country help site: no specimen image is published. The site does name the documents in text: the fullest validity data of the whole sweep — attestation provisoire, THREE MONTHS renewable; carte d'identité de réfugié, TWO YEARS renewable; attestation de réfugié issued prima facie, ONE YEAR renewable; attestation de protection temporaire for Nigerian refugees, ONE YEAR renewable. No colour is named for any of them.",
+   "links": [
+    {
+     "label": "UNHCR Niger help site — the page the documents are named on",
+     "url": "https://help.unhcr.org/niger/demande-dasile/comment-demander-lasile/"
+    }
+   ]
+  },
+  "XPA": {
+   "note": "Round 6 sweep of the UNHCR country help site: no specimen image is published. The site does name the documents in text: none. The multi-country Pacific site covers UNHCR's monitoring role and referral to UNHCR Canberra and names no UNHCR-issued document.",
+   "links": [
+    {
+     "label": "UNHCR Pacific help site — the page the documents are named on",
+     "url": "https://help.unhcr.org/pacific/asylum/"
+    }
+   ]
+  },
+  "PAK": {
+   "note": "Round 6 sweep of the UNHCR country help site: no specimen image is published. The site does name the documents in text: Proof of Registration (PoR) card, issued by the Government of Pakistan through NADRA, with a dedicated PoR Card Modification centre for corrections; and a 'To Whom It May Concern' (TWIC) letter issued by UNHCR and downloadable from the My Services portal. No validity or colour stated on the help pages.",
+   "links": [
+    {
+     "label": "UNHCR Pakistan help site — the page the documents are named on",
+     "url": "https://help.unhcr.org/pakistan/proof-of-registration-card-modification-pcm-center/"
+    }
+   ]
+  },
+  "RWA": {
+   "note": "Round 6 sweep of the UNHCR country help site: no specimen image is published. The site does name the documents in text: Temporary Residence Permit (TRP), VALID THREE MONTHS, given to asylum seekers; and a Refugee Identity Document issued through NIDA on recognition, no validity stated. Convention Travel Documents and civil registration certificates are also listed.",
+   "links": [
+    {
+     "label": "UNHCR Rwanda help site — the page the documents are named on",
+     "url": "https://help.unhcr.org/rwanda/services/documentation/"
+    }
+   ]
+  },
+  "LKA": {
+   "note": "Round 6 sweep of the UNHCR country help site: no specimen image is published. The site does name the documents in text: UNHCR Asylum-Seeker Certificate, VALID ONE YEAR, and UNHCR Refugee Certificate, VALID ONE YEAR. No colour stated.",
+   "links": [
+    {
+     "label": "UNHCR Sri Lanka help site — the page the documents are named on",
+     "url": "https://help.unhcr.org/srilanka/asylum-in-sri-lanka/"
+    }
+   ]
+  },
+  "SDN": {
+   "note": "Round 6 sweep of the UNHCR country help site: no specimen image is published. The site does name the documents in text: none. The registration page covers only the civil documents a refugee brings (birth certificate, national ID, passport, marriage certificate, school letters); the services page says 'documents issued to you during registration' without naming them.",
+   "links": [
+    {
+     "label": "UNHCR Sudan help site — the page the documents are named on",
+     "url": "https://help.unhcr.org/sudan/topics/registration/"
+    }
+   ]
+  },
+  "SSD": {
+   "note": "Round 6 sweep of the UNHCR country help site: no specimen image is published. The site does name the documents in text: Asylum Seeker certificate, VALID ONE YEAR, and Refugee certificate, VALID THREE YEARS, both produced through BIMS registration. No colour stated.",
+   "links": [
+    {
+     "label": "UNHCR South Sudan help site — the page the documents are named on",
+     "url": "https://help.unhcr.org/southsudan/how-to-apply-for-asylum/"
+    }
+   ]
+  },
+  "SUR": {
+   "note": "Round 6 sweep of the UNHCR country help site: no specimen image is published. The site does name the documents in text: none — the Suriname operation CLOSED ON 31 MARCH 2025 and the site states that all registration processes carried out by ACNUR are cancelled, with no new appointments. Treat any Suriname document as historic.",
+   "links": [
+    {
+     "label": "UNHCR Suriname help site — the page the documents are named on",
+     "url": "https://help.unhcr.org/suriname/ayuda/"
+    }
+   ]
+  },
+  "SYR": {
+   "note": "Round 6 sweep of the UNHCR country help site: no specimen image is published. The site does name the documents in text: an asylum-seeker identification card, renewable, issued to each family member on registration. No validity period or colour stated.",
+   "links": [
+    {
+     "label": "UNHCR Syria help site — the page the documents are named on",
+     "url": "https://help.unhcr.org/syria/asylum-seekers-and-refugees/registration/"
+    }
+   ]
+  },
+  "YEM": {
+   "note": "Round 6 sweep of the UNHCR country help site: no specimen image is published. The site does name the documents in text: an asylum-seeker certificate, VALID ONE YEAR, in the Aden area; the Sana'a page names only applicant-supplied government forms (Identity Attestation Form, Medical Test Form).",
+   "links": [
+    {
+     "label": "UNHCR Yemen help site — the page the documents are named on",
+     "url": "https://help.unhcr.org/yemen/"
+    }
+   ]
+  },
+  "GEO": {
+   "note": "Round 6 national-gazette pass (the Bosnia method — a legal instrument that describes the document in words rather than publishing a picture). PARTIAL, READ. Order No. 8 of the Minister for Refugees and Accommodation, 10 April 2002, on the rules for registering refugees and issuing the certificate, states verbatim that refugee certificates are PRINTED IN GEORGIAN AND ENGLISH and bear the person's PHOTOGRAPH, personal data and SIGNATURE, with authenticity confirmed by the Ministry's SEAL and the Minister's FACSIMILE. Colour, dimensions, validity and any picture annex are absent. Caveat: a 2002 order, probably superseded by the 2016 Law on International Protection; currency unverified.",
+   "links": [
+    {
+     "label": "Order No. 8 of 10.04.2002 on refugee registration and the certificate (matsne.gov.ge, read)",
+     "url": "https://www.matsne.gov.ge/ka/document/view/1121526"
+    }
+   ]
+  },
+  "MNE": {
+   "note": "Round 6 national-gazette pass (the Bosnia method — a legal instrument that describes the document in words rather than publishing a picture). A RULEBOOK WITH THE SPECIFICATION EXISTS BY OPERATION OF LAW, BUT WAS NOT LOCATED. The Zakon o međunarodnoj i privremenoj zaštiti stranaca, Article 71, requires the Ministry to issue the asylum seeker a document within three days containing name and surname, country of origin, sex, photograph, signature, number and date of issue and the issuing authority. Article 71(10) then delegates the physical form: 'Izgled i sadržaj obrasca i način izdavanja isprave ... propisuje Ministarstvo.' The MUP rulebook carrying colour and dimensions therefore exists; its text was not found. Article 88 (the ID card for persons granted protection) was not in the returned excerpt.",
+   "links": [
+    {
+     "label": "Zakon o međunarodnoj i privremenoj zaštiti stranaca — Art. 71 delegates the document's appearance to a Ministry rulebook",
+     "url": "https://wapi.gov.me/download/512fe62b-fcec-4ca5-a034-13a01048581b?version=1.0"
+    }
+   ]
+  },
+  "MKD": {
+   "note": "Round 6 national-gazette pass (the Bosnia method — a legal instrument that describes the document in words rather than publishing a picture). BLOCKED. Both official hosts of the subordinate legislation (mvr.gov.mk and arhiva.mvr.gov.mk) are robots-blocked to automated fetching, so no rulebook on the form or appearance of the asylum-seeker and refugee documents could be confirmed. Nothing citable beyond the Law on Asylum and Temporary Protection itself (Sl. vesnik na RM 49/03).",
+   "links": [
+    {
+     "label": "Zakon za azil i privremena zaštita (Sl. vesnik na RM 49/03)",
+     "url": "https://www.mtsp.gov.mk/WBStorage/Files/Zakon%20za%20azil.pdf"
     }
    ]
   }
