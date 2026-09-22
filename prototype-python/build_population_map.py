@@ -386,6 +386,8 @@ def main():
           f"({os.path.getsize(f'{OUT}/{name}')/1e6:.1f} MB); "
           f"{len(data)} countries, {sum(len(x) for x in events.values())} event groups")
 
+import egriss_theme as EG
+
 
 TPL = r"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -442,7 +444,7 @@ button,select{font:inherit;font-size:13.5px;padding:7px 12px;border-radius:8px;
 button.on{background:var(--ink);color:var(--surface-1);border-color:var(--ink)}
 button em{font-style:normal;display:block;font-size:10.5px;letter-spacing:.02em;
  color:var(--muted);font-weight:500;margin-top:1px}
-button.on em{color:var(--surface-1);opacity:.72}
+button.on em{color:inherit;opacity:.85}
 #intbanner{background:color-mix(in srgb,#fab219 13%,transparent);
  border:1px solid color-mix(in srgb,#fab219 42%,transparent);border-radius:9px;
  padding:9px 13px;margin:0 0 14px;gap:11px;flex-wrap:nowrap;align-items:flex-start}
@@ -694,35 +696,38 @@ td{font-variant-numeric:tabular-nums}
 #tt .src a:hover,.profile .src a:hover{text-decoration:underline}
 circle.ring{fill:none;stroke:var(--ink-2);stroke-width:1.3;stroke-dasharray:2.5 2.5}
 </style>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+__EGRISSFONTS__
 <style>
 /* ---------------------------------------------------- EGRISS visual identity
    Additive on top of the rules above rather than rewritten in place, so this
    page's own colour logic (COL/SWATCH/ECOL/ESWATCH, --evidence) stays the
    single source of truth and this block only ever touches chrome: type,
-   surfaces, and the four button families. */
-:root{--egriss-navy:#14234c;--egriss-blue:#3b71b9;--egriss-teal:#4cc3c9;
- --egriss-tint:#eef3fa;--egriss-tint-2:#dde8f5;--egriss-line:#d9e2ef;}
-body{background:#f7fafd}
-.wrap{font-family:'IBM Plex Sans',system-ui,sans-serif}
-h1{font-family:'Figtree',system-ui,sans-serif;color:var(--egriss-navy);font-weight:700}
+   surfaces, and the four button families. The tokens come from the shared
+   brand layer (egriss_theme.py) so this page cannot drift from the others. */
+__EGRISSCSS__
+:root{--eg-container:1400px}
+.wrap{max-width:1400px;margin:0 auto;padding:22px 24px 60px;
+ font-family:var(--font-body)}
 .card{background:#fff;border-color:var(--egriss-line)}
 #map{background:var(--egriss-tint);border-radius:14px}
 path.land{fill:var(--egriss-tint-2) !important;stroke:#fff !important;stroke-width:.7 !important}
 circle.ring{stroke:#5a6884 !important}
 #find{border-color:var(--egriss-line)}
-@media(prefers-color-scheme:dark){:root:not([data-theme="light"]) body{background:var(--plane)}
- :root:not([data-theme="light"]) h1{color:#fff}
- :root:not([data-theme="light"]) .card{background:var(--surface-1);border-color:var(--grid)}
- :root:not([data-theme="light"]) #map{background:var(--plane)}
- :root:not([data-theme="light"]) path.land{fill:var(--land) !important;stroke:var(--surface-1) !important}}
-:root[data-theme="dark"] body{background:var(--plane)}
-:root[data-theme="dark"] h1{color:#fff}
-:root[data-theme="dark"] .card{background:var(--surface-1);border-color:var(--grid)}
-:root[data-theme="dark"] #map{background:var(--plane)}
-:root[data-theme="dark"] path.land{fill:var(--land) !important;stroke:var(--surface-1) !important}
+/* The brand has two registers: a light one for reading and NAVY grounds for
+   chart panels. The page's theme toggle therefore switches between them --
+   the old warm-grey dark mode was never designed against this palette. */
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--eg-page-bg:var(--egriss-navy);--eg-page-ink:#fff;--eg-head-ink:#fff;
+ --eg-muted:#a8b6cf}
+ :root:not([data-theme="light"]) h1,:root:not([data-theme="light"]) h2{color:#fff}
+ :root:not([data-theme="light"]) .card{background:var(--egriss-deep);border-color:rgba(255,255,255,.14)}
+ :root:not([data-theme="light"]) #map{background:var(--egriss-deep)}
+ :root:not([data-theme="light"]) path.land{fill:#1f3160 !important;stroke:var(--egriss-navy) !important}}
+:root[data-theme="dark"]{--eg-page-bg:var(--egriss-navy);--eg-page-ink:#fff;--eg-head-ink:#fff;
+ --eg-muted:#a8b6cf}
+:root[data-theme="dark"] h1,:root[data-theme="dark"] h2{color:#fff}
+:root[data-theme="dark"] .card{background:var(--egriss-deep);border-color:rgba(255,255,255,.14)}
+:root[data-theme="dark"] #map{background:var(--egriss-deep)}
+:root[data-theme="dark"] path.land{fill:#1f3160 !important;stroke:var(--egriss-navy) !important}
 
 /* Registration-wording choropleth. #map gives these enough specificity to beat
    the theme-wide path.land !important rules above in every theme state. */
@@ -784,14 +789,9 @@ button.cz:not(.on):hover{border-color:var(--egriss-blue);color:var(--egriss-blue
  padding:2px 0 2px 10px;border-left:1px solid var(--grid)}
 .viewctl button:first-child,button.help:first-child{border-left:0;padding-left:0}
 .viewctl button:hover,button.help:hover{color:var(--egriss-navy)}
-</style></head><body><div class="wrap">
-
-<p class="crumb">EGRISS &middot; Identification questions &middot; <b>Step 0</b> of the questionnaire builder</p>
-<h1 id="title">Where and why &mdash; the evidence behind the questions</h1>
-<p class="sub" id="lede">Who is displaced in each country, how many, and what displaced them &mdash;
-the evidence that decides which populations a survey there needs to identify and which
-forced-to-flee options need local examples. Open a country for its <b>drafting brief</b>,
-then build the questionnaire from it.</p>
+</style></head><body>
+__EGRISSMAST__
+<div class="wrap">
 <ol class="steps">
  <li><a class="on" href="#"><b>0</b> Where and why</a></li>
  <li><a href="questions.html#s1"><b>1</b> Country</a></li>
@@ -2420,7 +2420,27 @@ document.addEventListener('click',e=>{
 
 viewHint();
 draw();
-</script></body></html>"""
+</script>
+__EGRISSFOOT__
+</body></html>"""
+
+# The brand layer goes in once, here, so nothing downstream sees the
+# placeholders and the preview path reads an already-branded template.
+TPL = (TPL
+       .replace("__EGRISSFONTS__", EG.FONTS)
+       .replace("__EGRISSCSS__", EG.CSS)
+       .replace("__EGRISSMAST__", EG.masthead(
+           here="map.html",
+           eyebrow="Step 0 \u00b7 Where and why",
+           title="The evidence behind the questions",
+           lede="Who is displaced in each country, how many, and what displaced them &mdash; "
+                "the evidence that decides which populations a survey there needs to identify "
+                "and which forced-to-flee options need local examples. Open a country for its "
+                "<b>drafting brief</b>, then build the questionnaire from it."))
+       .replace("__EGRISSFOOT__", EG.sitefoot(
+           "Step 0 of the EGRISS questionnaire builder. Built from UCDP, ACLED, IDMC, UNHCR, "
+           "IOM DTM and V-Dem, cross-referenced country by country &middot; "
+           '<a href="questions.html">build a questionnaire</a>')))
 
 if __name__ == "__main__":
     main()

@@ -724,19 +724,19 @@ def main():
         print("   " + out["NGA"]["question"].replace("\n", "\n   "))
 
 
+import egriss_theme as EG
+
 PAGE = """<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Build the questionnaire — steps 1 to 6</title><style>
-:root{color-scheme:light dark;--s:#fcfcfb;--p:#f2f1ec;--i:#111;--i2:#4a4945;
- --m:#8a8880;--g:#d9d8d0;--a:#2a78d6;--w:#fab219;--paper:#fff}
-@media(prefers-color-scheme:dark){:root{--s:#1c1c1a;--p:#111110;--i:#f4f3ee;
- --i2:#c3c2b7;--g:#33332f;--a:#5aa0f0;--paper:#1c1c1a}}
+__EGRISSTOKENS__
+:root{--eg-container:1020px}
 *{box-sizing:border-box}
-body{margin:0;background:var(--p);color:var(--i);font:15px/1.6 ui-sans-serif,
- -apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
-.w{max-width:980px;margin:0 auto;padding:38px 20px 80px}
-h1{font-size:23px;margin:0 0 8px;letter-spacing:-.02em;font-weight:660}
-p.lede{color:var(--i2);margin:0 0 16px;font-size:14.5px;max-width:76ch}
+body{margin:0;background:var(--egriss-paper);color:var(--egriss-ink);
+ font-size:15px;line-height:1.6}
+.w{max-width:1020px;margin:0 auto;padding:30px 24px 20px}
+h1{font-size:23px;margin:0 0 8px;letter-spacing:-.02em;font-weight:700}
+p.lede{color:var(--egriss-muted);margin:0 0 16px;font-size:14.5px;max-width:76ch}
 .bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:14px 0 6px}
 select,.bar button{font:inherit;font-size:13.5px;padding:8px 12px;border-radius:8px;
  border:1px solid var(--g);background:var(--s);color:var(--i);cursor:pointer}
@@ -771,8 +771,8 @@ select{min-width:250px}
 .cpick-row.on{font-weight:600}
 .cpick-name{flex:1 1 auto}
 .loc{font-size:10.5px;font-weight:700;letter-spacing:.03em;padding:2px 7px;border-radius:20px;white-space:nowrap}
-.loc-hi{background:color-mix(in srgb,#0ca30c 16%,transparent);color:#0a7d0a}
-.loc-mid{background:color-mix(in srgb,var(--w) 26%,transparent);color:#8a6100}
+.loc-hi{background:color-mix(in srgb,var(--ok) 16%,transparent);color:#15503c}
+.loc-mid{background:color-mix(in srgb,var(--w) 26%,transparent);color:#7a5410}
 .loc-lo{background:transparent;color:var(--m);border:1px solid var(--g)}
 .spec{font-size:10.5px;font-weight:700;letter-spacing:.03em;padding:2px 7px;border-radius:4px;white-space:nowrap;
  background:color-mix(in srgb,var(--a) 14%,transparent);color:var(--a)}
@@ -815,7 +815,7 @@ ol.opts li:last-child{border-bottom:0}
  font-family:ui-sans-serif,sans-serif}
 .otext{flex:1}
 .eg{color:var(--a)}
-.fill{color:var(--a);font-weight:600;background:rgba(59,113,185,.09);
+.fill{color:#2c5590;font-weight:600;background:rgba(59,113,185,.09);
  border-radius:3px;padding:0 3px;font-style:normal}
 .eg .lab{font-style:italic;color:var(--i2)}
 .gen{color:var(--m);font-style:italic}
@@ -831,7 +831,7 @@ h2{font-size:15px;margin:28px 0 2px;font-weight:640}
 .k{font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;padding:2px 6px;
  border-radius:4px;font-weight:700;white-space:nowrap}
 .k-actor,.k-actor-merged{background:color-mix(in srgb,var(--a) 16%,transparent);color:var(--a)}
-.k-category{background:color-mix(in srgb,#0ca30c 16%,transparent);color:#0ca30c}
+.k-category{background:color-mix(in srgb,var(--ok) 16%,transparent);color:var(--ok)}
 .k-generic{background:transparent;color:var(--m);border:1px solid var(--g)}
 .k-none{background:transparent;color:var(--m);border:1px dashed var(--g)}
 .ro{font-size:10px;color:var(--m)}
@@ -844,10 +844,10 @@ h2{font-size:15px;margin:28px 0 2px;font-weight:640}
 .badges{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 12px}
 .badge{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;
  padding:4px 9px;border-radius:20px;font-weight:700;white-space:nowrap}
-.b-reg{background:color-mix(in srgb,var(--a) 16%,transparent);color:var(--a)}
-.b-cf-HIGH{background:color-mix(in srgb,#0ca30c 16%,transparent);color:#0ca30c}
-.b-cf-MEDIUM{background:color-mix(in srgb,var(--w) 22%,transparent);color:#8a6100}
-.b-cf-LOW{background:color-mix(in srgb,#d03b3b 14%,transparent);color:#d03b3b}
+.b-reg{background:color-mix(in srgb,var(--a) 16%,transparent);color:#24497b}
+.b-cf-HIGH{background:color-mix(in srgb,var(--ok) 16%,transparent);color:#15503c}
+.b-cf-MEDIUM{background:color-mix(in srgb,var(--w) 22%,transparent);color:#7a5410}
+.b-cf-LOW{background:color-mix(in srgb,var(--error) 14%,transparent);color:#8f2126}
 .probe{border-bottom:1px dotted var(--g);padding-bottom:14px;margin-bottom:14px;
  font-family:ui-sans-serif,-apple-system,sans-serif}
 .probe:last-of-type{border-bottom:0;margin-bottom:0;padding-bottom:0}
@@ -974,9 +974,9 @@ h2{font-size:15px;margin:28px 0 2px;font-weight:640}
 .dlsep{width:1px;align-self:stretch;background:var(--g);margin:2px 4px}
 .dlstatus{font-size:12.5px;color:var(--m);max-width:60ch}
 .regcard .dlbar{margin:0 0 14px}
-.dlstatus.err{color:#d03b3b}
+.dlstatus.err{color:var(--error)}
 ol.opts.grid li{align-items:center}
-.validpick{background:#f7f9fc;border:1px solid var(--g);border-radius:8px;padding:9px 12px;margin:9px 0 0;
+.validpick{background:var(--egriss-paper);border:1px solid var(--g);border-radius:8px;padding:9px 12px;margin:9px 0 0;
  font-family:ui-sans-serif,-apple-system,sans-serif;font-size:12.5px;line-height:1.45}
 .validpick b{color:var(--i)}
 .validpick .vp-note{color:var(--m)}
@@ -1000,7 +1000,7 @@ ol.opts.grid li{align-items:center}
 .eg.edited,.egl.edited .eg,.edited{color:#7a3fb5}
 .egl.edited{border-bottom-color:rgba(122,63,181,.5)}
 .edithint{font-family:ui-sans-serif,-apple-system,sans-serif;font-size:12.5px;color:var(--i2);
- background:#f4f7fc;border:1px solid #c9d6ea;border-radius:8px;padding:8px 12px;margin:0 0 12px;line-height:1.5}
+ background:var(--egriss-tint);border:1px solid var(--egriss-border-strong);border-radius:8px;padding:8px 12px;margin:0 0 12px;line-height:1.5}
 .edithint b{color:var(--i)}
 .edithint .swatch{display:inline-block;width:10px;height:10px;border-radius:2px;vertical-align:middle;margin-right:3px}
 .editpop{position:absolute;z-index:60;background:#fff;border:1px solid var(--g);border-radius:10px;
@@ -1016,7 +1016,7 @@ ol.opts.grid li{align-items:center}
 .editpop button.secondary{background:#fff;color:var(--a)}
 .editpop button.plain{background:#fff;color:var(--i2);border-color:var(--g)}
 /* ---- walkthrough: a hypothetical respondent's path through the module ---- */
-.walk{background:#fbfcfe;border:1px solid var(--g);border-radius:10px;padding:12px 14px;margin:0 0 14px;
+.walk{background:var(--egriss-paper);border:1px solid var(--g);border-radius:10px;padding:12px 14px;margin:0 0 14px;
  font-family:ui-sans-serif,-apple-system,sans-serif;font-size:13px}
 .walk .sectitle{margin:0 0 6px}
 .walk .wkpre{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
@@ -1039,7 +1039,7 @@ ol.opts.grid li{align-items:center}
 .chk ul{margin:6px 0 0;padding-left:18px}
 .chk li{margin-bottom:5px}
 .chk .lvl{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:1px 6px;border-radius:4px;margin-right:6px}
-.chk .lvl-must{background:#fbe3e3;color:#a02a2a}.chk .lvl-check{background:#fbf1dc;color:#8a5a0a}.chk .lvl-note{background:#e8eef7;color:#31558f}
+.chk .lvl-must{background:#fdeaea;color:#9c2b30}.chk .lvl-check{background:#fbf0da;color:#7a5410}.chk .lvl-note{background:var(--egriss-tint-2);color:var(--egriss-deep)}
 .pagefoot{font-size:12.5px;color:var(--m);margin-top:24px;line-height:1.6}
 /* ---- page structure: numbered steps, settings card, section labels ------- */
 .steps{list-style:none;display:flex;flex-wrap:wrap;gap:6px;margin:0 0 18px;padding:0;
@@ -1048,7 +1048,7 @@ ol.opts.grid li{align-items:center}
 .steps a:hover{border-color:var(--a);color:var(--a)}
 .steps b,.grp b,h2.step b{display:inline-block;width:18px;height:18px;line-height:18px;border-radius:50%;background:#14234c;color:#fff;
  text-align:center;font-size:11px;font-weight:700;margin-right:6px;letter-spacing:0}
-.setup{background:#f7f9fc;border:1px solid var(--g);border-radius:12px;padding:6px 16px 14px;margin:0 0 6px}
+.setup{background:var(--egriss-paper);border:1px solid var(--g);border-radius:12px;padding:6px 16px 14px;margin:0 0 6px}
 .setup .bar{margin:12px 0 4px}
 .setup .bar-cont{margin-top:0}
 .setup .bar span.grp{min-width:190px;color:var(--i);font-size:12px;letter-spacing:.03em;text-transform:none;font-weight:600}
@@ -1066,7 +1066,7 @@ h2.step{font-size:17px;margin:34px 0 8px}
  color:var(--i2);font-weight:700;margin:22px 0 6px}
 .applysec .cardlab{margin-top:22px}
 .regcard .cardlab{margin-top:26px}
-.info{background:#f4f7fc;border:1px solid #d5dfee;border-radius:8px;padding:10px 14px;font-size:13px;line-height:1.55;color:var(--i2);margin-top:12px;
+.info{background:var(--egriss-tint);border:1px solid var(--egriss-line);border-radius:8px;padding:10px 14px;font-size:13px;line-height:1.55;color:var(--i2);margin-top:12px;
  font-family:ui-sans-serif,-apple-system,sans-serif}
 .info b{color:var(--i)}
 .modq-title{font-weight:500;text-transform:none;letter-spacing:0;color:var(--i2)}
@@ -1080,7 +1080,7 @@ h2.step{font-size:17px;margin:34px 0 8px}
 .dltools{margin-top:6px}
 /* hover-only edit affordance, so the card doesn't read as a page of links */
 [data-slot]{border-bottom:1px dashed transparent}
-[data-slot]:hover::after{content:" \270E";font-size:.8em;color:var(--m)}
+[data-slot]:hover::after{content:" \\270E";font-size:.8em;color:var(--m)}
 .pop::before{content:"";display:inline-block;width:9px;height:9px;border-radius:50%;border:1.5px solid var(--m);margin-right:7px;vertical-align:-1px}
 .pop.on::before{border-color:#fff;background:#fff;box-shadow:inset 0 0 0 2px var(--a)}
 /* sticky download bar, shown while "Your files" is off screen */
@@ -1143,29 +1143,18 @@ button.help.on{border-style:solid}
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+__EGRISSFONTS__
 <style>
-:root{--s:#fff;--p:#fff;--i:#1d2940;--i2:#5a6884;--m:#8b93a8;--g:#e3e8f0;
- --a:#3b71b9;--w:#e0a93b;--paper:#fff}
-body{font-family:'IBM Plex Sans',sans-serif !important;background:#fff !important}
-h1{font-family:'Figtree',sans-serif !important;color:#14234c !important;font-weight:700 !important;
- letter-spacing:-.015em !important}
-h2{font-family:'Figtree',sans-serif !important;color:#14234c !important}
-.bar button.on{background:#14234c !important;border-color:#14234c !important}
-.pop.on{background:#3b71b9 !important;border-color:#3b71b9 !important}
-select,.bar button{border-color:var(--g) !important}
-.form{box-shadow:0 1px 3px rgba(20,35,76,.06),0 10px 28px rgba(20,35,76,.08) !important}
-.regform{box-shadow:0 1px 3px rgba(20,35,76,.06),0 10px 28px rgba(20,35,76,.08) !important}
-</style></head><body><div class="w">
-<h1>Build the questionnaire &mdash; steps 1 to 6</h1>
-<p class="lede">Build the EGRISS identification questions for one country: the questions and
-response options never change; the parts the instrument lets vary &mdash; the examples after each
-&ldquo;e.g.&rdquo;, the office and document named when asking about international protection
-&mdash; are drafted from what was recorded in that country and shown in <span class="eg">blue</span>.
-Choose the country and the populations you need to identify, check and edit the blue text, and
-download the questionnaire with its instructions, derivation rules and translation template.</p>
+/* The brand's base layer loads last, so it wins on element selectors without
+   a single !important -- the block that used to sit here was a stack of them
+   over a warm-grey palette, which is what this redesign replaced. */
+__EGRISSBASE__
+.bar button.on{background:var(--egriss-navy);border-color:var(--egriss-navy);color:#fff}
+.pop.on{background:var(--egriss-blue);border-color:var(--egriss-blue);color:#fff}
+.form,.regform{box-shadow:var(--shadow-sm),var(--shadow-md)}
+</style></head><body>
+__EGRISSMAST__
+<div class="w">
 <ol class="steps">
  <li><a id="step0" href="map.html" title="The map: who is displaced here, what displaced them, where claims are lodged"><b>0</b> Where and why</a></li>
  <li><a href="#s1"><b>1</b> Country</a></li>
@@ -3819,7 +3808,31 @@ cpickLabel();
 pickCountry();
 if(HS){ applyHashAfterPick(HS); buildLangs(); buildPops(Q[sel.value]); buildModPicker(); render(); renderReg(sel.value); }
 renderFooter();
-</script></body></html>"""
+</script>
+__EGRISSFOOT__
+</body></html>"""
+
+# The brand layer goes in once, here. Everything downstream -- write_page, the
+# preview harness, the downloads -- sees an already-branded template.
+PAGE = (PAGE
+        .replace("__EGRISSFONTS__", EG.FONTS)
+        .replace("__EGRISSTOKENS__", EG.TOKENS)
+        .replace("__EGRISSBASE__", EG.BASE)
+        .replace("__EGRISSMAST__", EG.masthead(
+            here="questions.html",
+            eyebrow="Steps 1 to 6 \u00b7 Build the questionnaire",
+            title="The identification questions, built for one country",
+            lede="The questions and response options never change. The parts the instrument "
+                 "lets vary &mdash; the examples after each &ldquo;e.g.&rdquo;, the office and "
+                 "document named when asking about international protection &mdash; are drafted "
+                 "from what was recorded in that country and shown in blue. Choose the country "
+                 "and the populations to identify, check and edit the blue text, then download "
+                 "the questionnaire with its instructions, derivation rules and translation "
+                 "template."))
+        .replace("__EGRISSFOOT__", EG.sitefoot(
+            "Steps 1&ndash;6 of the EGRISS questionnaire builder &middot; "
+            '<a href="map.html">back to the evidence</a> &middot; '
+            '<a href="https://github.com/mitrovif/idq-map/issues/new">report a correction</a>')))
 
 
 def survey_note():

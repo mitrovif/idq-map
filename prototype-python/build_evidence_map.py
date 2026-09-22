@@ -72,19 +72,29 @@ def main():
           f"{len(Q)} researched countries, code 7 documented in {n_doc7}, "
           f"{total7:,} people vs {695595:,} counted globally")
 
+import egriss_theme as EG
+
 
 TPL = r"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>What is counted vs what is documented</title>
+__EGRISSFONTS__
 <style>
-:root{color-scheme:light;--surface-1:#fcfcfb;--plane:#f9f9f7;--ink:#0b0b0b;--ink-2:#52514e;
- --muted:#898781;--grid:#e1e0d9;--land:#eceae4;--c1:#2a78d6;--c2:#eb6834;--c6:#1baf7a;
- --good:#0ca30c;--warning:#fab219;--serious:#ec835a;}
-:root[data-theme="dark"]{color-scheme:dark;--surface-1:#1a1a19;--plane:#0d0d0d;--ink:#fff;
- --ink-2:#c3c2b7;--grid:#2c2c2a;--land:#2a2a28;--c1:#3987e5;--c2:#d95926;--c6:#199e70;}
-@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;
- --surface-1:#1a1a19;--plane:#0d0d0d;--ink:#fff;--ink-2:#c3c2b7;--grid:#2c2c2a;
- --land:#2a2a28;--c1:#3987e5;--c2:#d95926;--c6:#199e70;}}
+__EGRISSTOKENS__
+/* c1 / c2 / c6 identify CAUSE CODES, not brand surfaces, and their separation
+   was validated as a set; only the verdict colours move onto the palette.
+   The dark register is the brand's navy one (see build_population_map.py). */
+:root{--eg-container:1180px;--c1:#2a78d6;--c2:#eb6834;--c6:#1baf7a;
+ --good:#1f7a5c;--warning:var(--gain-gold);--serious:#ec835a}
+:root[data-theme="dark"]{--surface-1:var(--egriss-deep);--plane:var(--egriss-navy);
+ --ink:#fff;--ink-2:#c6d3e6;--grid:rgba(255,255,255,.14);--land:#1f3160;
+ --eg-page-bg:var(--egriss-navy);--eg-page-ink:#fff;--eg-head-ink:#fff;
+ --eg-muted:#a8b6cf}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){
+ --surface-1:var(--egriss-deep);--plane:var(--egriss-navy);--ink:#fff;--ink-2:#c6d3e6;
+ --grid:rgba(255,255,255,.14);--land:#1f3160;
+ --eg-page-bg:var(--egriss-navy);--eg-page-ink:#fff;--eg-head-ink:#fff;
+ --eg-muted:#a8b6cf}}
 *{box-sizing:border-box}
 body{margin:0;background:var(--plane);color:var(--ink);
  font:15px/1.55 ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
@@ -108,7 +118,8 @@ path.cty.pin{stroke:var(--ink);stroke-width:1.8}
 .stats{display:flex;gap:22px;flex-wrap:wrap;margin:4px 0 0}
 .stat{background:var(--surface-1);border:1px solid var(--grid);border-radius:10px;
  padding:11px 16px;min-width:140px}
-.stat .n{font-size:24px;font-weight:660;letter-spacing:-.02em;line-height:1.15}
+.stat .n{font-family:var(--font-mono);font-size:24px;font-weight:600;
+ letter-spacing:-.02em;line-height:1.15;color:var(--ink)}
 .stat .l{font-size:12px;color:var(--ink-2);margin-top:2px}
 .note{font-size:12.5px;color:var(--ink-2);margin-top:16px;max-width:92ch}
 
@@ -145,14 +156,11 @@ path.cty.pin{stroke:var(--ink);stroke-width:1.8}
 #tt .src a{color:var(--c1);text-decoration:none}
 #tt .src a:hover{text-decoration:underline}
 #tt .cnt{font-size:11.5px;color:var(--ink-2);margin-top:2px}
-</style></head><body><div class="wrap">
-
-<h1>What is counted, and what is documented</h1>
-<p class="sub">The same twenty countries under two evidence regimes. <b>Counted</b> is what
-IDMC, ACLED and UCDP record — codes 1, 2 and 6, with numbers. <b>Documented</b> is what
-human rights investigations establish for codes 3, 4 and 7 — real, often large, and absent
-from every displacement database. Hover a country for the evidence; click to pin it so the
-source links work.</p>
+__EGRISSBASE__
+</style></head><body>
+__EGRISSMAST__
+<div class="wrap">
+<h1 hidden>What is counted, and what is documented</h1>
 
 <div class="stats" id="stats"></div>
 
@@ -321,7 +329,26 @@ document.getElementById('theme').addEventListener('click',e=>{
  const c=document.documentElement.getAttribute('data-theme');
  document.documentElement.setAttribute('data-theme',c==='dark'?'light':'dark');});
 render();
-</script></body></html>"""
+</script>
+__EGRISSFOOT__
+</body></html>"""
+
+TPL = (TPL
+       .replace("__EGRISSFONTS__", EG.FONTS)
+       .replace("__EGRISSTOKENS__", EG.TOKENS)
+       .replace("__EGRISSBASE__", EG.BASE)
+       .replace("__EGRISSMAST__", EG.masthead(
+           here="counted-vs-documented.html",
+           eyebrow="Reference \u00b7 Coverage",
+           title="What is counted, and what is documented",
+           lede="The same twenty countries under two evidence regimes. <b>Counted</b> is what "
+                "IDMC, ACLED and UCDP record &mdash; codes 1, 2 and 6, with numbers. "
+                "<b>Documented</b> is what human rights investigations establish for codes 3, "
+                "4 and 7 &mdash; real, often large, and absent from every displacement "
+                "database."))
+       .replace("__EGRISSFOOT__", EG.sitefoot(
+           "Reference for the EGRISS questionnaire builder &middot; "
+           '<a href="questions.html">build a questionnaire</a>')))
 
 if __name__ == "__main__":
     main()

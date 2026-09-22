@@ -118,20 +118,23 @@ def main():
           f"{len(magnitude)} sources sized, {len(structure)} source-to-option links, 8 options)")
 
 
+import egriss_theme as EG
+
 PAGE = r"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>What sits under each option</title>
+__EGRISSFONTS__
 <style>
-:root{color-scheme:light dark;--s:#fcfcfb;--p:#f9f9f7;--i:#0b0b0b;--i2:#52514e;
- --m:#898781;--g:#e1e0d9;--a:#2a78d6;--good:#0ca30c;--warn:#c98a12;--bad:#d03b3b;
+__EGRISSTOKENS__
+/* The six source colours identify DATABASES, not brand surfaces. They were
+   chosen for separation between six categories and are left as they are;
+   only the verdict colours move onto the palette. */
+:root{--eg-container:960px;
+ --good:#1f7a5c;--warn:#7a5410;--bad:#9c2b30;
  --src1:#2a78d6;--src2:#eb6834;--src3:#1baf7a;--src4:#eda100;--src5:#e87ba4;--src6:#008300}
-@media(prefers-color-scheme:dark){:root{--s:#1a1a19;--p:#0d0d0d;--i:#fff;
- --i2:#c3c2b7;--g:#2c2c2a;--a:#3987e5;--good:#3fbf3f;--warn:#e0a83a;--bad:#e35d5d;
- --src1:#3987e5;--src2:#d95926;--src3:#199e70;--src4:#c98500;--src5:#d55181;--src6:#008300}}
 *{box-sizing:border-box}
-body{margin:0;background:var(--p);color:var(--i);font:16px/1.6 ui-sans-serif,
- -apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
-.w{max-width:900px;margin:0 auto;padding:44px 22px 80px}
+body{margin:0;font-size:16px;line-height:1.6}
+.w{max-width:960px;margin:0 auto;padding:34px 24px 20px}
 h1{font-size:26px;line-height:1.2;margin:0 0 8px;letter-spacing:-.02em;font-weight:660}
 .lede{color:var(--i2);font-size:15.5px;margin:0 0 6px;max-width:640px}
 .note{color:var(--m);font-size:13px;margin:0 0 28px;max-width:640px}
@@ -143,7 +146,7 @@ a{color:var(--a)}
  text-align:left;max-width:220px}
 .opt b{display:block;font-size:11px;color:var(--m);font-weight:700}
 .opt.on{background:var(--a);color:#fff;border-color:var(--a)}
-.opt.on b{color:rgba(255,255,255,.75)}
+.opt.on b{color:#fff}
 /* mechanisms live here now: a de-emphasised, collapsed-by-default footnote
    under the option picker, not an equal-weight tab next to the real record */
 .gloss{margin-bottom:18px;border:1px solid var(--g);border-radius:10px;
@@ -179,7 +182,7 @@ a{color:var(--a)}
 .b-yes{background:color-mix(in srgb,var(--good) 18%,transparent);color:var(--good)}
 .b-partial{background:color-mix(in srgb,var(--warn) 20%,transparent);color:var(--warn)}
 .b-no{background:color-mix(in srgb,var(--bad) 16%,transparent);color:var(--bad)}
-.b-exact{background:color-mix(in srgb,var(--good) 18%,transparent);color:var(--good)}
+.b-exact{background:color-mix(in srgb,var(--good) 18%,transparent);color:#15503c}
 .b-broader,.b-narrower{background:color-mix(in srgb,var(--a) 16%,transparent);color:var(--a)}
 .b-contested{background:color-mix(in srgb,var(--warn) 20%,transparent);color:var(--warn)}
 .b-decided,.b-none,.b-pending{background:transparent;color:var(--m);border:1px solid var(--g)}
@@ -210,7 +213,7 @@ a{color:var(--a)}
 .magtrack{flex:1;height:20px;background:var(--g);border-radius:4px;position:relative;overflow:hidden}
 .magbar{height:100%;border-radius:4px}
 .magflag{position:absolute;inset:0;display:flex;align-items:center;padding-left:9px;font-size:11px;
- color:var(--m);font-style:italic;
+ color:var(--egriss-navy);font-style:italic;
  background:repeating-linear-gradient(45deg,var(--g),var(--g) 5px,transparent 5px,transparent 10px)}
 .magval{flex:0 0 62px;text-align:right;font-size:12.5px;color:var(--i2);font-variant-numeric:tabular-nums}
 /* structure: ribbon diagram, same mechanics as before but sized by count */
@@ -225,12 +228,10 @@ a{color:var(--a)}
  border-radius:8px;padding:7px 11px;font-size:12.5px;box-shadow:0 6px 20px rgba(0,0,0,.14);
  max-width:230px;opacity:0;transition:opacity .1s ease;z-index:5}
 .ftip b{display:block;font-size:12.5px;margin-bottom:2px}
-</style></head><body><div class="w">
-<h1>What sits under each option</h1>
-<p class="lede">The database category each source actually recorded for this
-option, and a verdict on how good that fit really is. This is the verifiable
-record &mdash; every card below traces to a real logged category in a real
-source database.</p>
+__EGRISSBASE__
+</style></head><body>
+__EGRISSMAST__
+<div class="w">
 <p class="note">&ldquo;In plain words&rdquo; below is supporting context, not
 part of that record &mdash; a separately written description of how this
 reason plays out in practice, filed under the same option because it belongs
@@ -470,8 +471,26 @@ function buildStruct(){
  });
 }
 buildStruct();
-</script></body></html>
+</script>
+__EGRISSFOOT__
+</body></html>
 """
+
+PAGE = (PAGE
+        .replace("__EGRISSFONTS__", EG.FONTS)
+        .replace("__EGRISSTOKENS__", EG.TOKENS)
+        .replace("__EGRISSBASE__", EG.BASE)
+        .replace("__EGRISSMAST__", EG.masthead(
+            here="crosswalk.html",
+            eyebrow="Reference \u00b7 What sits under each option",
+            title="The record behind each response option",
+            lede="The database category each source actually recorded for this option, and a "
+                 "verdict on how good that fit really is. This is the verifiable record "
+                 "&mdash; every card below traces to a real logged category in a real source "
+                 "database."))
+        .replace("__EGRISSFOOT__", EG.sitefoot(
+            "Reference for the EGRISS questionnaire builder &middot; "
+            '<a href="questions.html">build a questionnaire</a>')))
 
 
 if __name__ == "__main__":

@@ -49,6 +49,8 @@ SITE = ROOT / "site"
 # mechanisms, counted-vs-documented) follows. cta is the link text on the
 # numbered front-page item ("Open the map ->" etc) - the EGRISS front page is a
 # plain numbered list, not icon cards, so there's no icon column any more.
+import egriss_theme as EG
+
 PAGES = [
     ("idq_population_by_cause.html", "index.html",
      "Step 0 — Where and why: the evidence",
@@ -114,79 +116,73 @@ def check_no_acled_counts(html, name):
 
 INDEX = """<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Causing events and the identification questions</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<title>EGRISS identification questions</title>
+__EGRISSFONTS__
 <style>
-:root{color-scheme:light;
- --navy:#14234c;--blue:#3b71b9;--teal:#4cc3c9;--gold:#c98500;
- --ink:#1d2940;--muted:#5a6884;--line:#e3e8f0;--tint:#f7fafd;
- --paper:#fff;
- --f-head:'Figtree',system-ui,sans-serif;--f-body:'IBM Plex Sans',system-ui,sans-serif;
- --f-mono:'IBM Plex Mono',ui-monospace,monospace;
-}
+__EGRISSCSS__
 *{box-sizing:border-box}
-body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.7 var(--f-body);
- -webkit-font-smoothing:antialiased}
-.w{max-width:720px;margin:0 auto;padding:64px 24px 90px}
-.eyebrow{font-family:var(--f-mono);font-size:11px;font-weight:500;letter-spacing:.13em;
- text-transform:uppercase;color:var(--blue);margin:0 0 18px}
-h1{font-family:var(--f-head);font-size:29px;line-height:1.22;margin:0 0 16px;
- letter-spacing:-.015em;font-weight:700;color:var(--navy)}
-.lede{color:var(--ink);font-size:16.5px;margin:0 0 8px;line-height:1.6;max-width:60ch}
-.meta{color:var(--muted);font-size:13px;margin:0 0 48px}
+:root{--eg-container:940px}
+body{margin:0;font-size:16px;line-height:1.7}
+.w{max-width:940px;margin:0 auto;padding:44px 24px 20px}
 
-.item{display:flex;gap:20px;padding:28px 0;border-top:1px solid var(--line)}
-.item:last-of-type{border-bottom:1px solid var(--line)}
-.num{font-family:var(--f-mono);font-size:13px;color:var(--gold);font-weight:500;
- flex:0 0 auto;width:26px;padding-top:2px}
+/* the key-figure row, the design system's third primitive */
+.figs{display:flex;gap:46px;flex-wrap:wrap;margin:0 0 30px;padding:26px 28px;
+ background:var(--egriss-navy);border-radius:var(--radius-lg)}
+.figs .eg-figure{font-size:2.4rem;color:var(--egriss-teal)}
+.figs .eg-figure-cap{color:rgba(255,255,255,.80);font-size:12.5px;max-width:20ch}
+.figs .eg-figure{font-size:2.5rem}
+
+.item{display:flex;gap:20px;padding:26px 0;border-top:1px solid var(--egriss-line);
+ transition:background var(--dur-fast) var(--ease)}
+.item:last-of-type{border-bottom:1px solid var(--egriss-line)}
+.item:hover{background:var(--egriss-tint)}
+.num{font-family:var(--font-mono);font-size:13px;color:var(--egriss-teal);font-weight:600;
+ flex:0 0 auto;width:26px;padding-top:3px}
 .item .body a{text-decoration:none;color:inherit}
-.item b{font-family:var(--f-head);font-size:18px;display:block;margin-bottom:5px;
- letter-spacing:-.01em;color:var(--navy);font-weight:650}
-.item:hover b{color:var(--blue)}
-.item p{color:var(--muted);font-size:14.5px;line-height:1.55;margin:0 0 10px;max-width:56ch}
-.item .go{font-family:var(--f-mono);font-size:11.5px;color:var(--blue);
+.item b{font-family:var(--font-head);font-size:18px;display:block;margin-bottom:5px;
+ letter-spacing:-.01em;color:var(--egriss-navy);font-weight:700}
+.item:hover b{color:var(--egriss-blue)}
+.item p{color:var(--egriss-muted);font-size:14.5px;line-height:1.55;margin:0 0 10px;max-width:56ch}
+.item .go{font-family:var(--font-mono);font-size:11.5px;color:var(--egriss-blue);
  text-decoration:none;letter-spacing:.02em}
 .item .go:hover{text-decoration:underline}
 
-h2.sec{font-family:var(--f-head);font-size:12px;margin:52px 0 16px;text-transform:uppercase;
- letter-spacing:.08em;color:var(--muted);font-weight:650}
-.src-line{font-size:14.5px;color:var(--muted);line-height:1.7}
-.src-line a{color:var(--blue);text-decoration:none;border-bottom:1px solid var(--line)}
-.src-line a:hover{border-color:var(--blue)}
+h2.sec{font-family:var(--font-head);font-size:12px;margin:52px 0 10px;text-transform:uppercase;
+ letter-spacing:var(--ls-caps);color:var(--egriss-blue);font-weight:700}
+.src-line{font-size:14.5px;color:var(--egriss-muted);line-height:1.7}
+.src-line a{color:var(--egriss-blue);text-decoration:none;border-bottom:1px solid var(--egriss-line)}
+.src-line a:hover{border-color:var(--egriss-blue)}
 
 details{margin-top:6px}
-details>summary{cursor:pointer;font-family:var(--f-body);font-size:14px;font-weight:600;
- color:var(--blue);list-style:none;padding:16px 0;border-top:1px solid var(--line)}
+details>summary{cursor:pointer;font-family:var(--font-body);font-size:14px;font-weight:600;
+ color:var(--egriss-blue);list-style:none;padding:16px 0;border-top:1px solid var(--egriss-line)}
 details>summary::-webkit-details-marker{display:none}
-details>summary::before{content:"+ ";color:var(--muted);font-weight:700}
-details[open]>summary::before{content:"\\2212 ";color:var(--muted);font-weight:700}
-details h2{font-family:var(--f-head);font-size:12px;margin:20px 0 8px;text-transform:uppercase;
- letter-spacing:.06em;color:var(--muted);font-weight:650}
-details p{font-size:14px;color:var(--ink);line-height:1.65}
+details>summary::before{content:"+ ";color:var(--egriss-muted);font-weight:700}
+details[open]>summary::before{content:"\2212 ";color:var(--egriss-muted);font-weight:700}
+details h2{font-family:var(--font-head);font-size:12px;margin:20px 0 8px;text-transform:uppercase;
+ letter-spacing:.06em;color:var(--egriss-muted);font-weight:700}
+details p{font-size:14px;color:var(--egriss-ink);line-height:1.65}
 table.src{border-collapse:collapse;width:100%;font-size:13px;margin:6px 0 16px}
-table.src td{padding:8px 0;border-bottom:1px solid var(--line);vertical-align:top;
- color:var(--ink)}
-table.src td:first-child{width:110px;color:var(--navy);font-weight:600;white-space:nowrap}
-pre{background:var(--navy);color:#dde8f5;border-radius:8px;
- padding:13px 15px;font-family:var(--f-mono);font-size:12.5px;overflow-x:auto}
-.note{background:var(--tint);border:1px solid var(--line);border-radius:8px;
- padding:13px 16px;font-size:13.5px;margin:18px 0;color:var(--ink)}
-code{background:var(--tint);border:1px solid var(--line);border-radius:4px;padding:1px 5px;
- font-family:var(--f-mono);font-size:12.5px}
-a{color:var(--blue)}
-</style></head><body><div class="w">
-<div class="eyebrow">EGRISS &middot; Identification questions</div>
-<h1>The identification questions, built for a country</h1>
-<p class="lede">A questionnaire builder for the EGRISS identification questions: start from
-the evidence on who is displaced where and why, choose the populations to identify, review
-the customised questions, and download the questionnaire with its instructions, derivation
-rules and translation template. The questions and response options never change; what
-varies by country is the examples, the office and the document named &mdash; and everything
-that varies is shown in blue and can be edited.</p>
-<p class="meta">EGRISS methodological paper on identification questions for refugees and
-IDPs &middot; supported by a UNHCR Data Innovation Grant</p>
+table.src td{padding:8px 0;border-bottom:1px solid var(--egriss-line);vertical-align:top;
+ color:var(--egriss-ink)}
+table.src td:first-child{width:110px;color:var(--egriss-navy);font-weight:600;white-space:nowrap}
+pre{background:var(--egriss-navy);color:var(--egriss-tint-2);border-radius:var(--radius-md);
+ padding:13px 15px;font-family:var(--font-mono);font-size:12.5px;overflow-x:auto}
+.note{background:var(--egriss-tint);border:1px solid var(--egriss-line);
+ border-radius:var(--radius-md);padding:13px 16px;font-size:13.5px;margin:18px 0}
+code{background:var(--egriss-tint);border:1px solid var(--egriss-line);border-radius:var(--radius-xs);
+ padding:1px 5px;font-family:var(--font-mono);font-size:12.5px}
+</style></head><body>
+__EGRISSMAST__
+<div class="w">
+<div class="figs">
+ <div><span class="eg-figure">__NCOUNTRY__</span>
+  <span class="eg-figure-cap">countries with a drafting brief</span></div>
+ <div><span class="eg-figure">6</span>
+  <span class="eg-figure-cap">survey languages</span></div>
+ <div><span class="eg-figure">5</span>
+  <span class="eg-figure-cap">files per questionnaire</span></div>
+</div>
 __CARDS__
 <h2 class="sec">Sources</h2>
 <p class="src-line">Built from six sources &mdash;
@@ -250,8 +246,42 @@ input is missing says so and is skipped rather than failing the run.</p>
 publication. Figures are current as of the source files listed in the repository, and the
 crosswalk behind them is a documented judgement that is open to challenge.</div>
 </details>
-</div></body></html>
+</div>
+__EGRISSFOOT__
+</body></html>
 """
+
+
+# The brand layer goes in once, here: the template above carries the four
+# placeholders and nothing downstream sees them. __NCOUNTRY__ is the real count
+# of countries with a registration/protection record, not a round number.
+def _n_countries():
+    try:
+        return len(json.load(open(ROOT / "config" / "protection_context.json",
+                                  encoding="utf-8"))["countries"])
+    except Exception:
+        return 0
+
+
+INDEX = (INDEX
+         .replace("__EGRISSFONTS__", EG.FONTS)
+         .replace("__EGRISSCSS__", EG.CSS)
+         .replace("__EGRISSMAST__", EG.masthead(
+             here="index.html",
+             eyebrow="Expert Group on Refugee, IDP and Statelessness Statistics",
+             title="The identification questions, built for a country",
+             lede="Start from the evidence on who is displaced where and why, choose the "
+                  "populations to identify, review the customised questions, and download the "
+                  "questionnaire with its instructions, derivation rules and translation "
+                  "template. The questions and response options never change; what varies by "
+                  "country is the examples, the office and the document named &mdash; and "
+                  "everything that varies is shown in blue and can be edited."))
+         .replace("__EGRISSFOOT__", EG.sitefoot(
+             "EGRISS methodological paper on identification questions for refugees and IDPs "
+             "&middot; supported by a UNHCR Data Innovation Grant. A working prototype for the "
+             "task team, not a publication &middot; "
+             '<a href="https://github.com/mitrovif/idq-map">source and method</a>'))
+         .replace("__NCOUNTRY__", str(_n_countries())))
 
 
 def main():
